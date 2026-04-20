@@ -37,6 +37,7 @@ export default async function Page({
     id: string
     event_id: string
     name: string
+    note: string | null
     created_at: string
     answers: Answer[]
   }

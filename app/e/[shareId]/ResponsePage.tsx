@@ -11,6 +11,7 @@ type ResponseWithAnswers = {
   id: string
   event_id: string
   name: string
+  note: string | null
   created_at: string
   answers: Answer[]
 }
@@ -68,14 +69,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({})
-  const [note, setNote] = useState('')
+  // 個別メモ：「-」選択時のみ、候補日ごと（answers.note に保存）
+  const [detailNotes, setDetailNotes] = useState<Record<string, string>>({})
+  // 共通メモ：常時表示、回答全体で1つ（responses.note に保存）
+  const [sharedNote, setSharedNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('h')
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
 
-  // 列ごとのスコア合計を計算
   const columnScores = Object.fromEntries(
     candidates.map((c) => [
       c.id,
@@ -90,12 +93,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
     const newAnswers: Record<string, AnswerValue> = {}
+    const newDetailNotes: Record<string, string> = {}
     for (const a of r.answers) {
       newAnswers[a.candidate_id] = a.value
+      if (a.note) newDetailNotes[a.candidate_id] = a.note
     }
-    const sharedNote = r.answers.find((a) => a.note)?.note ?? ''
     setAnswers(newAnswers)
-    setNote(sharedNote)
+    setDetailNotes(newDetailNotes)
+    setSharedNote(r.note ?? '')
     setEditingResponseId(r.id)
     setSubmitSuccess(false)
     setError(null)
@@ -105,9 +110,22 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   function handleCancelEdit() {
     setName('')
     setAnswers({})
-    setNote('')
+    setDetailNotes({})
+    setSharedNote('')
     setEditingResponseId(null)
     setError(null)
+  }
+
+  function handleAnswerChange(candidateId: string, value: AnswerValue) {
+    setAnswers((prev) => ({ ...prev, [candidateId]: value }))
+    // 「-」以外に変更した場合、その候補日の個別メモをクリア
+    if (value !== '-') {
+      setDetailNotes((prev) => {
+        const next = { ...prev }
+        delete next[candidateId]
+        return next
+      })
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -119,11 +137,20 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       const answerRows = candidates.map((c) => ({
         candidate_id: c.id,
         value: (answers[c.id] ?? '-') as AnswerValue,
-        note: note || null,
+        // 個別メモは「-」のときのみ保存、それ以外はnull
+        note: answers[c.id] === '-' ? (detailNotes[c.id] || null) : null,
       }))
 
       if (editingResponseId) {
-        // 既存回答を上書き
+        // 共通メモを更新
+        const { error: updateErr } = await supabase
+          .from('responses')
+          .update({ note: sharedNote || null })
+          .eq('id', editingResponseId)
+
+        if (updateErr) throw updateErr
+
+        // 既存のanswersを削除して再挿入
         const { error: delError } = await supabase
           .from('answers')
           .delete()
@@ -137,10 +164,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         if (insError) throw insError
       } else {
-        // 新規回答を作成
         const { data: response, error: responseError } = await supabase
           .from('responses')
-          .insert({ event_id: event.id, name })
+          .insert({ event_id: event.id, name, note: sharedNote || null })
           .select()
           .single()
 
@@ -155,12 +181,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       setName('')
       setAnswers({})
-      setNote('')
+      setDetailNotes({})
+      setSharedNote('')
       setEditingResponseId(null)
       setSubmitSuccess(true)
 
       router.refresh()
-
       setTimeout(() => setSubmitSuccess(false), 3000)
     } catch (err) {
       console.error(err)
@@ -206,7 +232,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <button
                 type="button"
                 onClick={handleCancelEdit}
-                className="text-sm text-stone-400 hover:text-rose-700 transition-colors"
+                className="text-sm text-stone-400 transition-colors hover:text-rose-700"
               >
                 キャンセル
               </button>
@@ -230,45 +256,59 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
 
           {/* 候補日ごとの回答 */}
-          <div className="mb-6 space-y-5">
+          <div className="mb-6 space-y-4">
             <div className="mb-1 text-sm font-medium text-stone-700">
               各日程への出欠 <span className="text-rose-700">*</span>
             </div>
             {candidates.map((c) => (
-              <div key={c.id} className="flex flex-wrap items-center gap-3">
-                <div className="w-36 shrink-0">
-                  <span className="font-serif text-stone-700">{formatDate(c.date)}</span>
-                  {c.time_label && (
-                    <span className="ml-1 text-sm text-stone-400">{c.time_label}</span>
-                  )}
+              <div key={c.id}>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="w-36 shrink-0">
+                    <span className="font-serif text-stone-700">{formatDate(c.date)}</span>
+                    {c.time_label && (
+                      <span className="ml-1 text-sm text-stone-400">{c.time_label}</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    {ANSWER_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleAnswerChange(c.id, opt.value)}
+                        className={`h-10 w-10 rounded-full border-2 text-base transition-all ${
+                          answers[c.id] === opt.value ? opt.active : opt.idle
+                        }`}
+                      >
+                        {opt.value === '-' ? '−' : opt.value}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {ANSWER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() =>
-                        setAnswers((prev) => ({ ...prev, [c.id]: opt.value }))
+                {/* 個別メモ：「-」選択時のみ表示 */}
+                {answers[c.id] === '-' && (
+                  <div className="ml-[9.5rem] mt-2">
+                    <input
+                      type="text"
+                      value={detailNotes[c.id] ?? ''}
+                      onChange={(e) =>
+                        setDetailNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
                       }
-                      className={`h-10 w-10 rounded-full border-2 text-base transition-all ${
-                        answers[c.id] === opt.value ? opt.active : opt.idle
-                      }`}
-                    >
-                      {opt.value === '-' ? '−' : opt.value}
-                    </button>
-                  ))}
-                </div>
+                      placeholder="この日の状況を記入（任意）"
+                      className="w-full rounded-lg border border-blue-100 bg-blue-50/50 px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
-          {/* メモ（回答全体に1つ） */}
+          {/* 共通メモ：常時表示 */}
           <div className="mb-8">
             <input
               type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="メモ（任意）"
+              value={sharedNote}
+              onChange={(e) => setSharedNote(e.target.value)}
+              placeholder="全体へのメモ（任意）"
               className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
@@ -296,7 +336,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         {/* 集計テーブル */}
         <div className="rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur">
-          {/* ヘッダー行：タイトル + 切り替えボタン */}
           <div className="mb-6 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
             {responses.length > 0 && (
@@ -333,14 +372,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <p className="text-sm text-stone-400">まだ回答がありません。</p>
           ) : tableLayout === 'h' ? (
 
-            /* ── 横向きテーブル（デフォルト）：行=回答者、列=候補日 ── */
+            /* ── 横向きテーブル：行=回答者、列=候補日 ── */
             <div className="overflow-x-auto">
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="w-24 pb-4 text-left text-xs font-normal text-stone-400">
-                      名前
-                    </th>
+                    <th className="w-28 pb-4 text-left text-xs font-normal text-stone-400">名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
@@ -356,18 +393,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </th>
                     ))}
-                    <th className="pb-4 text-xs font-normal text-stone-300"></th>
+                    <th className="pb-4"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {responses.map((r) => {
-                    const sharedNote = r.answers.find((a) => a.note)?.note
-                    return (
+                  {responses.map((r) => (
                     <tr key={r.id} className="border-t border-stone-100">
                       <td className="py-3 text-left text-stone-700">
                         <div>{r.name}</div>
-                        {sharedNote && (
-                          <div className="text-xs text-stone-400">（{sharedNote}）</div>
+                        {r.note && (
+                          <div className="text-xs text-stone-400">（{r.note}）</div>
                         )}
                       </td>
                       {candidates.map((c) => {
@@ -376,14 +411,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <td
                             key={c.id}
                             className={`py-3 ${
-                              columnScores[c.id] === maxScore && maxScore > 0
-                                ? 'bg-rose-50'
-                                : ''
+                              columnScores[c.id] === maxScore && maxScore > 0 ? 'bg-rose-50' : ''
                             }`}
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
+                            {answer?.value === '-' && answer.note && (
+                              <p className="mt-0.5 text-xs text-stone-400">（{answer.note}）</p>
+                            )}
                           </td>
                         )
                       })}
@@ -391,13 +427,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
-                          className="text-xs text-stone-300 hover:text-rose-700 transition-colors"
+                          className="text-xs text-stone-300 transition-colors hover:text-rose-700"
                         >
                           編集
                         </button>
                       </td>
                     </tr>
-                  )})}
+                  ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-stone-200">
@@ -430,32 +466,23 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="pb-4 text-left text-xs font-normal text-stone-400">
-                      候補日
-                    </th>
-                    {responses.map((r) => {
-                      const sharedNote = r.answers.find((a) => a.note)?.note
-                      return (
-                      <th
-                        key={r.id}
-                        className="pb-4 font-normal text-stone-500"
-                      >
+                    <th className="pb-4 text-left text-xs font-normal text-stone-400">候補日</th>
+                    {responses.map((r) => (
+                      <th key={r.id} className="pb-4 font-normal text-stone-500">
                         <div>{r.name}</div>
-                        {sharedNote && (
-                          <div className="text-xs font-normal text-stone-400">（{sharedNote}）</div>
+                        {r.note && (
+                          <div className="text-xs font-normal text-stone-400">（{r.note}）</div>
                         )}
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
-                          className="text-xs text-stone-300 hover:text-rose-700 transition-colors font-normal"
+                          className="text-xs font-normal text-stone-300 transition-colors hover:text-rose-700"
                         >
                           編集
                         </button>
                       </th>
-                    )})}
-                    <th className="pb-4 text-xs font-normal text-stone-400">
-                      スコア
-                    </th>
+                    ))}
+                    <th className="pb-4 text-xs font-normal text-stone-400">スコア</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -463,7 +490,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     const isBest = columnScores[c.id] === maxScore && maxScore > 0
                     return (
                       <tr key={c.id} className="border-t border-stone-100">
-                        {/* 候補日セル */}
                         <td className={`py-3 text-left ${isBest ? 'bg-rose-50' : ''}`}>
                           <span className={`font-serif ${isBest ? 'text-rose-800' : 'text-stone-700'}`}>
                             {formatDate(c.date)}
@@ -472,21 +498,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                             <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
                           )}
                         </td>
-                        {/* 各回答者のセル */}
                         {responses.map((r) => {
                           const answer = r.answers.find((a) => a.candidate_id === c.id)
                           return (
-                            <td
-                              key={r.id}
-                              className={`py-3 ${isBest ? 'bg-rose-50' : ''}`}
-                            >
+                            <td key={r.id} className={`py-3 ${isBest ? 'bg-rose-50' : ''}`}>
                               <span className={answerColor(answer?.value)}>
                                 {answer?.value ?? '−'}
                               </span>
+                              {answer?.value === '-' && answer.note && (
+                                <p className="mt-0.5 text-xs text-stone-400">（{answer.note}）</p>
+                              )}
                             </td>
                           )
                         })}
-                        {/* スコアセル */}
                         <td className={`py-3 font-bold ${isBest ? 'bg-rose-50 text-rose-800' : 'text-stone-500'}`}>
                           {columnScores[c.id]}
                           {isBest && <span className="ml-1 text-xs">★</span>}

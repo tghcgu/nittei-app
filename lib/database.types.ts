@@ -54,18 +54,21 @@ export type Database = {
           id: string
           event_id: string
           name: string
+          note: string | null
           created_at: string
         }
         Insert: {
           id?: string
           event_id: string
           name: string
+          note?: string | null
           created_at?: string
         }
         Update: {
           id?: string
           event_id?: string
           name?: string
+          note?: string | null
           created_at?: string
         }
         Relationships: []
@@ -106,5 +109,6 @@ export type Database = {
 export type Event = Database['public']['Tables']['events']['Row']
 export type Candidate = Database['public']['Tables']['candidates']['Row']
 export type Response = Database['public']['Tables']['responses']['Row']
+
 export type Answer = Database['public']['Tables']['answers']['Row']
 export type AnswerValue = '○' | '△' | '✕' | '-'
