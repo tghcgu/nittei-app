@@ -3,6 +3,23 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 type Candidate = {
   id: number
@@ -46,6 +63,80 @@ function getCalendarGrid(year: number, month: number): (Date | null)[] {
   return grid
 }
 
+// ---- ドラッグ可能な候補日行 ----
+function SortableCandidate({
+  c,
+  idx,
+  totalCount,
+  onToggle,
+  onUpdate,
+  onRemove,
+}: {
+  c: Candidate
+  idx: number
+  totalCount: number
+  onToggle: (id: number) => void
+  onUpdate: (id: number, field: 'date' | 'timeLabel', value: string) => void
+  onRemove: (id: number) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: c.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 ${isDragging ? 'opacity-60' : ''}`}
+    >
+      {/* ドラッグハンドル */}
+      <span
+        {...attributes}
+        {...listeners}
+        className="shrink-0 cursor-grab touch-none select-none text-base text-stone-300 hover:text-stone-500 active:cursor-grabbing"
+        title="ドラッグで並び替え"
+      >
+        ⠿
+      </span>
+      <input
+        type="checkbox"
+        checked={c.checked}
+        onChange={() => onToggle(c.id)}
+        className="h-4 w-4 shrink-0 cursor-pointer accent-rose-700"
+      />
+      <span className="w-4 shrink-0 text-center text-sm text-stone-400">{idx + 1}</span>
+      <input
+        type="date"
+        required
+        value={c.date}
+        onChange={(e) => onUpdate(c.id, 'date', e.target.value)}
+        className="flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+      />
+      <input
+        type="text"
+        value={c.timeLabel}
+        onChange={(e) => onUpdate(c.id, 'timeLabel', e.target.value)}
+        placeholder="19:00〜"
+        className="w-24 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+      />
+      <button
+        type="button"
+        onClick={() => onRemove(c.id)}
+        disabled={totalCount === 1}
+        className="shrink-0 text-stone-300 hover:text-rose-400 disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
+// ---- メインコンポーネント ----
 export default function Home() {
   const router = useRouter()
   const [eventName, setEventName] = useState('')
@@ -70,13 +161,46 @@ export default function Home() {
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calSelected, setCalSelected] = useState<Set<string>>(new Set())
 
+  // dnd-kit センサー設定（マウス・タッチ・キーボードに対応）
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  // ---- ドラッグ終了時の並び替え ----
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setCandidates((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id)
+        const newIndex = items.findIndex((i) => i.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
+  // ---- 日付順に並べ替え ----
+  function sortByDate() {
+    setCandidates((prev) =>
+      [...prev].sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date)
+        return a.timeLabel.localeCompare(b.timeLabel)
+      })
+    )
+  }
+
   // ---- 共通: 日付リストを候補に追加 ----
   function addDatesFromList(dates: string[]) {
     const existingDates = new Set(candidates.filter((c) => c.date).map((c) => c.date))
     const toAdd = dates.filter((d) => !existingDates.has(d)).sort()
     if (toAdd.length === 0) return
     let id = nextId
-    const newItems = toAdd.map((d) => ({ id: id++, date: d, timeLabel: defaultTime, checked: false }))
+    const newItems = toAdd.map((d) => ({
+      id: id++,
+      date: d,
+      timeLabel: defaultTime,
+      checked: false,
+    }))
     const kept = candidates.filter((c) => c.date)
     setCandidates([...kept, ...newItems])
     setNextId(id)
@@ -84,7 +208,10 @@ export default function Home() {
 
   // ---- 1件追加 ----
   function addCandidate() {
-    setCandidates((prev) => [...prev, { id: nextId, date: '', timeLabel: defaultTime, checked: false }])
+    setCandidates((prev) => [
+      ...prev,
+      { id: nextId, date: '', timeLabel: defaultTime, checked: false },
+    ])
     setNextId((n) => n + 1)
   }
 
@@ -94,11 +221,15 @@ export default function Home() {
   }
 
   function applyTimeToSelected() {
-    setCandidates((prev) => prev.map((c) => c.checked ? { ...c, timeLabel: defaultTime } : c))
+    setCandidates((prev) =>
+      prev.map((c) => (c.checked ? { ...c, timeLabel: defaultTime } : c))
+    )
   }
 
   function toggleCheck(id: number) {
-    setCandidates((prev) => prev.map((c) => c.id === id ? { ...c, checked: !c.checked } : c))
+    setCandidates((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, checked: !c.checked } : c))
+    )
   }
 
   function removeCandidate(id: number) {
@@ -258,7 +389,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={applyTimeToAll}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 transition-colors"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800"
               >
                 全部これに揃える
               </button>
@@ -266,57 +397,44 @@ export default function Home() {
                 type="button"
                 onClick={applyTimeToSelected}
                 disabled={candidates.every((c) => !c.checked)}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 選択した日に適用
               </button>
             </div>
 
-            {/* 候補日リスト */}
-            <div className="mb-4 space-y-2">
-              {candidates.map((c, idx) => (
-                <div key={c.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={c.checked}
-                    onChange={() => toggleCheck(c.id)}
-                    className="h-4 w-4 shrink-0 cursor-pointer accent-rose-700"
-                  />
-                  <span className="w-4 shrink-0 text-center text-sm text-stone-400">
-                    {idx + 1}
-                  </span>
-                  <input
-                    type="date"
-                    required
-                    value={c.date}
-                    onChange={(e) => updateCandidate(c.id, 'date', e.target.value)}
-                    className="flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                  />
-                  <input
-                    type="text"
-                    value={c.timeLabel}
-                    onChange={(e) => updateCandidate(c.id, 'timeLabel', e.target.value)}
-                    placeholder="19:00〜"
-                    className="w-24 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeCandidate(c.id)}
-                    disabled={candidates.length === 1}
-                    className="shrink-0 text-stone-300 hover:text-rose-400 disabled:cursor-not-allowed disabled:opacity-30"
-                  >
-                    ✕
-                  </button>
+            {/* 候補日リスト（ドラッグ&ドロップ対応） */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={candidates.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="mb-4 space-y-2">
+                  {candidates.map((c, idx) => (
+                    <SortableCandidate
+                      key={c.id}
+                      c={c}
+                      idx={idx}
+                      totalCount={candidates.length}
+                      onToggle={toggleCheck}
+                      onUpdate={updateCandidate}
+                      onRemove={removeCandidate}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
 
             {/* 追加ボタン群 */}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={addCandidate}
-                className="rounded-full border border-rose-200 px-3 py-1.5 text-sm text-rose-700 hover:bg-rose-50 transition-colors"
+                className="rounded-full border border-rose-200 px-3 py-1.5 text-sm text-rose-700 transition-colors hover:bg-rose-50"
               >
                 ＋ 1日ずつ追加
               </button>
@@ -334,9 +452,16 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => { openCalendar(); setRangeOpen(false) }}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 hover:border-rose-200 hover:text-rose-700 transition-colors"
+                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
               >
                 🗓 カレンダーから選ぶ
+              </button>
+              <button
+                type="button"
+                onClick={sortByDate}
+                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
+              >
+                ↕ 日付順に並べ替え
               </button>
             </div>
 
@@ -363,7 +488,7 @@ export default function Home() {
                     type="button"
                     onClick={handleAddRange}
                     disabled={!rangeStart || !rangeEnd || rangeStart > rangeEnd}
-                    className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                    className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     追加
                   </button>
@@ -409,7 +534,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={prevMonth}
-                className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+                className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
               >
                 ←
               </button>
@@ -419,7 +544,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={nextMonth}
-                className="rounded-full p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+                className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
               >
                 →
               </button>
@@ -455,7 +580,7 @@ export default function Home() {
                       isExisting
                         ? 'cursor-not-allowed text-stone-300'
                         : isSelected
-                        ? 'bg-rose-700 text-white font-bold'
+                        ? 'bg-rose-700 font-bold text-white'
                         : dow === 0
                         ? 'text-rose-400 hover:bg-rose-50'
                         : dow === 6
@@ -475,14 +600,14 @@ export default function Home() {
                 type="button"
                 onClick={handleAddFromCalendar}
                 disabled={calSelected.size === 0}
-                className="flex-1 rounded-full bg-rose-800 py-2.5 text-sm font-medium text-white hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40 transition-colors"
+                className="flex-1 rounded-full bg-rose-800 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {calSelected.size > 0 ? `${calSelected.size}日を追加` : '日付を選んでください'}
               </button>
               <button
                 type="button"
                 onClick={() => setCalOpen(false)}
-                className="rounded-full border border-stone-200 px-4 py-2.5 text-sm text-stone-500 hover:border-stone-300 hover:text-stone-700 transition-colors"
+                className="rounded-full border border-stone-200 px-4 py-2.5 text-sm text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-700"
               >
                 閉じる
               </button>

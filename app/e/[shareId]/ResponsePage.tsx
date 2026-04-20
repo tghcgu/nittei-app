@@ -79,6 +79,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('h')
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
 
+  // 範囲で一括回答
+  const [bulkOpen, setBulkOpen] = useState(false)
+  const [bulkStart, setBulkStart] = useState('')
+  const [bulkEnd, setBulkEnd] = useState('')
+  const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
+
   const columnScores = Object.fromEntries(
     candidates.map((c) => [
       c.id,
@@ -114,6 +120,26 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setSharedNote('')
     setEditingResponseId(null)
     setError(null)
+  }
+
+  function applyBulkAnswer() {
+    if (!bulkStart || !bulkEnd || bulkStart > bulkEnd) return
+    const updates: Record<string, AnswerValue> = {}
+    for (const c of candidates) {
+      if (c.date >= bulkStart && c.date <= bulkEnd) {
+        updates[c.id] = bulkValue
+      }
+    }
+    setAnswers((prev) => ({ ...prev, ...updates }))
+    // 「-」以外なら個別メモをクリア
+    if (bulkValue !== '-') {
+      setDetailNotes((prev) => {
+        const next = { ...prev }
+        for (const id of Object.keys(updates)) delete next[id]
+        return next
+      })
+    }
+    setBulkOpen(false)
   }
 
   function handleAnswerChange(candidateId: string, value: AnswerValue) {
@@ -253,6 +279,76 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               placeholder="例：山田"
               className="w-full max-w-xs rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-400"
             />
+          </div>
+
+          {/* 範囲で一括回答 */}
+          <div className="mb-5">
+            <button
+              type="button"
+              onClick={() => setBulkOpen((v) => !v)}
+              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                bulkOpen
+                  ? 'border-rose-400 bg-rose-50 text-rose-800'
+                  : 'border-stone-200 text-stone-500 hover:border-rose-200 hover:text-rose-700'
+              }`}
+            >
+              📋 範囲で一括回答
+            </button>
+
+            {bulkOpen && (
+              <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-medium text-stone-500">日程範囲と回答を選択して「適用」</p>
+                  <button
+                    type="button"
+                    onClick={() => setBulkOpen(false)}
+                    className="text-xs text-stone-400 hover:text-stone-600"
+                  >
+                    閉じる
+                  </button>
+                </div>
+                {/* 日付範囲 */}
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    value={bulkStart}
+                    onChange={(e) => setBulkStart(e.target.value)}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                  />
+                  <span className="text-stone-400">〜</span>
+                  <input
+                    type="date"
+                    value={bulkEnd}
+                    min={bulkStart}
+                    onChange={(e) => setBulkEnd(e.target.value)}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                  />
+                </div>
+                {/* 回答選択 */}
+                <div className="mb-3 flex gap-2">
+                  {ANSWER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setBulkValue(opt.value)}
+                      className={`h-10 w-10 rounded-full border-2 text-base transition-all ${
+                        bulkValue === opt.value ? opt.active : opt.idle
+                      }`}
+                    >
+                      {opt.value === '-' ? '−' : opt.value}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={applyBulkAnswer}
+                  disabled={!bulkStart || !bulkEnd || bulkStart > bulkEnd}
+                  className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  適用
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 候補日ごとの回答 */}
