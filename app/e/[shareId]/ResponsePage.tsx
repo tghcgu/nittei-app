@@ -153,7 +153,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   async function handleGoogleCalendar() {
+    console.log('[GCal] ① ボタンクリック')
+
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    console.log('[GCal] clientId =', clientId ? `${clientId.slice(0, 20)}...` : '未設定')
+
     if (!clientId) {
       setGcalStatus('error')
       setGcalMessage('Google Client IDが設定されていません。管理者にお問い合わせください。')
@@ -162,6 +166,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const google = (window as any).google
+    console.log('[GCal] window.google =', google)
+    console.log('[GCal] google.accounts?.oauth2 =', google?.accounts?.oauth2)
+
     if (!google?.accounts?.oauth2) {
       setGcalStatus('error')
       setGcalMessage('Googleのスクリプトがまだ読み込まれていません。少し待ってから再試行してください。')
@@ -171,67 +178,97 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setGcalStatus('loading')
     setGcalMessage('')
 
-    const tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
-      scope: 'https://www.googleapis.com/auth/calendar.readonly',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      callback: async (response: any) => {
-        if (response.error || !response.access_token) {
-          setGcalStatus('error')
-          setGcalMessage('Googleとの連携がキャンセルされました。手動で入力してください。')
-          return
-        }
+    try {
+      console.log('[GCal] ② initTokenClient 呼び出し前')
 
-        try {
-          const token = response.access_token as string
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        callback: async (response: any) => {
+          console.log('[GCal] ④ コールバック受信 response =', response)
 
-          // 全候補日をカバーする期間でFreeBusy APIを1回だけ叩く
-          const sorted = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
-          const timeMin = new Date(sorted[0].date + 'T00:00:00').toISOString()
-          const timeMax = new Date(sorted[sorted.length - 1].date + 'T23:59:59').toISOString()
-
-          const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ timeMin, timeMax, items: [{ id: 'primary' }] }),
-          })
-
-          if (!res.ok) throw new Error(`FreeBusy API: ${res.status}`)
-
-          const data = await res.json()
-          const busyPeriods: { start: string; end: string }[] =
-            data.calendars?.primary?.busy ?? []
-
-          // 候補日ごとに busy か free かを判定して自動セット
-          const newAnswers: Record<string, AnswerValue> = {}
-          for (const c of candidates) {
-            const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
-            const csMs = new Date(cs).getTime()
-            const ceMs = new Date(ce).getTime()
-            const isBusy = busyPeriods.some((p) => {
-              const ps = new Date(p.start).getTime()
-              const pe = new Date(p.end).getTime()
-              return ps < ceMs && pe > csMs
-            })
-            newAnswers[c.id] = isBusy ? '✕' : '○'
+          if (response.error || !response.access_token) {
+            console.error('[GCal] ✗ トークン取得失敗:', response.error, response)
+            setGcalStatus('error')
+            setGcalMessage('Googleとの連携がキャンセルされました。手動で入力してください。')
+            return
           }
 
-          setAnswers((prev) => ({ ...prev, ...newAnswers }))
-          setGcalStatus('done')
-          setGcalMessage('カレンダーを参照してプリセットしました。内容を確認してから送信してください。')
-        } catch (err) {
-          console.error(err)
-          setGcalStatus('error')
-          setGcalMessage('カレンダーの取得中にエラーが発生しました。手動で入力してください。')
-        }
-      },
-    })
+          console.log('[GCal] ✓ access_token 取得成功（先頭20文字）:', response.access_token.slice(0, 20))
 
-    // prompt: '' = 既に認証済みなら確認画面をスキップ
-    tokenClient.requestAccessToken({ prompt: '' })
+          try {
+            const token = response.access_token as string
+
+            const sorted = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
+            const timeMin = new Date(sorted[0].date + 'T00:00:00').toISOString()
+            const timeMax = new Date(sorted[sorted.length - 1].date + 'T23:59:59').toISOString()
+            console.log('[GCal] ⑤ FreeBusy API 呼び出し前 timeMin=', timeMin, 'timeMax=', timeMax)
+
+            const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ timeMin, timeMax, items: [{ id: 'primary' }] }),
+            })
+
+            console.log('[GCal] ⑥ FreeBusy API レスポンス status =', res.status, res.ok)
+
+            if (!res.ok) {
+              const errText = await res.text()
+              console.error('[GCal] ✗ FreeBusy API エラー:', res.status, errText)
+              throw new Error(`FreeBusy API: ${res.status} ${errText}`)
+            }
+
+            const data = await res.json()
+            console.log('[GCal] ⑦ FreeBusy レスポンス data =', data)
+
+            const busyPeriods: { start: string; end: string }[] =
+              data.calendars?.primary?.busy ?? []
+            console.log('[GCal] busyPeriods =', busyPeriods)
+
+            const newAnswers: Record<string, AnswerValue> = {}
+            for (const c of candidates) {
+              const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
+              const csMs = new Date(cs).getTime()
+              const ceMs = new Date(ce).getTime()
+              const isBusy = busyPeriods.some((p) => {
+                const ps = new Date(p.start).getTime()
+                const pe = new Date(p.end).getTime()
+                return ps < ceMs && pe > csMs
+              })
+              console.log(`[GCal] 候補日 ${c.date} ${c.time_label} → ${isBusy ? '✕(busy)' : '○(free)'}`)
+              newAnswers[c.id] = isBusy ? '✕' : '○'
+            }
+
+            setAnswers((prev) => ({ ...prev, ...newAnswers }))
+            setGcalStatus('done')
+            setGcalMessage('カレンダーを参照してプリセットしました。内容を確認してから送信してください。')
+            console.log('[GCal] ⑧ 完了')
+          } catch (err) {
+            console.error('[GCal] ✗ FreeBusy処理中エラー:', err)
+            setGcalStatus('error')
+            setGcalMessage('カレンダーの取得中にエラーが発生しました。手動で入力してください。')
+          }
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        error_callback: (err: any) => {
+          console.error('[GCal] ✗ error_callback:', err)
+          setGcalStatus('error')
+          setGcalMessage('Googleとの連携中にエラーが発生しました。手動で入力してください。')
+        },
+      })
+
+      console.log('[GCal] ③ initTokenClient 完了、requestAccessToken 呼び出し前')
+      tokenClient.requestAccessToken({ prompt: '' })
+      console.log('[GCal] requestAccessToken 呼び出し済み（ポップアップ待ち）')
+    } catch (err) {
+      console.error('[GCal] ✗ 予期しないエラー:', err)
+      setGcalStatus('error')
+      setGcalMessage('予期しないエラーが発生しました。手動で入力してください。')
+    }
   }
 
   function applyBulkAnswer() {
