@@ -498,13 +498,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
 
           {/* 候補日ごとの回答 */}
-          <div className="mb-6 space-y-2">
+          <div className="mb-6 space-y-0.5">
             <div className="mb-1 text-sm font-medium text-stone-700">
               各日程への出欠 <span className="text-rose-700">*</span>
             </div>
             {candidates.map((c) => (
               <div key={c.id}>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3 py-0.5">
                   <div className="w-36 shrink-0">
                     <span className="font-serif text-stone-700">{formatDate(c.date)}</span>
                     {c.time_label && (
