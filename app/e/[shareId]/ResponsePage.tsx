@@ -73,6 +73,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('h')
+  const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
 
   // 列ごとのスコア合計を計算
   const columnScores = Object.fromEntries(
@@ -86,42 +87,79 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   )
   const maxScore = candidates.length > 0 ? Math.max(...Object.values(columnScores)) : 0
 
+  function handleEdit(r: ResponseWithAnswers) {
+    setName(r.name)
+    const newAnswers: Record<string, AnswerValue> = {}
+    const newNotes: Record<string, string> = {}
+    for (const a of r.answers) {
+      newAnswers[a.candidate_id] = a.value
+      if (a.note) newNotes[a.candidate_id] = a.note
+    }
+    setAnswers(newAnswers)
+    setNotes(newNotes)
+    setEditingResponseId(r.id)
+    setSubmitSuccess(false)
+    setError(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleCancelEdit() {
+    setName('')
+    setAnswers({})
+    setNotes({})
+    setEditingResponseId(null)
+    setError(null)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
 
     try {
-      // responses テーブルに回答者を保存
-      const { data: response, error: responseError } = await supabase
-        .from('responses')
-        .insert({ event_id: event.id, name })
-        .select()
-        .single()
-
-      if (responseError) throw responseError
-
-      // answers テーブルに各候補日への回答を保存
       const answerRows = candidates.map((c) => ({
-        response_id: response.id,
         candidate_id: c.id,
-        value: answers[c.id] ?? '✕' as AnswerValue,
-        note: notes[c.id] ?? null,
+        value: (answers[c.id] ?? '-') as AnswerValue,
+        note: notes[c.id] || null,
       }))
 
-      const { error: answersError } = await supabase
-        .from('answers')
-        .insert(answerRows)
+      if (editingResponseId) {
+        // 既存回答を上書き
+        const { error: delError } = await supabase
+          .from('answers')
+          .delete()
+          .eq('response_id', editingResponseId)
 
-      if (answersError) throw answersError
+        if (delError) throw delError
 
-      // フォームをリセット
+        const { error: insError } = await supabase
+          .from('answers')
+          .insert(answerRows.map((a) => ({ ...a, response_id: editingResponseId })))
+
+        if (insError) throw insError
+      } else {
+        // 新規回答を作成
+        const { data: response, error: responseError } = await supabase
+          .from('responses')
+          .insert({ event_id: event.id, name })
+          .select()
+          .single()
+
+        if (responseError) throw responseError
+
+        const { error: answersError } = await supabase
+          .from('answers')
+          .insert(answerRows.map((a) => ({ ...a, response_id: response.id })))
+
+        if (answersError) throw answersError
+      }
+
       setName('')
       setAnswers({})
       setNotes({})
+      setEditingResponseId(null)
       setSubmitSuccess(true)
 
-      // テーブルを最新データで更新
       router.refresh()
 
       setTimeout(() => setSubmitSuccess(false), 3000)
@@ -161,7 +199,20 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           onSubmit={handleSubmit}
           className="mb-8 rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur"
         >
-          <h2 className="mb-6 font-serif text-xl text-stone-700">回答する</h2>
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="font-serif text-xl text-stone-700">
+              {editingResponseId ? '回答を編集' : '回答する'}
+            </h2>
+            {editingResponseId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="text-sm text-stone-400 hover:text-rose-700 transition-colors"
+              >
+                キャンセル
+              </button>
+            )}
+          </div>
 
           {/* 名前 */}
           <div className="mb-7">
@@ -173,8 +224,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={!!editingResponseId}
               placeholder="例：山田"
-              className="w-full max-w-xs rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              className="w-full max-w-xs rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-400"
             />
           </div>
 
@@ -209,19 +261,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     ))}
                   </div>
                 </div>
-                {answers[c.id] === '-' && (
-                  <div className="ml-[9.5rem] mt-2">
-                    <input
-                      type="text"
-                      value={notes[c.id] ?? ''}
-                      onChange={(e) =>
-                        setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
-                      }
-                      placeholder="メモ（任意）"
-                      className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                    />
-                  </div>
-                )}
+                <div className="ml-[9.5rem] mt-2">
+                  <input
+                    type="text"
+                    value={notes[c.id] ?? ''}
+                    onChange={(e) =>
+                      setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
+                    }
+                    placeholder="メモ（任意）"
+                    className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -234,7 +284,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           )}
           {submitSuccess && (
             <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-              回答を送信しました！ありがとうございます。
+              {editingResponseId ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
             </p>
           )}
 
@@ -243,7 +293,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             disabled={isSubmitting}
             className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSubmitting ? '送信中...' : '回答を送信'}
+            {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
           </button>
         </form>
 
@@ -291,7 +341,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="w-20 pb-4 text-left text-xs font-normal text-stone-400">
+                    <th className="w-24 pb-4 text-left text-xs font-normal text-stone-400">
                       名前
                     </th>
                     {candidates.map((c) => (
@@ -309,6 +359,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </th>
                     ))}
+                    <th className="pb-4 text-xs font-normal text-stone-300"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -337,6 +388,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           </td>
                         )
                       })}
+                      <td className="py-3">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(r)}
+                          className="text-xs text-stone-300 hover:text-rose-700 transition-colors"
+                        >
+                          編集
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -358,6 +418,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </td>
                     ))}
+                    <td />
                   </tr>
                 </tfoot>
               </table>
@@ -378,7 +439,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         key={r.id}
                         className="pb-4 font-normal text-stone-500"
                       >
-                        {r.name}
+                        <div>{r.name}</div>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(r)}
+                          className="text-xs text-stone-300 hover:text-rose-700 transition-colors font-normal"
+                        >
+                          編集
+                        </button>
                       </th>
                     ))}
                     <th className="pb-4 text-xs font-normal text-stone-400">
