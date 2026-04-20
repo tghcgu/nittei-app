@@ -68,7 +68,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({})
-  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [note, setNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,13 +90,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
     const newAnswers: Record<string, AnswerValue> = {}
-    const newNotes: Record<string, string> = {}
     for (const a of r.answers) {
       newAnswers[a.candidate_id] = a.value
-      if (a.note) newNotes[a.candidate_id] = a.note
     }
+    const sharedNote = r.answers.find((a) => a.note)?.note ?? ''
     setAnswers(newAnswers)
-    setNotes(newNotes)
+    setNote(sharedNote)
     setEditingResponseId(r.id)
     setSubmitSuccess(false)
     setError(null)
@@ -106,7 +105,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   function handleCancelEdit() {
     setName('')
     setAnswers({})
-    setNotes({})
+    setNote('')
     setEditingResponseId(null)
     setError(null)
   }
@@ -120,7 +119,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       const answerRows = candidates.map((c) => ({
         candidate_id: c.id,
         value: (answers[c.id] ?? '-') as AnswerValue,
-        note: notes[c.id] || null,
+        note: note || null,
       }))
 
       if (editingResponseId) {
@@ -156,7 +155,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       setName('')
       setAnswers({})
-      setNotes({})
+      setNote('')
       setEditingResponseId(null)
       setSubmitSuccess(true)
 
@@ -231,49 +230,47 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
 
           {/* 候補日ごとの回答 */}
-          <div className="mb-8 space-y-5">
+          <div className="mb-6 space-y-5">
             <div className="mb-1 text-sm font-medium text-stone-700">
               各日程への出欠 <span className="text-rose-700">*</span>
             </div>
             {candidates.map((c) => (
-              <div key={c.id}>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="w-36 shrink-0">
-                    <span className="font-serif text-stone-700">{formatDate(c.date)}</span>
-                    {c.time_label && (
-                      <span className="ml-1 text-sm text-stone-400">{c.time_label}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    {ANSWER_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() =>
-                          setAnswers((prev) => ({ ...prev, [c.id]: opt.value }))
-                        }
-                        className={`h-10 w-10 rounded-full border-2 text-base transition-all ${
-                          answers[c.id] === opt.value ? opt.active : opt.idle
-                        }`}
-                      >
-                        {opt.value === '-' ? '−' : opt.value}
-                      </button>
-                    ))}
-                  </div>
+              <div key={c.id} className="flex flex-wrap items-center gap-3">
+                <div className="w-36 shrink-0">
+                  <span className="font-serif text-stone-700">{formatDate(c.date)}</span>
+                  {c.time_label && (
+                    <span className="ml-1 text-sm text-stone-400">{c.time_label}</span>
+                  )}
                 </div>
-                <div className="ml-[9.5rem] mt-2">
-                  <input
-                    type="text"
-                    value={notes[c.id] ?? ''}
-                    onChange={(e) =>
-                      setNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
-                    }
-                    placeholder="メモ（任意）"
-                    className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                  />
+                <div className="flex gap-2">
+                  {ANSWER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() =>
+                        setAnswers((prev) => ({ ...prev, [c.id]: opt.value }))
+                      }
+                      className={`h-10 w-10 rounded-full border-2 text-base transition-all ${
+                        answers[c.id] === opt.value ? opt.active : opt.idle
+                      }`}
+                    >
+                      {opt.value === '-' ? '−' : opt.value}
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* メモ（回答全体に1つ） */}
+          <div className="mb-8">
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="メモ（任意）"
+              className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+            />
           </div>
 
           {/* エラー・成功メッセージ */}
@@ -363,9 +360,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {responses.map((r) => (
+                  {responses.map((r) => {
+                    const sharedNote = r.answers.find((a) => a.note)?.note
+                    return (
                     <tr key={r.id} className="border-t border-stone-100">
-                      <td className="py-3 text-left text-stone-700">{r.name}</td>
+                      <td className="py-3 text-left text-stone-700">
+                        <div>{r.name}</div>
+                        {sharedNote && (
+                          <div className="text-xs text-stone-400">（{sharedNote}）</div>
+                        )}
+                      </td>
                       {candidates.map((c) => {
                         const answer = r.answers.find((a) => a.candidate_id === c.id)
                         return (
@@ -380,11 +384,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
-                            {answer?.note && (
-                              <p className="mt-0.5 text-xs text-stone-400">
-                                （{answer.note}）
-                              </p>
-                            )}
                           </td>
                         )
                       })}
@@ -398,7 +397,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-stone-200">
@@ -434,12 +433,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <th className="pb-4 text-left text-xs font-normal text-stone-400">
                       候補日
                     </th>
-                    {responses.map((r) => (
+                    {responses.map((r) => {
+                      const sharedNote = r.answers.find((a) => a.note)?.note
+                      return (
                       <th
                         key={r.id}
                         className="pb-4 font-normal text-stone-500"
                       >
                         <div>{r.name}</div>
+                        {sharedNote && (
+                          <div className="text-xs font-normal text-stone-400">（{sharedNote}）</div>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
@@ -448,7 +452,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           編集
                         </button>
                       </th>
-                    ))}
+                    )})}
                     <th className="pb-4 text-xs font-normal text-stone-400">
                       スコア
                     </th>
@@ -479,11 +483,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                               <span className={answerColor(answer?.value)}>
                                 {answer?.value ?? '−'}
                               </span>
-                              {answer?.note && (
-                                <p className="mt-0.5 text-xs text-stone-400">
-                                  （{answer.note}）
-                                </p>
-                              )}
                             </td>
                           )
                         })}
