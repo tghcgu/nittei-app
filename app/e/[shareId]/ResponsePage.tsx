@@ -498,7 +498,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
 
           {/* 候補日ごとの回答 */}
-          <div className="mb-6 space-y-4">
+          <div className="mb-6 space-y-2">
             <div className="mb-1 text-sm font-medium text-stone-700">
               各日程への出欠 <span className="text-rose-700">*</span>
             </div>
@@ -528,7 +528,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </div>
                 {/* 個別メモ：「-」選択時のみ表示 */}
                 {answers[c.id] === '-' && (
-                  <div className="ml-[9.5rem] mt-2">
+                  <div className="ml-[9.5rem] mt-1">
                     <input
                       type="text"
                       value={detailNotes[c.id] ?? ''}
