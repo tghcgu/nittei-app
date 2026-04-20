@@ -85,6 +85,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkEnd, setBulkEnd] = useState('')
   const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
 
+  // Google Calendar連携
+  const [gcalStatus, setGcalStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [gcalMessage, setGcalMessage] = useState('')
+
   const columnScores = Object.fromEntries(
     candidates.map((c) => [
       c.id,
@@ -120,6 +124,114 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setSharedNote('')
     setEditingResponseId(null)
     setError(null)
+  }
+
+  // time_label（例: "19:00〜22:00" や "21:00〜"）をパースしてISO文字列のstart/endを返す
+  function parseCandidateTimeRange(date: string, timeLabel: string | null) {
+    const fallback = {
+      start: new Date(date + 'T00:00:00').toISOString(),
+      end:   new Date(date + 'T23:59:00').toISOString(),
+    }
+    if (!timeLabel) return fallback
+
+    const m = timeLabel.match(/(\d{1,2}):(\d{2})[〜~\-](?:(\d{1,2}):(\d{2}))?/)
+    if (!m) return fallback
+
+    const startDate = new Date(date + 'T00:00:00')
+    startDate.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0)
+
+    let endDate: Date
+    if (m[3] !== undefined) {
+      endDate = new Date(date + 'T00:00:00')
+      endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
+    } else {
+      endDate = new Date(startDate)
+      endDate.setHours(endDate.getHours() + 3)
+    }
+
+    return { start: startDate.toISOString(), end: endDate.toISOString() }
+  }
+
+  async function handleGoogleCalendar() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    if (!clientId) {
+      setGcalStatus('error')
+      setGcalMessage('Google Client IDが設定されていません。管理者にお問い合わせください。')
+      return
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const google = (window as any).google
+    if (!google?.accounts?.oauth2) {
+      setGcalStatus('error')
+      setGcalMessage('Googleのスクリプトがまだ読み込まれていません。少し待ってから再試行してください。')
+      return
+    }
+
+    setGcalStatus('loading')
+    setGcalMessage('')
+
+    const tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/calendar.readonly',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      callback: async (response: any) => {
+        if (response.error || !response.access_token) {
+          setGcalStatus('error')
+          setGcalMessage('Googleとの連携がキャンセルされました。手動で入力してください。')
+          return
+        }
+
+        try {
+          const token = response.access_token as string
+
+          // 全候補日をカバーする期間でFreeBusy APIを1回だけ叩く
+          const sorted = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
+          const timeMin = new Date(sorted[0].date + 'T00:00:00').toISOString()
+          const timeMax = new Date(sorted[sorted.length - 1].date + 'T23:59:59').toISOString()
+
+          const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ timeMin, timeMax, items: [{ id: 'primary' }] }),
+          })
+
+          if (!res.ok) throw new Error(`FreeBusy API: ${res.status}`)
+
+          const data = await res.json()
+          const busyPeriods: { start: string; end: string }[] =
+            data.calendars?.primary?.busy ?? []
+
+          // 候補日ごとに busy か free かを判定して自動セット
+          const newAnswers: Record<string, AnswerValue> = {}
+          for (const c of candidates) {
+            const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
+            const csMs = new Date(cs).getTime()
+            const ceMs = new Date(ce).getTime()
+            const isBusy = busyPeriods.some((p) => {
+              const ps = new Date(p.start).getTime()
+              const pe = new Date(p.end).getTime()
+              return ps < ceMs && pe > csMs
+            })
+            newAnswers[c.id] = isBusy ? '✕' : '○'
+          }
+
+          setAnswers((prev) => ({ ...prev, ...newAnswers }))
+          setGcalStatus('done')
+          setGcalMessage('カレンダーを参照してプリセットしました。内容を確認してから送信してください。')
+        } catch (err) {
+          console.error(err)
+          setGcalStatus('error')
+          setGcalMessage('カレンダーの取得中にエラーが発生しました。手動で入力してください。')
+        }
+      },
+    })
+
+    // prompt: '' = 既に認証済みなら確認画面をスキップ
+    tokenClient.requestAccessToken({ prompt: '' })
   }
 
   function applyBulkAnswer() {
@@ -279,6 +391,40 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               placeholder="例：山田"
               className="w-full max-w-xs rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-400"
             />
+          </div>
+
+          {/* Googleカレンダー連携 */}
+          <div className="mb-5">
+            <button
+              type="button"
+              onClick={handleGoogleCalendar}
+              disabled={gcalStatus === 'loading'}
+              className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {gcalStatus === 'loading' ? (
+                <>
+                  <span className="animate-spin">⟳</span>
+                  取得中...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/>
+                  </svg>
+                  Googleカレンダーで自動入力
+                </>
+              )}
+            </button>
+            {gcalStatus === 'done' && (
+              <p className="mt-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+                ✓ {gcalMessage}
+              </p>
+            )}
+            {gcalStatus === 'error' && (
+              <p className="mt-2 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700">
+                {gcalMessage}
+              </p>
+            )}
           </div>
 
           {/* 範囲で一括回答 */}
