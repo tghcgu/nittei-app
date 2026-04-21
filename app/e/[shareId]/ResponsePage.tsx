@@ -354,12 +354,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         </Link>
 
         {/* イベントヘッダー */}
-        <div className="mb-8">
+        <div className="mb-3">
           <h1 className="font-serif text-3xl text-rose-800">{event.name}</h1>
           {event.description && (
             <p className="mt-2 text-stone-600">{event.description}</p>
           )}
-          <p className="mt-3 inline-block rounded-lg bg-white/50 px-3 py-2 text-xs text-stone-400">
+          <p className="mt-1 inline-block rounded-lg bg-white/50 px-3 py-1 text-xs text-stone-400">
             共有URL: /e/{shareId}
           </p>
         </div>
