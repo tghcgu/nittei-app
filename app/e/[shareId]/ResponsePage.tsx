@@ -342,13 +342,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   return (
-    <div className="min-h-screen px-4 py-10">
+    <div className="min-h-screen px-4 py-4">
       <div className="mx-auto max-w-2xl">
 
         {/* 戻るリンク */}
         <Link
           href="/"
-          className="mb-8 inline-block text-sm text-stone-400 transition-colors hover:text-rose-700"
+          className="mb-2 inline-block text-sm text-stone-400 transition-colors hover:text-rose-700"
         >
           ← 新しいイベントを作る
         </Link>
