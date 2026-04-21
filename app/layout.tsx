@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP, Noto_Serif_JP } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 const notoSans = Noto_Sans_JP({
@@ -27,11 +26,6 @@ export default function RootLayout({
     <html lang="ja" className={`${notoSans.variable} ${notoSerif.variable}`}>
       <body>
         {children}
-        {/* Google Identity Services: ユーザーがボタンを押すまで読み込まない */}
-        <Script
-          src="https://accounts.google.com/gsi/client"
-          strategy="lazyOnload"
-        />
       </body>
     </html>
   );
