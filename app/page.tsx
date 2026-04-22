@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import ICAL from 'ical.js'
 import { supabase } from '@/lib/supabase'
 import {
   DndContext,
@@ -148,6 +149,9 @@ export default function Home() {
   const [nextId, setNextId] = useState(2)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [icsMessage, setIcsMessage] = useState('')
+  const icsInputRef = useRef<HTMLInputElement>(null)
 
   // 範囲追加
   const [rangeOpen, setRangeOpen] = useState(false)
@@ -241,6 +245,106 @@ export default function Home() {
     setCandidates((prev) =>
       prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
     )
+  }
+
+  // ---- .ics アップロード ----
+  function parseCandidateTimeRange(date: string, timeLabel: string) {
+    const fallback = {
+      start: new Date(date + 'T00:00:00').toISOString(),
+      end:   new Date(date + 'T23:59:00').toISOString(),
+    }
+    const m = timeLabel.match(/(\d{1,2}):(\d{2})[〜~\-](?:(\d{1,2}):(\d{2}))?/)
+    if (!m) return fallback
+    const startDate = new Date(date + 'T00:00:00')
+    startDate.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0)
+    let endDate: Date
+    if (m[3] !== undefined) {
+      endDate = new Date(date + 'T00:00:00')
+      endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
+    } else {
+      endDate = new Date(startDate)
+      endDate.setHours(endDate.getHours() + 3)
+    }
+    return { start: startDate.toISOString(), end: endDate.toISOString() }
+  }
+
+  async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setIcsStatus('loading')
+    setIcsMessage('')
+    try {
+      const text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsText(file, 'utf-8')
+      })
+      const jcal = ICAL.parse(text)
+      const comp = new ICAL.Component(jcal)
+      const vevents = comp.getAllSubcomponents('vevent')
+
+      const datedCandidates = candidates.filter((c) => c.date)
+      if (datedCandidates.length === 0) {
+        setIcsStatus('error')
+        setIcsMessage('先に候補日を追加してください。')
+        return
+      }
+
+      const sorted = [...datedCandidates].sort((a, b) => a.date.localeCompare(b.date))
+      const rangeStart = ICAL.Time.fromDateTimeString(sorted[0].date + 'T00:00:00')
+      const rangeEnd = ICAL.Time.fromDateTimeString(sorted[sorted.length - 1].date + 'T23:59:59')
+
+      const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
+      for (const vevent of vevents) {
+        const event = new ICAL.Event(vevent)
+        if (event.isRecurring()) {
+          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+          let next: ICAL.Time | null
+          let count = 0
+          while ((next = expand.next()) && count < 500) {
+            count++
+            if (next.compare(rangeEnd) > 0) break
+            if (next.compare(rangeStart) < 0) continue
+            const detail = event.getOccurrenceDetails(next)
+            busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+          }
+        } else {
+          busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
+        }
+      }
+
+      const busyIds = new Set<number>()
+      for (const c of datedCandidates) {
+        const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
+        const csMs = new Date(cs).getTime()
+        const ceMs = new Date(ce).getTime()
+        const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
+          if (isAllDay) return start.toISOString().slice(0, 10) === c.date
+          return start.getTime() < ceMs && end.getTime() > csMs
+        })
+        if (isBusy) busyIds.add(c.id)
+      }
+
+      if (busyIds.size === 0) {
+        setIcsStatus('done')
+        setIcsMessage('予定と重なる日程はありませんでした。')
+        return
+      }
+
+      setCandidates((prev) => {
+        const remaining = prev.filter((c) => !busyIds.has(c.id))
+        return remaining.length > 0 ? remaining : prev
+      })
+      const removed = busyIds.size
+      const kept = datedCandidates.length - removed
+      setIcsStatus('done')
+      setIcsMessage(`${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`)
+    } catch {
+      setIcsStatus('error')
+      setIcsMessage('読み取りに失敗しました。.ics ファイルか確認してください。')
+    }
   }
 
   // ---- 範囲追加 ----
@@ -463,7 +567,21 @@ export default function Home() {
               >
                 ↕ 日付順に並べ替え
               </button>
+              <input ref={icsInputRef} type="file" accept=".ics" className="hidden" onChange={handleIcsUpload} />
+              <button
+                type="button"
+                onClick={() => icsInputRef.current?.click()}
+                disabled={icsStatus === 'loading'}
+                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {icsStatus === 'loading' ? '解析中...' : '📂 .ics で空き日程を絞り込む'}
+              </button>
             </div>
+            {icsMessage && (
+              <p className={`mt-2 text-xs ${icsStatus === 'error' ? 'text-red-500' : 'text-stone-400'}`}>
+                {icsMessage}
+              </p>
+            )}
 
             {/* 範囲ミニフォーム */}
             {rangeOpen && (
