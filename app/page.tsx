@@ -447,6 +447,17 @@ export default function Home() {
           onSubmit={handleSubmit}
           className="rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur"
         >
+          {/* 上部の作成するボタン（候補日が多いとき用） */}
+          <div className="mb-6 flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-full bg-rose-800 px-6 py-2 text-sm font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? '作成中...' : '作成する'}
+            </button>
+          </div>
+
           {/* イベント名 */}
           <div className="mb-6">
             <label className="mb-1 block text-sm font-medium text-stone-700">
