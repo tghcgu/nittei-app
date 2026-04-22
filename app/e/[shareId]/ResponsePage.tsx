@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import ICAL from 'ical.js'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -296,12 +297,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
   }
 
-  // ---- 画像から日程を読み取り ----
-  const imageInputRef = useRef<HTMLInputElement>(null)
+  // ---- .ics ファイルから日程を読み取り ----
+  const icsInputRef = useRef<HTMLInputElement>(null)
 
-  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    // 同じファイルを再選択できるようリセット
     e.target.value = ''
     if (!file) return
 
@@ -309,45 +309,71 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setGcalMessage('')
 
     try {
-      // ファイルをBase64に変換
-      const base64 = await new Promise<string>((resolve, reject) => {
+      // テキストとして読み込む
+      const text = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
-        reader.onload = () => {
-          const result = reader.result as string
-          resolve(result.split(',')[1]) // "data:image/jpeg;base64,..." の後半だけ
-        }
+        reader.onload = () => resolve(reader.result as string)
         reader.onerror = reject
-        reader.readAsDataURL(file)
+        reader.readAsText(file, 'utf-8')
       })
 
-      const res = await fetch('/api/analyze-calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
-      })
+      // ical.js でパース
+      const jcal = ICAL.parse(text)
+      const comp = new ICAL.Component(jcal)
+      const vevents = comp.getAllSubcomponents('vevent')
 
-      if (!res.ok) throw new Error(`API error: ${res.status}`)
+      // 候補日の範囲（繰り返し予定の展開上限に使う）
+      const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
+      const rangeStart = ICAL.Time.fromDateTimeString(sortedDates[0].date + 'T00:00:00')
+      const rangeEnd = ICAL.Time.fromDateTimeString(sortedDates[sortedDates.length - 1].date + 'T23:59:59')
 
-      const data = await res.json()
-      const events: { date: string; startTime: string | null; endTime: string | null }[] =
-        data.events ?? []
+      // 全イベントの開始・終了を Date[] として収集
+      const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 
-      // 各候補日について busy/free を判定して○✕をセット
+      for (const vevent of vevents) {
+        const event = new ICAL.Event(vevent)
+
+        if (event.isRecurring()) {
+          // 繰り返し予定を候補日範囲内で展開（最大 500 件）
+          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+          let next: ICAL.Time | null
+          let count = 0
+          while ((next = expand.next()) && count < 500) {
+            count++
+            if (next.compare(rangeEnd) > 0) break
+            if (next.compare(rangeStart) < 0) continue
+            const detail = event.getOccurrenceDetails(next)
+            busyPeriods.push({
+              start: detail.startDate.toJSDate(),
+              end: detail.endDate.toJSDate(),
+              isAllDay: detail.startDate.isDate,
+            })
+          }
+        } else {
+          busyPeriods.push({
+            start: event.startDate.toJSDate(),
+            end: event.endDate.toJSDate(),
+            isAllDay: event.startDate.isDate,
+          })
+        }
+      }
+
+      // 各候補日と照合して○✕をセット
       const newAnswers: Record<string, AnswerValue> = {}
       for (const c of candidates) {
         const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
         const csMs = new Date(cs).getTime()
         const ceMs = new Date(ce).getTime()
+        const datePrefix = c.date // YYYY-MM-DD
 
-        const isBusy = events.some((ev) => {
-          if (ev.date !== c.date) return false
-          // 時刻不明な終日予定は✕扱い
-          if (!ev.startTime) return true
-          const evStart = new Date(`${ev.date}T${ev.startTime}:00`).getTime()
-          const evEnd = ev.endTime
-            ? new Date(`${ev.date}T${ev.endTime}:00`).getTime()
-            : evStart + 60 * 60 * 1000
-          return evStart < ceMs && evEnd > csMs
+        const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
+          // 終日予定：同じ日付なら✕
+          if (isAllDay) {
+            const evDateStr = start.toISOString().slice(0, 10)
+            return evDateStr === datePrefix
+          }
+          // 時刻付き予定：時間帯が重なるか判定
+          return start.getTime() < ceMs && end.getTime() > csMs
         })
 
         newAnswers[c.id] = isBusy ? '✕' : '○'
@@ -355,10 +381,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       setAnswers((prev) => ({ ...prev, ...newAnswers }))
       setGcalStatus('done')
-      setGcalMessage('画像を解析しました。内容を確認してから送信してください。')
+      setGcalMessage('.ics を解析しました。内容を確認してから送信してください。')
     } catch {
       setGcalStatus('error')
-      setGcalMessage('読み取りに失敗しました。手動で入力してください。')
+      setGcalMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
     }
   }
 
@@ -529,18 +555,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             />
           </div>
 
-          {/* 画像から日程を読み取り */}
+          {/* .ics ファイルから日程を読み取り */}
           <div className="mb-2">
             <input
-              ref={imageInputRef}
+              ref={icsInputRef}
               type="file"
-              accept="image/*"
+              accept=".ics"
               className="hidden"
-              onChange={handleImageUpload}
+              onChange={handleIcsUpload}
             />
             <button
               type="button"
-              onClick={() => imageInputRef.current?.click()}
+              onClick={() => icsInputRef.current?.click()}
               disabled={gcalStatus === 'loading'}
               className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -552,14 +578,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               ) : (
                 <>
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/>
                   </svg>
-                  画像から読み取り
+                  .ics から自動入力
                 </>
               )}
             </button>
             <p className="mt-1 text-xs text-stone-400">
-              画像はAIへの送信のみ、保存されません。個人情報にご注意ください。
+              Googleカレンダーから書き出した .ics ファイルをアップロード。ファイルは端末内で処理され、送信・保存されません。
             </p>
             {gcalStatus === 'done' && (
               <p className="mt-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
