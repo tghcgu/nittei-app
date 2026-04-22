@@ -269,9 +269,9 @@ export default function Home() {
   }
 
   async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
+    const file = e.target.files?.[0]
     e.target.value = ''
-    if (files.length === 0) return
+    if (!file) return
 
     setIcsStatus('loading')
     setIcsMessage('')
@@ -290,32 +290,30 @@ export default function Home() {
 
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 
-      for (const file of files) {
-        const text = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsText(file, 'utf-8')
-        })
-        const jcal = ICAL.parse(text)
-        const comp = new ICAL.Component(jcal)
-        const vevents = comp.getAllSubcomponents('vevent')
-        for (const vevent of vevents) {
-          const event = new ICAL.Event(vevent)
-          if (event.isRecurring()) {
-            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-            let next: ICAL.Time | null
-            let count = 0
-            while ((next = expand.next()) && count < 500) {
-              count++
-              if (next.compare(rangeEnd) > 0) break
-              if (next.compare(rangeStart) < 0) continue
-              const detail = event.getOccurrenceDetails(next)
-              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            }
-          } else {
-            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
+      const text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsText(file, 'utf-8')
+      })
+      const jcal = ICAL.parse(text)
+      const comp = new ICAL.Component(jcal)
+      const vevents = comp.getAllSubcomponents('vevent')
+      for (const vevent of vevents) {
+        const event = new ICAL.Event(vevent)
+        if (event.isRecurring()) {
+          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+          let next: ICAL.Time | null
+          let count = 0
+          while ((next = expand.next()) && count < 500) {
+            count++
+            if (next.compare(rangeEnd) > 0) break
+            if (next.compare(rangeStart) < 0) continue
+            const detail = event.getOccurrenceDetails(next)
+            busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
           }
+        } else {
+          busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
@@ -344,7 +342,7 @@ export default function Home() {
       const removed = busyIds.size
       const kept = datedCandidates.length - removed
       setIcsStatus('done')
-      setIcsMessage(`${files.length}件の .ics を解析し、${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`)
+      setIcsMessage(`${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`)
     } catch {
       setIcsStatus('error')
       setIcsMessage('読み取りに失敗しました。.ics ファイルか確認してください。')

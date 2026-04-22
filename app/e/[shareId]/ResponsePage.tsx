@@ -301,9 +301,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const icsInputRef = useRef<HTMLInputElement>(null)
 
   async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? [])
+    const file = e.target.files?.[0]
     e.target.value = ''
-    if (files.length === 0) return
+    if (!file) return
 
     setGcalStatus('loading')
     setGcalMessage('')
@@ -315,34 +315,32 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 
-      for (const file of files) {
-        const text = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsText(file, 'utf-8')
-        })
+      const text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsText(file, 'utf-8')
+      })
 
-        const jcal = ICAL.parse(text)
-        const comp = new ICAL.Component(jcal)
-        const vevents = comp.getAllSubcomponents('vevent')
+      const jcal = ICAL.parse(text)
+      const comp = new ICAL.Component(jcal)
+      const vevents = comp.getAllSubcomponents('vevent')
 
-        for (const vevent of vevents) {
-          const event = new ICAL.Event(vevent)
-          if (event.isRecurring()) {
-            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-            let next: ICAL.Time | null
-            let count = 0
-            while ((next = expand.next()) && count < 500) {
-              count++
-              if (next.compare(rangeEnd) > 0) break
-              if (next.compare(rangeStart) < 0) continue
-              const detail = event.getOccurrenceDetails(next)
-              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            }
-          } else {
-            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
+      for (const vevent of vevents) {
+        const event = new ICAL.Event(vevent)
+        if (event.isRecurring()) {
+          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+          let next: ICAL.Time | null
+          let count = 0
+          while ((next = expand.next()) && count < 500) {
+            count++
+            if (next.compare(rangeEnd) > 0) break
+            if (next.compare(rangeStart) < 0) continue
+            const detail = event.getOccurrenceDetails(next)
+            busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
           }
+        } else {
+          busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
@@ -361,9 +359,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         newAnswers[c.id] = isBusy ? '✕' : '○'
       }
 
-      setAnswers((prev) => ({ ...prev, ...newAnswers }))
+      // 既に✕になっている候補は次のファイルを読んでも✕を維持する
+      setAnswers((prev) => {
+        const merged: Record<string, AnswerValue> = { ...prev }
+        for (const [id, val] of Object.entries(newAnswers)) {
+          if (prev[id] === '✕') continue
+          merged[id] = val
+        }
+        return merged
+      })
       setGcalStatus('done')
-      setGcalMessage(`${files.length}件の .ics を解析しました。内容を確認してから送信してください。`)
+      setGcalMessage('.ics を解析しました。内容を確認してから送信してください。')
     } catch {
       setGcalStatus('error')
       setGcalMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
@@ -543,7 +549,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               ref={icsInputRef}
               type="file"
               accept=".ics"
-              multiple
               className="hidden"
               onChange={handleIcsUpload}
             />
