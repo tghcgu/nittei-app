@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../game_test"
+		},
+		{
+			"path": "../html_lesson"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "html_lesson"
+	}
+}
