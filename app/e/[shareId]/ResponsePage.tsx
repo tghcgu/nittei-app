@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -65,6 +65,30 @@ function answerColor(v: AnswerValue | undefined) {
 }
 
 // ---- メインコンポーネント ----
+const GCAL_TOKEN_KEY = 'gcal_token'
+const GCAL_ERROR_KEY = 'gcal_error'
+const GCAL_SHARE_ID_KEY = 'gcal_shareId'
+const GCAL_STATE_KEY = 'gcal_oauth_state'
+const GCAL_VERIFIER_KEY = 'gcal_pkce_verifier'
+
+function base64UrlEncode(bytes: Uint8Array) {
+  let binary = ''
+  for (const b of bytes) binary += String.fromCharCode(b)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+}
+
+function createRandomUrlSafeString(byteLength: number) {
+  const bytes = new Uint8Array(byteLength)
+  crypto.getRandomValues(bytes)
+  return base64UrlEncode(bytes)
+}
+
+async function createCodeChallenge(codeVerifier: string) {
+  const encoder = new TextEncoder()
+  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(codeVerifier))
+  return base64UrlEncode(new Uint8Array(digest))
+}
+
 export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
@@ -199,27 +223,32 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setGcalStatus('error')
       setGcalMessage('カレンダーの取得中にエラーが発生しました。手動で入力してください。')
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candidates])
 
   // ページロード時：リダイレクト後のトークンを sessionStorage から受け取る
   useEffect(() => {
-    const token = sessionStorage.getItem('gcal_token')
-    const error = sessionStorage.getItem('gcal_error')
-    sessionStorage.removeItem('gcal_token')
-    sessionStorage.removeItem('gcal_error')
-    sessionStorage.removeItem('gcal_shareId')
+    const token = sessionStorage.getItem(GCAL_TOKEN_KEY)
+    const error = sessionStorage.getItem(GCAL_ERROR_KEY)
+    sessionStorage.removeItem(GCAL_TOKEN_KEY)
+    sessionStorage.removeItem(GCAL_ERROR_KEY)
+    sessionStorage.removeItem(GCAL_SHARE_ID_KEY)
+    sessionStorage.removeItem(GCAL_STATE_KEY)
+    sessionStorage.removeItem(GCAL_VERIFIER_KEY)
 
     if (token) {
-      callFreeBusy(token)
+      queueMicrotask(() => {
+        void callFreeBusy(token)
+      })
     } else if (error) {
-      setGcalStatus('error')
-      setGcalMessage('Googleとの連携がキャンセルされました。手動で入力してください。')
+      queueMicrotask(() => {
+        setGcalStatus('error')
+        setGcalMessage('Google連携に失敗しました。通常ボタンで再試行するか、手動で入力してください。')
+      })
     }
   }, [callFreeBusy])
 
-  // Google OAuth リダイレクト方式（ポップアップ不使用）
-  function handleGoogleCalendar() {
+  // Google OAuth Authorization Code Flow (PKCE, redirect方式)
+  async function handleGoogleCalendar() {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
     if (!clientId) {
       setGcalStatus('error')
@@ -227,18 +256,99 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       return
     }
 
-    sessionStorage.setItem('gcal_shareId', shareId)
+    try {
+      const state = createRandomUrlSafeString(32)
+      const codeVerifier = createRandomUrlSafeString(64)
+      const codeChallenge = await createCodeChallenge(codeVerifier)
 
-    const redirectUri = `${window.location.origin}/auth/gcal`
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'token',
-      scope: 'https://www.googleapis.com/auth/calendar.readonly',
-      include_granted_scopes: 'true',
-    })
+      sessionStorage.setItem(GCAL_SHARE_ID_KEY, shareId)
+      sessionStorage.setItem(GCAL_STATE_KEY, state)
+      sessionStorage.setItem(GCAL_VERIFIER_KEY, codeVerifier)
 
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+      const redirectUri = `${window.location.origin}/auth/gcal`
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        include_granted_scopes: 'true',
+        state,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+      })
+
+      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+    } catch (err) {
+      console.error('[GCal] OAuth開始エラー:', err)
+      setGcalStatus('error')
+      setGcalMessage('Google連携の開始に失敗しました。手動で入力してください。')
+    }
+  }
+
+  // ---- 画像から日程を読み取り ----
+  const imageInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    // 同じファイルを再選択できるようリセット
+    e.target.value = ''
+    if (!file) return
+
+    setGcalStatus('loading')
+    setGcalMessage('')
+
+    try {
+      // ファイルをBase64に変換
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const result = reader.result as string
+          resolve(result.split(',')[1]) // "data:image/jpeg;base64,..." の後半だけ
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+
+      const res = await fetch('/api/analyze-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mimeType: file.type }),
+      })
+
+      if (!res.ok) throw new Error(`API error: ${res.status}`)
+
+      const data = await res.json()
+      const events: { date: string; startTime: string | null; endTime: string | null }[] =
+        data.events ?? []
+
+      // 各候補日について busy/free を判定して○✕をセット
+      const newAnswers: Record<string, AnswerValue> = {}
+      for (const c of candidates) {
+        const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
+        const csMs = new Date(cs).getTime()
+        const ceMs = new Date(ce).getTime()
+
+        const isBusy = events.some((ev) => {
+          if (ev.date !== c.date) return false
+          // 時刻不明な終日予定は✕扱い
+          if (!ev.startTime) return true
+          const evStart = new Date(`${ev.date}T${ev.startTime}:00`).getTime()
+          const evEnd = ev.endTime
+            ? new Date(`${ev.date}T${ev.endTime}:00`).getTime()
+            : evStart + 60 * 60 * 1000
+          return evStart < ceMs && evEnd > csMs
+        })
+
+        newAnswers[c.id] = isBusy ? '✕' : '○'
+      }
+
+      setAnswers((prev) => ({ ...prev, ...newAnswers }))
+      setGcalStatus('done')
+      setGcalMessage('画像を解析しました。内容を確認してから送信してください。')
+    } catch {
+      setGcalStatus('error')
+      setGcalMessage('読み取りに失敗しました。手動で入力してください。')
+    }
   }
 
   function applyBulkAnswer() {
@@ -400,28 +510,38 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             />
           </div>
 
-          {/* Googleカレンダー連携 */}
+          {/* 画像から日程を読み取り */}
           <div className="mb-2">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageUpload}
+            />
             <button
               type="button"
-              onClick={handleGoogleCalendar}
+              onClick={() => imageInputRef.current?.click()}
               disabled={gcalStatus === 'loading'}
               className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {gcalStatus === 'loading' ? (
                 <>
                   <span className="animate-spin">⟳</span>
-                  取得中...
+                  解析中...
                 </>
               ) : (
                 <>
                   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/>
+                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                   </svg>
-                  Googleカレンダーで自動入力
+                  画像から読み取り
                 </>
               )}
             </button>
+            <p className="mt-1 text-xs text-stone-400">
+              画像はAIへの送信のみ、保存されません。個人情報にご注意ください。
+            </p>
             {gcalStatus === 'done' && (
               <p className="mt-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
                 ✓ {gcalMessage}
