@@ -269,22 +269,14 @@ export default function Home() {
   }
 
   async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
-    if (!file) return
+    if (files.length === 0) return
+
     setIcsStatus('loading')
     setIcsMessage('')
-    try {
-      const text = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsText(file, 'utf-8')
-      })
-      const jcal = ICAL.parse(text)
-      const comp = new ICAL.Component(jcal)
-      const vevents = comp.getAllSubcomponents('vevent')
 
+    try {
       const datedCandidates = candidates.filter((c) => c.date)
       if (datedCandidates.length === 0) {
         setIcsStatus('error')
@@ -297,21 +289,33 @@ export default function Home() {
       const rangeEnd = ICAL.Time.fromDateTimeString(sorted[sorted.length - 1].date + 'T23:59:59')
 
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
-      for (const vevent of vevents) {
-        const event = new ICAL.Event(vevent)
-        if (event.isRecurring()) {
-          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-          let next: ICAL.Time | null
-          let count = 0
-          while ((next = expand.next()) && count < 500) {
-            count++
-            if (next.compare(rangeEnd) > 0) break
-            if (next.compare(rangeStart) < 0) continue
-            const detail = event.getOccurrenceDetails(next)
-            busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+
+      for (const file of files) {
+        const text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsText(file, 'utf-8')
+        })
+        const jcal = ICAL.parse(text)
+        const comp = new ICAL.Component(jcal)
+        const vevents = comp.getAllSubcomponents('vevent')
+        for (const vevent of vevents) {
+          const event = new ICAL.Event(vevent)
+          if (event.isRecurring()) {
+            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+            let next: ICAL.Time | null
+            let count = 0
+            while ((next = expand.next()) && count < 500) {
+              count++
+              if (next.compare(rangeEnd) > 0) break
+              if (next.compare(rangeStart) < 0) continue
+              const detail = event.getOccurrenceDetails(next)
+              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+            }
+          } else {
+            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
           }
-        } else {
-          busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
@@ -340,7 +344,7 @@ export default function Home() {
       const removed = busyIds.size
       const kept = datedCandidates.length - removed
       setIcsStatus('done')
-      setIcsMessage(`${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`)
+      setIcsMessage(`${files.length}件の .ics を解析し、${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`)
     } catch {
       setIcsStatus('error')
       setIcsMessage('読み取りに失敗しました。.ics ファイルか確認してください。')
@@ -567,7 +571,7 @@ export default function Home() {
               >
                 ↕ 日付順に並べ替え
               </button>
-              <input ref={icsInputRef} type="file" accept=".ics" className="hidden" onChange={handleIcsUpload} />
+              <input ref={icsInputRef} type="file" accept=".ics" multiple className="hidden" onChange={handleIcsUpload} />
               <button
                 type="button"
                 onClick={() => icsInputRef.current?.click()}

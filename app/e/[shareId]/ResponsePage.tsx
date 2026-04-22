@@ -301,78 +301,60 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const icsInputRef = useRef<HTMLInputElement>(null)
 
   async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const files = Array.from(e.target.files ?? [])
     e.target.value = ''
-    if (!file) return
+    if (files.length === 0) return
 
     setGcalStatus('loading')
     setGcalMessage('')
 
     try {
-      // テキストとして読み込む
-      const text = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsText(file, 'utf-8')
-      })
-
-      // ical.js でパース
-      const jcal = ICAL.parse(text)
-      const comp = new ICAL.Component(jcal)
-      const vevents = comp.getAllSubcomponents('vevent')
-
-      // 候補日の範囲（繰り返し予定の展開上限に使う）
       const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
       const rangeStart = ICAL.Time.fromDateTimeString(sortedDates[0].date + 'T00:00:00')
       const rangeEnd = ICAL.Time.fromDateTimeString(sortedDates[sortedDates.length - 1].date + 'T23:59:59')
 
-      // 全イベントの開始・終了を Date[] として収集
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 
-      for (const vevent of vevents) {
-        const event = new ICAL.Event(vevent)
+      for (const file of files) {
+        const text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsText(file, 'utf-8')
+        })
 
-        if (event.isRecurring()) {
-          // 繰り返し予定を候補日範囲内で展開（最大 500 件）
-          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-          let next: ICAL.Time | null
-          let count = 0
-          while ((next = expand.next()) && count < 500) {
-            count++
-            if (next.compare(rangeEnd) > 0) break
-            if (next.compare(rangeStart) < 0) continue
-            const detail = event.getOccurrenceDetails(next)
-            busyPeriods.push({
-              start: detail.startDate.toJSDate(),
-              end: detail.endDate.toJSDate(),
-              isAllDay: detail.startDate.isDate,
-            })
+        const jcal = ICAL.parse(text)
+        const comp = new ICAL.Component(jcal)
+        const vevents = comp.getAllSubcomponents('vevent')
+
+        for (const vevent of vevents) {
+          const event = new ICAL.Event(vevent)
+          if (event.isRecurring()) {
+            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+            let next: ICAL.Time | null
+            let count = 0
+            while ((next = expand.next()) && count < 500) {
+              count++
+              if (next.compare(rangeEnd) > 0) break
+              if (next.compare(rangeStart) < 0) continue
+              const detail = event.getOccurrenceDetails(next)
+              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+            }
+          } else {
+            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
           }
-        } else {
-          busyPeriods.push({
-            start: event.startDate.toJSDate(),
-            end: event.endDate.toJSDate(),
-            isAllDay: event.startDate.isDate,
-          })
         }
       }
 
-      // 各候補日と照合して○✕をセット
       const newAnswers: Record<string, AnswerValue> = {}
       for (const c of candidates) {
         const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
         const csMs = new Date(cs).getTime()
         const ceMs = new Date(ce).getTime()
-        const datePrefix = c.date // YYYY-MM-DD
+        const datePrefix = c.date
 
         const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-          // 終日予定：同じ日付なら✕
-          if (isAllDay) {
-            const evDateStr = start.toISOString().slice(0, 10)
-            return evDateStr === datePrefix
-          }
-          // 時刻付き予定：時間帯が重なるか判定
+          if (isAllDay) return start.toISOString().slice(0, 10) === datePrefix
           return start.getTime() < ceMs && end.getTime() > csMs
         })
 
@@ -381,7 +363,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       setAnswers((prev) => ({ ...prev, ...newAnswers }))
       setGcalStatus('done')
-      setGcalMessage('.ics を解析しました。内容を確認してから送信してください。')
+      setGcalMessage(`${files.length}件の .ics を解析しました。内容を確認してから送信してください。`)
     } catch {
       setGcalStatus('error')
       setGcalMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
@@ -561,6 +543,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               ref={icsInputRef}
               type="file"
               accept=".ics"
+              multiple
               className="hidden"
               onChange={handleIcsUpload}
             />
