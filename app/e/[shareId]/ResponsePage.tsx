@@ -109,6 +109,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkEnd, setBulkEnd] = useState('')
   const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
 
+  // 共有URLコピー
+  const [copied, setCopied] = useState(false)
+
+  function handleCopyUrl() {
+    const url = `${window.location.origin}/e/${shareId}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
   // Google Calendar連携
   const [gcalStatus, setGcalStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [gcalMessage, setGcalMessage] = useState('')
@@ -469,9 +480,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           {event.description && (
             <p className="mt-1 text-stone-600">{event.description}</p>
           )}
-          <p className="mt-0.5 inline-block rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400">
-            共有URL: /e/{shareId}
-          </p>
+          <button
+            type="button"
+            onClick={handleCopyUrl}
+            className="mt-0.5 inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+          >
+            {copied ? (
+              <>✓ コピーしました</>
+            ) : (
+              <>/e/{shareId} ⧉</>
+            )}
+          </button>
         </div>
 
         {/* 回答フォーム */}
