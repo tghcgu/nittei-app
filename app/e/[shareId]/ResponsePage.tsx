@@ -573,7 +573,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               )}
             </button>
             <p className="mt-1 text-xs text-stone-400">
-              カレンダーアプリから書き出した .ics ファイルをアップロード。ファイルは端末内で処理され、送信・保存されません。
+              カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程を自動で✕にまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
             </p>
             {gcalStatus === 'done' && (
               <p className="mt-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
