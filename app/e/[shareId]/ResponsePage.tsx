@@ -397,8 +397,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function handleAnswerChange(candidateId: string, value: AnswerValue) {
-    setAnswers((prev) => ({ ...prev, [candidateId]: value }))
-    // 「-」以外に変更した場合、その候補日の個別メモをクリア
+    setAnswers((prev) => {
+      if (prev[candidateId] === value) {
+        const next = { ...prev }
+        delete next[candidateId]
+        return next
+      }
+      return { ...prev, [candidateId]: value }
+    })
     if (value !== '-') {
       setDetailNotes((prev) => {
         const next = { ...prev }
