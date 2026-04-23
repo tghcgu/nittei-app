@@ -432,10 +432,10 @@ export default function Home() {
   const calGrid = getCalendarGrid(calYear, calMonth)
 
   return (
-    <div className="min-h-screen px-4 py-6">
+    <div className="min-h-screen px-4 py-3">
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
-        <div className="mb-4 text-center">
+        <div className="mb-2 text-center">
           <p className="text-sm text-stone-500">
             候補日を入力して、参加者に共有しましょう
           </p>
@@ -444,10 +444,10 @@ export default function Home() {
         {/* フォームカード */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl bg-white/70 px-8 py-6 shadow-sm backdrop-blur"
+          className="rounded-2xl bg-white/70 px-6 py-4 shadow-sm backdrop-blur"
         >
           {/* 上部の作成するボタン（候補日が多いとき用） */}
-          <div className="mb-4 flex justify-end">
+          <div className="mb-3 flex justify-end">
             <button
               type="submit"
               disabled={isSubmitting}
