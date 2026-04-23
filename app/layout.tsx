@@ -15,6 +15,9 @@ const notoSerif = Noto_Serif_JP({
 export const metadata: Metadata = {
   title: "日調web",
   description: "日程調整をかんたんに",
+  verification: {
+    google: "D8IL6531W2fqD0YQrgOz-ODECBHjxCAeoyet1LAC34U",
+  },
 };
 
 export default function RootLayout({
