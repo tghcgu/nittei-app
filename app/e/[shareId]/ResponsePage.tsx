@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useRef } from 'react'
 import ICAL from 'ical.js'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -66,30 +66,6 @@ function answerColor(v: AnswerValue | undefined) {
 }
 
 // ---- メインコンポーネント ----
-const GCAL_TOKEN_KEY = 'gcal_token'
-const GCAL_ERROR_KEY = 'gcal_error'
-const GCAL_SHARE_ID_KEY = 'gcal_shareId'
-const GCAL_STATE_KEY = 'gcal_oauth_state'
-const GCAL_VERIFIER_KEY = 'gcal_pkce_verifier'
-
-function base64UrlEncode(bytes: Uint8Array) {
-  let binary = ''
-  for (const b of bytes) binary += String.fromCharCode(b)
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
-}
-
-function createRandomUrlSafeString(byteLength: number) {
-  const bytes = new Uint8Array(byteLength)
-  crypto.getRandomValues(bytes)
-  return base64UrlEncode(bytes)
-}
-
-async function createCodeChallenge(codeVerifier: string) {
-  const encoder = new TextEncoder()
-  const digest = await crypto.subtle.digest('SHA-256', encoder.encode(codeVerifier))
-  return base64UrlEncode(new Uint8Array(digest))
-}
-
 export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const router = useRouter()
   const [name, setName] = useState('')
@@ -121,9 +97,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     })
   }
 
-  // Google Calendar連携
-  const [gcalStatus, setGcalStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
-  const [gcalMessage, setGcalMessage] = useState('')
+  // .ics 自動入力ステータス
+  const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [icsMessage, setIcsMessage] = useState('')
 
   const columnScores = Object.fromEntries(
     candidates.map((c) => [
@@ -188,115 +164,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     return { start: startDate.toISOString(), end: endDate.toISOString() }
   }
 
-  // リダイレクト後に sessionStorage からトークンを受け取り FreeBusy を呼ぶ
-  const callFreeBusy = useCallback(async (token: string) => {
-    setGcalStatus('loading')
-    try {
-      const sorted = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
-      const timeMin = new Date(sorted[0].date + 'T00:00:00').toISOString()
-      const timeMax = new Date(sorted[sorted.length - 1].date + 'T23:59:59').toISOString()
-
-      const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ timeMin, timeMax, items: [{ id: 'primary' }] }),
-      })
-
-      if (!res.ok) {
-        const errText = await res.text()
-        throw new Error(`FreeBusy API: ${res.status} ${errText}`)
-      }
-
-      const data = await res.json()
-      const busyPeriods: { start: string; end: string }[] =
-        data.calendars?.primary?.busy ?? []
-
-      const newAnswers: Record<string, AnswerValue> = {}
-      for (const c of candidates) {
-        const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
-        const csMs = new Date(cs).getTime()
-        const ceMs = new Date(ce).getTime()
-        const isBusy = busyPeriods.some((p) => {
-          const ps = new Date(p.start).getTime()
-          const pe = new Date(p.end).getTime()
-          return ps < ceMs && pe > csMs
-        })
-        newAnswers[c.id] = isBusy ? '✕' : '○'
-      }
-
-      setAnswers((prev) => ({ ...prev, ...newAnswers }))
-      setGcalStatus('done')
-      setGcalMessage('カレンダーを参照してプリセットしました。内容を確認してから送信してください。')
-    } catch (err) {
-      console.error('[GCal] FreeBusy エラー:', err)
-      setGcalStatus('error')
-      setGcalMessage('カレンダーの取得中にエラーが発生しました。手動で入力してください。')
-    }
-  }, [candidates])
-
-  // ページロード時：リダイレクト後のトークンを sessionStorage から受け取る
-  useEffect(() => {
-    const token = sessionStorage.getItem(GCAL_TOKEN_KEY)
-    const error = sessionStorage.getItem(GCAL_ERROR_KEY)
-    sessionStorage.removeItem(GCAL_TOKEN_KEY)
-    sessionStorage.removeItem(GCAL_ERROR_KEY)
-    sessionStorage.removeItem(GCAL_SHARE_ID_KEY)
-    sessionStorage.removeItem(GCAL_STATE_KEY)
-    sessionStorage.removeItem(GCAL_VERIFIER_KEY)
-
-    if (token) {
-      queueMicrotask(() => {
-        void callFreeBusy(token)
-      })
-    } else if (error) {
-      queueMicrotask(() => {
-        setGcalStatus('error')
-        setGcalMessage('Google連携に失敗しました。通常ボタンで再試行するか、手動で入力してください。')
-      })
-    }
-  }, [callFreeBusy])
-
-  // Google OAuth Authorization Code Flow (PKCE, redirect方式)
-  async function handleGoogleCalendar() {
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-    if (!clientId) {
-      setGcalStatus('error')
-      setGcalMessage('Google Client IDが設定されていません。管理者にお問い合わせください。')
-      return
-    }
-
-    try {
-      const state = createRandomUrlSafeString(32)
-      const codeVerifier = createRandomUrlSafeString(64)
-      const codeChallenge = await createCodeChallenge(codeVerifier)
-
-      sessionStorage.setItem(GCAL_SHARE_ID_KEY, shareId)
-      sessionStorage.setItem(GCAL_STATE_KEY, state)
-      sessionStorage.setItem(GCAL_VERIFIER_KEY, codeVerifier)
-
-      const redirectUri = `${window.location.origin}/auth/gcal`
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        response_type: 'code',
-        scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        include_granted_scopes: 'true',
-        state,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256',
-      })
-
-      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
-    } catch (err) {
-      console.error('[GCal] OAuth開始エラー:', err)
-      setGcalStatus('error')
-      setGcalMessage('Google連携の開始に失敗しました。手動で入力してください。')
-    }
-  }
-
   // ---- .ics ファイルから日程を読み取り ----
   const icsInputRef = useRef<HTMLInputElement>(null)
 
@@ -305,8 +172,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     e.target.value = ''
     if (!file) return
 
-    setGcalStatus('loading')
-    setGcalMessage('')
+    setIcsStatus('loading')
+    setIcsMessage('')
 
     try {
       const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
@@ -368,11 +235,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         }
         return merged
       })
-      setGcalStatus('done')
-      setGcalMessage('.ics を解析しました。内容を確認してから送信してください。')
+      setIcsStatus('done')
+      setIcsMessage('.ics を解析しました。内容を確認してから送信してください。')
     } catch {
-      setGcalStatus('error')
-      setGcalMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
+      setIcsStatus('error')
+      setIcsMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
     }
   }
 
@@ -561,10 +428,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <button
               type="button"
               onClick={() => icsInputRef.current?.click()}
-              disabled={gcalStatus === 'loading'}
+              disabled={icsStatus === 'loading'}
               className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {gcalStatus === 'loading' ? (
+              {icsStatus === 'loading' ? (
                 <>
                   <span className="animate-spin">⟳</span>
                   解析中...
@@ -581,14 +448,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <p className="mt-1 text-xs text-stone-400">
               カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程を自動で✕にまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
             </p>
-            {gcalStatus === 'done' && (
+            {icsStatus === 'done' && (
               <p className="mt-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                ✓ {gcalMessage}
+                ✓ {icsMessage}
               </p>
             )}
-            {gcalStatus === 'error' && (
+            {icsStatus === 'error' && (
               <p className="mt-2 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700">
-                {gcalMessage}
+                {icsMessage}
               </p>
             )}
           </div>
