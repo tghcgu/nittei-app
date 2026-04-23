@@ -436,7 +436,6 @@ export default function Home() {
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
         <div className="mb-10 text-center">
-          <h1 className="font-serif text-3xl text-rose-800">日程調整アプリ</h1>
           <p className="mt-2 text-sm text-stone-500">
             候補日を入力して、参加者に共有しましょう
           </p>

@@ -13,7 +13,7 @@ const notoSerif = Noto_Serif_JP({
 });
 
 export const metadata: Metadata = {
-  title: "日程調整アプリ",
+  title: "日調web",
   description: "日程調整をかんたんに",
 };
 
