@@ -432,11 +432,11 @@ export default function Home() {
   const calGrid = getCalendarGrid(calYear, calMonth)
 
   return (
-    <div className="min-h-screen px-4 py-12">
+    <div className="min-h-screen px-4 py-6">
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
-        <div className="mb-10 text-center">
-          <p className="mt-2 text-sm text-stone-500">
+        <div className="mb-4 text-center">
+          <p className="text-sm text-stone-500">
             候補日を入力して、参加者に共有しましょう
           </p>
         </div>
@@ -444,10 +444,10 @@ export default function Home() {
         {/* フォームカード */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur"
+          className="rounded-2xl bg-white/70 px-8 py-6 shadow-sm backdrop-blur"
         >
           {/* 上部の作成するボタン（候補日が多いとき用） */}
-          <div className="mb-6 flex justify-end">
+          <div className="mb-4 flex justify-end">
             <button
               type="submit"
               disabled={isSubmitting}
@@ -458,7 +458,7 @@ export default function Home() {
           </div>
 
           {/* イベント名 */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="mb-1 block text-sm font-medium text-stone-700">
               イベント名 <span className="text-rose-700">*</span>
             </label>
@@ -473,7 +473,7 @@ export default function Home() {
           </div>
 
           {/* 説明 */}
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="mb-1 block text-sm font-medium text-stone-700">
               説明（任意）
             </label>
