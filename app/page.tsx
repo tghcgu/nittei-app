@@ -580,7 +580,7 @@ export default function Home() {
               >
                 ↕ 日付順に並べ替え
               </button>
-              <input ref={icsInputRef} type="file" accept=".ics" multiple className="hidden" onChange={handleIcsUpload} />
+              <input ref={icsInputRef} type="file" accept=".ics" className="hidden" onChange={handleIcsUpload} />
               <button
                 type="button"
                 onClick={() => icsInputRef.current?.click()}
