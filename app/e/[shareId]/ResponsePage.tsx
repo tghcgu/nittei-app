@@ -450,7 +450,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </p>
             <p className="mt-1 text-xs text-stone-400">
               書き出し方法：
-              <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Google カレンダー</a>
+              <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Google カレンダー</a>
               {' · '}
               <a href="https://outlook.live.com/calendar/0/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Outlook</a>
               {' · '}
