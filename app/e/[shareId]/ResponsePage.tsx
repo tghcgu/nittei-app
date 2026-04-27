@@ -384,9 +384,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* 回答フォーム */}
         <form
           onSubmit={handleSubmit}
-          className="mb-8 rounded-2xl bg-white/70 px-6 py-5 shadow-sm backdrop-blur"
+          className="mb-8 rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur"
         >
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
               {editingResponseId ? '回答を編集' : '回答する'}
             </h2>
