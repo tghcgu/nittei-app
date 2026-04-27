@@ -591,20 +591,20 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </div>
             {candidates.map((c) => (
               <div key={c.id}>
-                <div className="flex flex-wrap items-center gap-3 py-0.5">
-                  <div className="w-36 shrink-0">
-                    <span className="font-serif text-stone-700">{formatDate(c.date)}</span>
+                <div className="flex flex-wrap items-center gap-2 py-0">
+                  <div className="w-32 shrink-0">
+                    <span className="font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
                     {c.time_label && (
-                      <span className="ml-1 text-sm text-stone-400">{c.time_label}</span>
+                      <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     {ANSWER_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
                         onClick={() => handleAnswerChange(c.id, opt.value)}
-                        className={`h-10 w-10 rounded-full border-2 text-base transition-all ${
+                        className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${
                           answers[c.id] === opt.value ? opt.active : opt.idle
                         }`}
                       >
