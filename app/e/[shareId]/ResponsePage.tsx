@@ -100,6 +100,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // .ics 自動入力ステータス
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
+  const [icsGuideOpen, setIcsGuideOpen] = useState(false)
 
   const columnScores = Object.fromEntries(
     candidates.map((c) => [
@@ -448,14 +449,40 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <p className="mt-1 text-xs text-stone-400">
               カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程を自動で✕にまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
             </p>
-            <p className="mt-1 text-xs text-stone-400">
-              書き出し方法：
-              <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Google カレンダー</a>
-              {' · '}
-              <a href="https://outlook.live.com/calendar/0/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Outlook</a>
-              {' · '}
-              <a href="https://support.apple.com/ja-jp/guide/calendar/icl1023/mac" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Apple カレンダー</a>
-            </p>
+            <button
+              type="button"
+              onClick={() => setIcsGuideOpen((v) => !v)}
+              className="mt-1 text-xs text-stone-400 underline hover:text-rose-700"
+            >
+              書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
+            </button>
+            {icsGuideOpen && (
+              <div className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-600">
+                <div>
+                  <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Google カレンダー</a>
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                    <li>リンクを開く → 「エクスポート」をクリック</li>
+                    <li>ZIP がダウンロードされる → 解凍すると .ics</li>
+                    <li>その .ics をアップロード</li>
+                  </ol>
+                </div>
+                <div>
+                  <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Apple カレンダー（iCloud）</a>
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                    <li>PC ブラウザで iCloud カレンダーを開く</li>
+                    <li>カレンダー名の横の共有マークから書き出し</li>
+                    <li>その .ics をアップロード</li>
+                  </ol>
+                </div>
+                <div>
+                  <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Outlook</a>
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                    <li>設定 → 共有カレンダー → 書き出し</li>
+                    <li>その .ics をアップロード</li>
+                  </ol>
+                </div>
+              </div>
+            )}
             {icsStatus === 'done' && (
               <p className="mt-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
                 ✓ {icsMessage}
