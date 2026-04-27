@@ -448,6 +448,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <p className="mt-1 text-xs text-stone-400">
               カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程を自動で✕にまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
             </p>
+            <p className="mt-1 text-xs text-stone-400">
+              書き出し方法：
+              <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Google カレンダー</a>
+              {' · '}
+              <a href="https://outlook.live.com/calendar/0/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Outlook</a>
+              {' · '}
+              <a href="https://support.apple.com/ja-jp/guide/calendar/icl1023/mac" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Apple カレンダー</a>
+            </p>
             {icsStatus === 'done' && (
               <p className="mt-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
                 ✓ {icsMessage}

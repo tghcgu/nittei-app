@@ -594,6 +594,14 @@ export default function Home() {
                 {icsMessage}
               </p>
             )}
+            <p className="mt-1 text-xs text-stone-400">
+              書き出し方法：
+              <a href="https://calendar.google.com/calendar/r/settings" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Google カレンダー</a>
+              {' · '}
+              <a href="https://outlook.live.com/calendar/0/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Outlook</a>
+              {' · '}
+              <a href="https://support.apple.com/ja-jp/guide/calendar/icl1023/mac" target="_blank" rel="noopener noreferrer" className="underline hover:text-rose-700">Apple カレンダー</a>
+            </p>
 
             {/* 範囲ミニフォーム */}
             {rangeOpen && (
