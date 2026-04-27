@@ -15,9 +15,17 @@ const notoSerif = Noto_Serif_JP({
 
 export const metadata: Metadata = {
   title: "日調web",
-  description: "日程調整をかんたんに",
+  description: "候補日を作成してURLを共有するだけ。参加者が〇△✕で回答できる、シンプルなグループ日程調整アプリです。登録不要・無料で使えます。",
   verification: {
     google: "D8IL6531W2fqD0YQrgOz-ODECBHjxCAeoyet1LAC34U",
+  },
+  openGraph: {
+    title: "日調web",
+    description: "候補日を作成してURLを共有するだけ。参加者が〇△✕で回答できる、シンプルなグループ日程調整アプリです。登録不要・無料で使えます。",
+    url: "https://nittei-app-five.vercel.app",
+    siteName: "日調web",
+    locale: "ja_JP",
+    type: "website",
   },
 };
 
