@@ -495,19 +495,38 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             )}
           </div>
 
-          {/* 範囲で一括回答 */}
+          {/* 一括回答ボタン群 */}
           <div className="mb-2">
-            <button
-              type="button"
-              onClick={() => setBulkOpen((v) => !v)}
-              className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                bulkOpen
-                  ? 'border-rose-400 bg-rose-50 text-rose-800'
-                  : 'border-stone-200 text-stone-500 hover:border-rose-200 hover:text-rose-700'
-              }`}
-            >
-              📋 範囲で一括回答
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setBulkOpen((v) => !v)}
+                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                  bulkOpen
+                    ? 'border-rose-400 bg-rose-50 text-rose-800'
+                    : 'border-stone-200 text-stone-500 hover:border-rose-200 hover:text-rose-700'
+                }`}
+              >
+                📋 範囲で一括回答
+              </button>
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-stone-400">全部これに揃える：</span>
+                {ANSWER_OPTIONS.filter((o) => o.value !== '-').map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setAnswers(
+                        Object.fromEntries(candidates.map((c) => [c.id, opt.value]))
+                      )
+                    }
+                    className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${opt.idle} hover:scale-110`}
+                  >
+                    {opt.value}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {bulkOpen && (
               <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-4">
