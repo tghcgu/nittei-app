@@ -29,6 +29,13 @@ export const metadata: Metadata = {
   },
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "日調web",
+  url: "https://nittei-app-five.vercel.app",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,6 +44,10 @@ export default function RootLayout({
   return (
     <html lang="ja" className={`${notoSans.variable} ${notoSerif.variable}`}>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {children}
         <Analytics />
       </body>
