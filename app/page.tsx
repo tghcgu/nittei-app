@@ -211,15 +211,6 @@ export default function Home() {
     setNextId(id)
   }
 
-  // ---- 1件追加 ----
-  function addCandidate() {
-    setCandidates((prev) => [
-      ...prev,
-      { id: nextId, date: '', timeLabel: defaultTime, checked: false },
-    ])
-    setNextId((n) => n + 1)
-  }
-
   // ---- 時間一括適用 ----
   function applyTimeToAll() {
     setCandidates((prev) => prev.map((c) => ({ ...c, timeLabel: defaultTime })))
@@ -548,13 +539,6 @@ export default function Home() {
 
             {/* 追加ボタン群 */}
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={addCandidate}
-                className="rounded-full border border-rose-200 px-3 py-1.5 text-sm text-rose-700 transition-colors hover:bg-rose-50"
-              >
-                ＋ 1日ずつ追加
-              </button>
               <button
                 type="button"
                 onClick={() => { setRangeOpen((v) => !v); setCalOpen(false) }}
