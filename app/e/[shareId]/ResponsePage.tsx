@@ -79,6 +79,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('h')
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
+  const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
 
   // 範囲で一括回答
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -117,12 +118,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setName(r.name)
     const newAnswers: Record<string, AnswerValue> = {}
     const newDetailNotes: Record<string, string> = {}
+    const newAnswerIds: Record<string, string> = {}
     for (const a of r.answers) {
       newAnswers[a.candidate_id] = a.value
+      newAnswerIds[a.candidate_id] = a.id
       if (a.note) newDetailNotes[a.candidate_id] = a.note
     }
     setAnswers(newAnswers)
     setDetailNotes(newDetailNotes)
+    setEditingAnswerIds(newAnswerIds)
     setSharedNote(r.note ?? '')
     setEditingResponseId(r.id)
     setSubmitSuccess(false)
@@ -134,6 +138,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setName('')
     setAnswers({})
     setDetailNotes({})
+    setEditingAnswerIds({})
     setSharedNote('')
     setEditingResponseId(null)
     setError(null)
@@ -304,19 +309,27 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         if (updateErr) throw updateErr
 
-        // 既存のanswersを削除して再挿入
-        const { error: delError } = await supabase
-          .from('answers')
-          .delete()
-          .eq('response_id', editingResponseId)
+        const rowsToUpdate = answerRows.filter((a) => editingAnswerIds[a.candidate_id])
+        const rowsToInsert = answerRows.filter((a) => !editingAnswerIds[a.candidate_id])
 
-        if (delError) throw delError
+        const updateResults = await Promise.all(
+          rowsToUpdate.map((a) =>
+            supabase
+              .from('answers')
+              .update({ value: a.value, note: a.note })
+              .eq('id', editingAnswerIds[a.candidate_id])
+          )
+        )
+        const answerUpdateError = updateResults.find((result) => result.error)?.error
+        if (answerUpdateError) throw answerUpdateError
 
-        const { error: insError } = await supabase
-          .from('answers')
-          .insert(answerRows.map((a) => ({ ...a, response_id: editingResponseId })))
+        if (rowsToInsert.length > 0) {
+          const { error: insError } = await supabase
+            .from('answers')
+            .insert(rowsToInsert.map((a) => ({ ...a, response_id: editingResponseId })))
 
-        if (insError) throw insError
+          if (insError) throw insError
+        }
       } else {
         const { data: response, error: responseError } = await supabase
           .from('responses')
@@ -336,6 +349,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setName('')
       setAnswers({})
       setDetailNotes({})
+      setEditingAnswerIds({})
       setSharedNote('')
       setEditingResponseId(null)
       setSubmitSuccess(true)
