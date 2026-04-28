@@ -65,6 +65,24 @@ function answerColor(v: AnswerValue | undefined) {
   return 'text-stone-300'
 }
 
+function getFirstCandidateMonthRange(candidates: Candidate[]) {
+  const firstDate = candidates.find((c) => c.date)?.date
+  if (!firstDate) return null
+
+  const firstMonth = firstDate.slice(0, 7)
+  const datesInFirstMonth = candidates
+    .map((c) => c.date)
+    .filter((date) => date.startsWith(firstMonth))
+    .sort((a, b) => a.localeCompare(b))
+
+  if (datesInFirstMonth.length === 0) return null
+
+  return {
+    start: datesInFirstMonth[0],
+    end: datesInFirstMonth[datesInFirstMonth.length - 1],
+  }
+}
+
 // ---- メインコンポーネント ----
 export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const router = useRouter()
@@ -96,6 +114,23 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  function toggleBulkOpen() {
+    if (bulkOpen) {
+      setBulkOpen(false)
+      return
+    }
+
+    if (!bulkStart || !bulkEnd) {
+      const firstMonthRange = getFirstCandidateMonthRange(candidates)
+      if (firstMonthRange) {
+        setBulkStart(firstMonthRange.start)
+        setBulkEnd(firstMonthRange.end)
+      }
+    }
+
+    setBulkOpen(true)
   }
 
   // .ics 自動入力ステータス
@@ -514,7 +549,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setBulkOpen((v) => !v)}
+                onClick={toggleBulkOpen}
                 className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                   bulkOpen
                     ? 'border-rose-400 bg-rose-50 text-rose-800'
