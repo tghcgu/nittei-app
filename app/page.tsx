@@ -68,14 +68,12 @@ function getCalendarGrid(year: number, month: number): (Date | null)[] {
 function SortableCandidate({
   c,
   idx,
-  totalCount,
   onToggle,
   onUpdate,
   onRemove,
 }: {
   c: Candidate
   idx: number
-  totalCount: number
   onToggle: (id: number) => void
   onUpdate: (id: number, field: 'date' | 'timeLabel', value: string) => void
   onRemove: (id: number) => void
@@ -128,8 +126,7 @@ function SortableCandidate({
       <button
         type="button"
         onClick={() => onRemove(c.id)}
-        disabled={totalCount === 1}
-        className="shrink-0 text-stone-300 hover:text-rose-400 disabled:cursor-not-allowed disabled:opacity-30"
+        className="shrink-0 text-stone-300 hover:text-rose-400"
       >
         ✕
       </button>
@@ -143,10 +140,8 @@ export default function Home() {
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
   const [defaultTime, setDefaultTime] = useState('21:00〜')
-  const [candidates, setCandidates] = useState<Candidate[]>([
-    { id: 1, date: '', timeLabel: '', checked: false },
-  ])
-  const [nextId, setNextId] = useState(2)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [nextId, setNextId] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
@@ -229,7 +224,6 @@ export default function Home() {
   }
 
   function removeCandidate(id: number) {
-    if (candidates.length === 1) return
     setCandidates((prev) => prev.filter((c) => c.id !== id))
   }
 
@@ -383,6 +377,13 @@ export default function Home() {
   // ---- フォーム送信 ----
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const validCandidates = candidates.filter((c) => c.date)
+
+    if (validCandidates.length === 0) {
+      setError('候補日を追加してください。')
+      return
+    }
+
     setIsSubmitting(true)
     setError(null)
 
@@ -397,14 +398,12 @@ export default function Home() {
 
       if (eventError) throw eventError
 
-      const candidateRows = candidates
-        .filter((c) => c.date)
-        .map((c, i) => ({
-          event_id: event.id,
-          date: c.date,
-          time_label: c.timeLabel || null,
-          sort_order: i,
-        }))
+      const candidateRows = validCandidates.map((c, i) => ({
+        event_id: event.id,
+        date: c.date,
+        time_label: c.timeLabel || null,
+        sort_order: i,
+      }))
 
       const { error: candidatesError } = await supabase
         .from('candidates')
@@ -422,6 +421,7 @@ export default function Home() {
 
   const existingDateSet = new Set(candidates.map((c) => c.date).filter(Boolean))
   const calGrid = getCalendarGrid(calYear, calMonth)
+  const hasDatedCandidates = candidates.some((c) => c.date)
 
   return (
     <div className="min-h-screen px-4 py-3">
@@ -442,7 +442,7 @@ export default function Home() {
           <div className="mb-3 flex justify-end">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !hasDatedCandidates}
               className="rounded-full bg-rose-800 px-6 py-2 text-sm font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? '作成中...' : '作成する'}
@@ -497,7 +497,8 @@ export default function Home() {
               <button
                 type="button"
                 onClick={applyTimeToAll}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800"
+                disabled={candidates.length === 0}
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 全部これに揃える
               </button>
@@ -512,30 +513,35 @@ export default function Home() {
             </div>
 
             {/* 候補日リスト（ドラッグ&ドロップ対応） */}
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={candidates.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
+            {candidates.length > 0 ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
               >
-                <div className="mb-4 space-y-2">
-                  {candidates.map((c, idx) => (
-                    <SortableCandidate
-                      key={c.id}
-                      c={c}
-                      idx={idx}
-                      totalCount={candidates.length}
-                      onToggle={toggleCheck}
-                      onUpdate={updateCandidate}
-                      onRemove={removeCandidate}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+                <SortableContext
+                  items={candidates.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="mb-4 space-y-2">
+                    {candidates.map((c, idx) => (
+                      <SortableCandidate
+                        key={c.id}
+                        c={c}
+                        idx={idx}
+                        onToggle={toggleCheck}
+                        onUpdate={updateCandidate}
+                        onRemove={removeCandidate}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <p className="mb-4 rounded-xl border border-dashed border-stone-200 bg-white/50 px-4 py-3 text-sm text-stone-400">
+                候補日はまだありません
+              </p>
+            )}
 
             {/* 追加ボタン群 */}
             <div className="flex flex-wrap gap-2">
@@ -560,7 +566,8 @@ export default function Home() {
               <button
                 type="button"
                 onClick={sortByDate}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
+                disabled={candidates.length < 2}
+                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ↕ 日付順に並べ替え
               </button>
@@ -663,7 +670,7 @@ export default function Home() {
           {/* 送信ボタン */}
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !hasDatedCandidates}
             className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? '作成中...' : '作成する'}
