@@ -81,13 +81,6 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   return dateStr >= startDate && dateStr < endDate
 }
 
-function isDateInTimedRange(dateStr: string, start: Date, end: Date): boolean {
-  const dayStart = new Date(dateStr + 'T00:00:00')
-  const dayEnd = new Date(dayStart)
-  dayEnd.setDate(dayEnd.getDate() + 1)
-  return start.getTime() < dayEnd.getTime() && end.getTime() > dayStart.getTime()
-}
-
 function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
   return vevent
     .getAllProperties(name)
@@ -318,7 +311,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
           if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
-          return isDateInTimedRange(datePrefix, start, end) || (start.getTime() < ceMs && end.getTime() > csMs)
+          return start.getTime() < ceMs && end.getTime() > csMs
         })
 
         newAnswers[c.id] = isBusy ? '✕' : '○'

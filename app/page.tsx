@@ -90,13 +90,6 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   return dateStr >= startDate && dateStr < endDate
 }
 
-function isDateInTimedRange(dateStr: string, start: Date, end: Date): boolean {
-  const dayStart = new Date(dateStr + 'T00:00:00')
-  const dayEnd = new Date(dayStart)
-  dayEnd.setDate(dayEnd.getDate() + 1)
-  return start.getTime() < dayEnd.getTime() && end.getTime() > dayStart.getTime()
-}
-
 function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
   return vevent
     .getAllProperties(name)
@@ -133,10 +126,14 @@ function isBlockingCalendarEvent(vevent: ICAL.Component, event: ICAL.Event): boo
 // ---- ドラッグ可能な候補日行 ----
 function SortableCandidate({
   c,
+  selected,
+  onToggleSelected,
   onUpdate,
   onRemove,
 }: {
   c: Candidate
+  selected: boolean
+  onToggleSelected: (id: number) => void
   onUpdate: (id: number, field: 'date' | 'timeLabel', value: string) => void
   onRemove: (id: number) => void
 }) {
@@ -164,6 +161,13 @@ function SortableCandidate({
       >
         ⠿
       </span>
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={() => onToggleSelected(c.id)}
+        aria-label="候補を選択"
+        className="h-4 w-4 shrink-0 rounded border-stone-300 text-rose-700 focus:ring-rose-200"
+      />
       <input
         type="date"
         required
@@ -196,6 +200,7 @@ export default function Home() {
   const [description, setDescription] = useState('')
   const [defaultTime, setDefaultTime] = useState('21:00〜')
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<number>>(new Set())
   const [nextId, setNextId] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -246,8 +251,7 @@ export default function Home() {
 
   // ---- 共通: 日付リストを候補に追加 ----
   function addDatesFromList(dates: string[]) {
-    const existingDates = new Set(candidates.filter((c) => c.date).map((c) => c.date))
-    const toAdd = dates.filter((d) => !existingDates.has(d)).sort()
+    const toAdd = dates.filter(Boolean).sort()
     if (toAdd.length === 0) return
     let id = nextId
     const newItems = toAdd.map((d) => ({
@@ -265,8 +269,32 @@ export default function Home() {
     setCandidates((prev) => prev.map((c) => ({ ...c, timeLabel: defaultTime })))
   }
 
+  function applyTimeToSelected() {
+    if (selectedCandidateIds.size === 0) return
+    setCandidates((prev) =>
+      prev.map((c) =>
+        selectedCandidateIds.has(c.id) ? { ...c, timeLabel: defaultTime } : c
+      )
+    )
+  }
+
+  function toggleCandidateSelection(id: number) {
+    setSelectedCandidateIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   function removeCandidate(id: number) {
     setCandidates((prev) => prev.filter((c) => c.id !== id))
+    setSelectedCandidateIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   function updateCandidate(id: number, field: 'date' | 'timeLabel', value: string) {
@@ -353,7 +381,7 @@ export default function Home() {
         const ceMs = new Date(ce).getTime()
         const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
           if (isAllDay) return isDateInAllDayRange(c.date, start, end)
-          return isDateInTimedRange(c.date, start, end) || (start.getTime() < ceMs && end.getTime() > csMs)
+          return start.getTime() < ceMs && end.getTime() > csMs
         })
         if (isBusy) busyIds.add(c.id)
       }
@@ -468,11 +496,13 @@ export default function Home() {
     }
   }
 
-  const existingDateSet = new Set(candidates.map((c) => c.date).filter(Boolean))
   const calGrid = getCalendarGrid(calYear, calMonth)
-  const addableMonthDates = getMonthDatesFromToday(calYear, calMonth).filter(
-    (date) => !existingDateSet.has(date)
-  )
+  const addableMonthDates = getMonthDatesFromToday(calYear, calMonth)
+  const candidateCountByDate = candidates.reduce<Record<string, number>>((acc, candidate) => {
+    if (!candidate.date) return acc
+    acc[candidate.date] = (acc[candidate.date] ?? 0) + 1
+    return acc
+  }, {})
   const hasDatedCandidates = candidates.some((c) => c.date)
 
   return (
@@ -554,6 +584,19 @@ export default function Home() {
               >
                 全部これに揃える
               </button>
+              <button
+                type="button"
+                onClick={applyTimeToSelected}
+                disabled={selectedCandidateIds.size === 0}
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                選択した日程に適用
+              </button>
+              {selectedCandidateIds.size > 0 && (
+                <span className="text-xs text-stone-400">
+                  {selectedCandidateIds.size}件選択中
+                </span>
+              )}
             </div>
 
             {/* 候補日リスト（ドラッグ&ドロップ対応） */}
@@ -572,6 +615,8 @@ export default function Home() {
                       <SortableCandidate
                         key={c.id}
                         c={c}
+                        selected={selectedCandidateIds.has(c.id)}
+                        onToggleSelected={toggleCandidateSelection}
                         onUpdate={updateCandidate}
                         onRemove={removeCandidate}
                       />
@@ -776,19 +821,16 @@ export default function Home() {
               {calGrid.map((d, i) => {
                 if (!d) return <div key={i} />
                 const dateStr = toDateStr(d)
-                const isExisting = existingDateSet.has(dateStr)
+                const addedCount = candidateCountByDate[dateStr] ?? 0
                 const isSelected = calSelected.has(dateStr)
                 const dow = d.getDay()
                 return (
                   <button
                     key={dateStr}
                     type="button"
-                    disabled={isExisting}
                     onClick={() => toggleCalDate(dateStr)}
-                    className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors ${
-                      isExisting
-                        ? 'cursor-not-allowed text-stone-300'
-                        : isSelected
+                    className={`relative mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors ${
+                      isSelected
                         ? 'bg-rose-700 font-bold text-white'
                         : dow === 0
                         ? 'text-rose-400 hover:bg-rose-50'
@@ -798,6 +840,13 @@ export default function Home() {
                     }`}
                   >
                     {d.getDate()}
+                    {addedCount > 0 && (
+                      <span className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none ${
+                        isSelected ? 'bg-white text-rose-700' : 'bg-rose-100 text-rose-700'
+                      }`}>
+                        {addedCount}
+                      </span>
+                    )}
                   </button>
                 )
               })}
