@@ -414,7 +414,7 @@ export default function Home() {
           className="rounded-2xl bg-white/70 px-6 py-4 shadow-sm backdrop-blur"
         >
           {/* 上部の作成するボタン（候補日が多いとき用） */}
-          <div className="mb-3 flex justify-end">
+          <div className="mb-1 flex justify-end">
             <button
               type="submit"
               disabled={isSubmitting || !hasDatedCandidates}
