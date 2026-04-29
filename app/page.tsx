@@ -26,7 +26,6 @@ type Candidate = {
   id: number
   date: string
   timeLabel: string
-  checked: boolean
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
@@ -67,14 +66,10 @@ function getCalendarGrid(year: number, month: number): (Date | null)[] {
 // ---- ドラッグ可能な候補日行 ----
 function SortableCandidate({
   c,
-  idx,
-  onToggle,
   onUpdate,
   onRemove,
 }: {
   c: Candidate
-  idx: number
-  onToggle: (id: number) => void
   onUpdate: (id: number, field: 'date' | 'timeLabel', value: string) => void
   onRemove: (id: number) => void
 }) {
@@ -102,13 +97,6 @@ function SortableCandidate({
       >
         ⠿
       </span>
-      <input
-        type="checkbox"
-        checked={c.checked}
-        onChange={() => onToggle(c.id)}
-        className="h-4 w-4 shrink-0 cursor-pointer accent-rose-700"
-      />
-      <span className="w-4 shrink-0 text-center text-sm text-stone-400">{idx + 1}</span>
       <input
         type="date"
         required
@@ -199,7 +187,6 @@ export default function Home() {
       id: id++,
       date: d,
       timeLabel: defaultTime,
-      checked: false,
     }))
     const kept = candidates.filter((c) => c.date)
     setCandidates([...kept, ...newItems])
@@ -209,18 +196,6 @@ export default function Home() {
   // ---- 時間一括適用 ----
   function applyTimeToAll() {
     setCandidates((prev) => prev.map((c) => ({ ...c, timeLabel: defaultTime })))
-  }
-
-  function applyTimeToSelected() {
-    setCandidates((prev) =>
-      prev.map((c) => (c.checked ? { ...c, timeLabel: defaultTime } : c))
-    )
-  }
-
-  function toggleCheck(id: number) {
-    setCandidates((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, checked: !c.checked } : c))
-    )
   }
 
   function removeCandidate(id: number) {
@@ -502,14 +477,6 @@ export default function Home() {
               >
                 全部これに揃える
               </button>
-              <button
-                type="button"
-                onClick={applyTimeToSelected}
-                disabled={candidates.every((c) => !c.checked)}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                選択した日に適用
-              </button>
             </div>
 
             {/* 候補日リスト（ドラッグ&ドロップ対応） */}
@@ -524,12 +491,10 @@ export default function Home() {
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="mb-4 space-y-2">
-                    {candidates.map((c, idx) => (
+                    {candidates.map((c) => (
                       <SortableCandidate
                         key={c.id}
                         c={c}
-                        idx={idx}
-                        onToggle={toggleCheck}
                         onUpdate={updateCandidate}
                         onRemove={removeCandidate}
                       />
