@@ -253,11 +253,12 @@ export default function Home() {
   function addDatesFromList(dates: string[]) {
     const toAdd = dates.filter(Boolean).sort()
     if (toAdd.length === 0) return
+    const newCandidateTime = defaultTime.trim()
     let id = nextId
     const newItems = toAdd.map((d) => ({
       id: id++,
       date: d,
-      timeLabel: defaultTime,
+      timeLabel: newCandidateTime,
     }))
     const kept = candidates.filter((c) => c.date)
     setCandidates([...kept, ...newItems])
@@ -298,6 +299,10 @@ export default function Home() {
   }
 
   function updateCandidate(id: number, field: 'date' | 'timeLabel', value: string) {
+    if (field === 'timeLabel') {
+      setDefaultTime(value)
+    }
+
     setCandidates((prev) =>
       prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
     )
