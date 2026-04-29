@@ -52,6 +52,13 @@ const ANSWER_OPTIONS = [
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 
+function toDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00')
   return `${d.getMonth() + 1}/${d.getDate()}（${DAYS[d.getDay()]}）`
@@ -63,6 +70,13 @@ function answerColor(v: AnswerValue | undefined) {
   if (v === '✕') return 'text-stone-400'
   if (v === '-') return 'text-blue-500'
   return 'text-stone-300'
+}
+
+function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
+  const startDate = toDateStr(start)
+  const endDate = toDateStr(end)
+  if (startDate === endDate) return dateStr === startDate
+  return dateStr >= startDate && dateStr < endDate
 }
 
 function getFirstCandidateMonthRange(candidates: Candidate[]) {
@@ -260,7 +274,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         const datePrefix = c.date
 
         const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-          if (isAllDay) return start.toISOString().slice(0, 10) === datePrefix
+          if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
           return start.getTime() < ceMs && end.getTime() > csMs
         })
 

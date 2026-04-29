@@ -81,6 +81,13 @@ function getMonthDatesFromToday(year: number, month: number): string[] {
   return result
 }
 
+function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
+  const startDate = toDateStr(start)
+  const endDate = toDateStr(end)
+  if (startDate === endDate) return dateStr === startDate
+  return dateStr >= startDate && dateStr < endDate
+}
+
 // ---- ドラッグ可能な候補日行 ----
 function SortableCandidate({
   c,
@@ -302,7 +309,7 @@ export default function Home() {
         const csMs = new Date(cs).getTime()
         const ceMs = new Date(ce).getTime()
         const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-          if (isAllDay) return start.toISOString().slice(0, 10) === c.date
+          if (isAllDay) return isDateInAllDayRange(c.date, start, end)
           return start.getTime() < ceMs && end.getTime() > csMs
         })
         if (isBusy) busyIds.add(c.id)
