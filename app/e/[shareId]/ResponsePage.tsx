@@ -105,12 +105,8 @@ function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): bo
 
 function isBlockingCalendarEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
-  const transparency = String(vevent.getFirstPropertyValue('transp') ?? '').toUpperCase()
-  const busyStatus = String(vevent.getFirstPropertyValue('x-microsoft-cdo-busystatus') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
-    && transparency !== 'TRANSPARENT'
-    && busyStatus !== 'FREE'
     && !isNonBlockingAllDayEvent(vevent, event)
 }
 

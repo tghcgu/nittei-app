@@ -114,12 +114,8 @@ function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): bo
 
 function isBlockingCalendarEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
-  const transparency = String(vevent.getFirstPropertyValue('transp') ?? '').toUpperCase()
-  const busyStatus = String(vevent.getFirstPropertyValue('x-microsoft-cdo-busystatus') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
-    && transparency !== 'TRANSPARENT'
-    && busyStatus !== 'FREE'
     && !isNonBlockingAllDayEvent(vevent, event)
 }
 
@@ -398,13 +394,21 @@ export default function Home() {
       }
 
       setCandidates((prev) => {
-        const remaining = prev.filter((c) => !busyIds.has(c.id))
-        return remaining.length > 0 ? remaining : prev
+        return prev.filter((c) => !busyIds.has(c.id))
+      })
+      setSelectedCandidateIds((prev) => {
+        const next = new Set(prev)
+        for (const id of busyIds) next.delete(id)
+        return next
       })
       const removed = busyIds.size
       const kept = datedCandidates.length - removed
       setIcsStatus('done')
-      setIcsMessage(`${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`)
+      setIcsMessage(
+        kept > 0
+          ? `${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`
+          : `${removed}件すべて予定と重なったため削除しました。候補日を追加し直してください。`
+      )
     } catch {
       setIcsStatus('error')
       setIcsMessage('読み取りに失敗しました。.ics ファイルか確認してください。')
