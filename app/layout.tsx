@@ -14,17 +14,23 @@ const notoSerif = Noto_Serif_JP({
   subsets: ["latin"],
 });
 
+const siteName = "日程組";
+const siteDescription =
+  "日程組は、候補日を作成してURLを共有するだけで、参加者が〇△✕で回答できる日程調整アプリです。登録不要・無料で使えます。";
+const siteUrl = "https://nittei-app-five.vercel.app";
+
 export const metadata: Metadata = {
-  title: "日調web",
-  description: "候補日を作成してURLを共有するだけ。参加者が〇△✕で回答できる、シンプルなグループ日程調整アプリです。登録不要・無料で使えます。",
+  title: siteName,
+  applicationName: siteName,
+  description: siteDescription,
   verification: {
     google: "D8IL6531W2fqD0YQrgOz-ODECBHjxCAeoyet1LAC34U",
   },
   openGraph: {
-    title: "日調web",
-    description: "候補日を作成してURLを共有するだけ。参加者が〇△✕で回答できる、シンプルなグループ日程調整アプリです。登録不要・無料で使えます。",
-    url: "https://nittei-app-five.vercel.app",
-    siteName: "日調web",
+    title: siteName,
+    description: siteDescription,
+    url: siteUrl,
+    siteName,
     locale: "ja_JP",
     type: "website",
   },
@@ -33,8 +39,9 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "日調web",
-  url: "https://nittei-app-five.vercel.app",
+  name: siteName,
+  description: siteDescription,
+  url: siteUrl,
 };
 
 export default function RootLayout({
