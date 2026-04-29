@@ -51,6 +51,8 @@ const ANSWER_OPTIONS = [
 ]
 
 const DAYS = ['日', '月', '火', '水', '木', '金', '土']
+const MAX_RECURRING_OCCURRENCES = 10000
+const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
 
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
@@ -77,6 +79,46 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   const endDate = toDateStr(end)
   if (startDate === endDate) return dateStr === startDate
   return dateStr >= startDate && dateStr < endDate
+}
+
+function isDateInTimedRange(dateStr: string, start: Date, end: Date): boolean {
+  const dayStart = new Date(dateStr + 'T00:00:00')
+  const dayEnd = new Date(dayStart)
+  dayEnd.setDate(dayEnd.getDate() + 1)
+  return start.getTime() < dayEnd.getTime() && end.getTime() > dayStart.getTime()
+}
+
+function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
+  return vevent
+    .getAllProperties(name)
+    .flatMap((property) => property.getValues())
+    .map((value) => String(value ?? ''))
+    .join(' ')
+}
+
+function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+  if (!event.startDate.isDate) return false
+
+  const text = [
+    getCalendarPropertyText(vevent, 'summary'),
+    getCalendarPropertyText(vevent, 'categories'),
+    getCalendarPropertyText(vevent, 'description'),
+    getCalendarPropertyText(vevent, 'x-google-calendar-content-title'),
+  ].join(' ')
+
+  const normalized = text.toUpperCase()
+  return NON_BLOCKING_ALL_DAY_KEYWORDS.some((keyword) => normalized.includes(keyword.toUpperCase()))
+}
+
+function isBlockingCalendarEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+  const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
+  const transparency = String(vevent.getFirstPropertyValue('transp') ?? '').toUpperCase()
+  const busyStatus = String(vevent.getFirstPropertyValue('x-microsoft-cdo-busystatus') ?? '').toUpperCase()
+
+  return status !== 'CANCELLED'
+    && transparency !== 'TRANSPARENT'
+    && busyStatus !== 'FREE'
+    && !isNonBlockingAllDayEvent(vevent, event)
 }
 
 function getFirstCandidateMonthRange(candidates: Candidate[]) {
@@ -250,15 +292,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       for (const vevent of vevents) {
         const event = new ICAL.Event(vevent)
+        if (!isBlockingCalendarEvent(vevent, event)) continue
         if (event.isRecurring()) {
           const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
           let next: ICAL.Time | null
           let count = 0
-          while ((next = expand.next()) && count < 500) {
+          while ((next = expand.next()) && count < MAX_RECURRING_OCCURRENCES) {
             count++
-            if (next.compare(rangeEnd) > 0) break
-            if (next.compare(rangeStart) < 0) continue
             const detail = event.getOccurrenceDetails(next)
+            if (detail.startDate.compare(rangeEnd) > 0) break
+            if (detail.endDate.compare(rangeStart) <= 0) continue
             busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
           }
         } else {
@@ -275,7 +318,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
           if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
-          return start.getTime() < ceMs && end.getTime() > csMs
+          return isDateInTimedRange(datePrefix, start, end) || (start.getTime() < ceMs && end.getTime() > csMs)
         })
 
         newAnswers[c.id] = isBusy ? '✕' : '○'
