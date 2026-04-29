@@ -63,6 +63,24 @@ function getCalendarGrid(year: number, month: number): (Date | null)[] {
   return grid
 }
 
+function getMonthDatesFromToday(year: number, month: number): string[] {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const first = new Date(year, month, 1)
+  const last = new Date(year, month + 1, 0)
+  const start = first < today ? today : first
+  if (start > last) return []
+
+  const result: string[] = []
+  const cur = new Date(start)
+  while (cur <= last) {
+    result.push(toDateStr(cur))
+    cur.setDate(cur.getDate() + 1)
+  }
+  return result
+}
+
 // ---- ドラッグ可能な候補日行 ----
 function SortableCandidate({
   c,
@@ -349,6 +367,12 @@ export default function Home() {
     setCalOpen(false)
   }
 
+  function handleAddCurrentMonthFromToday() {
+    if (addableMonthDates.length === 0) return
+    addDatesFromList(addableMonthDates)
+    setCalOpen(false)
+  }
+
   // ---- フォーム送信 ----
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -396,6 +420,9 @@ export default function Home() {
 
   const existingDateSet = new Set(candidates.map((c) => c.date).filter(Boolean))
   const calGrid = getCalendarGrid(calYear, calMonth)
+  const addableMonthDates = getMonthDatesFromToday(calYear, calMonth).filter(
+    (date) => !existingDateSet.has(date)
+  )
   const hasDatedCandidates = candidates.some((c) => c.date)
 
   return (
@@ -670,6 +697,17 @@ export default function Home() {
                 →
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={handleAddCurrentMonthFromToday}
+              disabled={addableMonthDates.length === 0}
+              className="mb-4 w-full rounded-full border border-rose-200 px-4 py-2 text-sm text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-stone-200 disabled:text-stone-300 disabled:hover:bg-transparent"
+            >
+              {addableMonthDates.length > 0
+                ? `この月の今日以降を追加（${addableMonthDates.length}日）`
+                : 'この月は追加できる日がありません'}
+            </button>
 
             {/* 曜日ヘッダー */}
             <div className="mb-2 grid grid-cols-7 text-center text-xs text-stone-400">
