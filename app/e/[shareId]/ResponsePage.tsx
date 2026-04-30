@@ -24,9 +24,6 @@ type Props = {
   responses: ResponseWithAnswers[]
 }
 
-// ---- スコア・表示設定 ----
-const SCORE: Record<AnswerValue, number> = { '○': 2, '△': 1, '-': 0.5, '✕': 0 }
-
 const ANSWER_OPTIONS = [
   {
     value: '○' as AnswerValue,
@@ -140,7 +137,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [tableLayout, setTableLayout] = useState<'h' | 'v'>('h')
+  const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
   const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
 
@@ -182,17 +179,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
-
-  const columnScores = Object.fromEntries(
-    candidates.map((c) => [
-      c.id,
-      responses.reduce((sum, r) => {
-        const answer = r.answers.find((a) => a.candidate_id === c.id)
-        return sum + (answer ? (SCORE[answer.value] ?? 0) : 0)
-      }, 0),
-    ])
-  )
-  const maxScore = candidates.length > 0 ? Math.max(...Object.values(columnScores)) : 0
 
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
@@ -805,11 +791,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className={`pb-4 font-normal ${
-                          columnScores[c.id] === maxScore && maxScore > 0
-                            ? 'text-rose-800'
-                            : 'text-stone-500'
-                        }`}
+                        className="pb-4 font-normal text-stone-500"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
@@ -834,9 +816,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={c.id}
-                            className={`py-3 ${
-                              columnScores[c.id] === maxScore && maxScore > 0 ? 'bg-rose-50' : ''
-                            }`}
+                            className="py-3"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
@@ -859,27 +839,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-stone-200">
-                    <td className="pt-3 text-left text-xs text-stone-400">スコア</td>
-                    {candidates.map((c) => (
-                      <td
-                        key={c.id}
-                        className={`pt-3 font-bold ${
-                          columnScores[c.id] === maxScore && maxScore > 0
-                            ? 'bg-rose-50 text-rose-800'
-                            : 'text-stone-500'
-                        }`}
-                      >
-                        {columnScores[c.id]}
-                        {columnScores[c.id] === maxScore && maxScore > 0 && (
-                          <span className="ml-1 text-xs">★</span>
-                        )}
-                      </td>
-                    ))}
-                    <td />
-                  </tr>
-                </tfoot>
               </table>
             </div>
 
@@ -906,42 +865,34 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         </button>
                       </th>
                     ))}
-                    <th className="pb-4 text-xs font-normal text-stone-400">スコア</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {candidates.map((c) => {
-                    const isBest = columnScores[c.id] === maxScore && maxScore > 0
-                    return (
-                      <tr key={c.id} className="border-t border-stone-100">
-                        <td className={`py-3 text-left ${isBest ? 'bg-rose-50' : ''}`}>
-                          <span className={`font-serif ${isBest ? 'text-rose-800' : 'text-stone-700'}`}>
-                            {formatDate(c.date)}
-                          </span>
-                          {c.time_label && (
-                            <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
-                          )}
-                        </td>
-                        {responses.map((r) => {
-                          const answer = r.answers.find((a) => a.candidate_id === c.id)
-                          return (
-                            <td key={r.id} className={`py-3 ${isBest ? 'bg-rose-50' : ''}`}>
-                              <span className={answerColor(answer?.value)}>
-                                {answer?.value ?? '−'}
-                              </span>
-                              {answer?.value === '-' && answer.note && (
-                                <p className="mt-0.5 text-xs text-stone-400">（{answer.note}）</p>
-                              )}
-                            </td>
-                          )
-                        })}
-                        <td className={`py-3 font-bold ${isBest ? 'bg-rose-50 text-rose-800' : 'text-stone-500'}`}>
-                          {columnScores[c.id]}
-                          {isBest && <span className="ml-1 text-xs">★</span>}
-                        </td>
-                      </tr>
-                    )
-                  })}
+                  {candidates.map((c) => (
+                    <tr key={c.id} className="border-t border-stone-100">
+                      <td className="py-3 text-left">
+                        <span className="font-serif text-stone-700">
+                          {formatDate(c.date)}
+                        </span>
+                        {c.time_label && (
+                          <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
+                        )}
+                      </td>
+                      {responses.map((r) => {
+                        const answer = r.answers.find((a) => a.candidate_id === c.id)
+                        return (
+                          <td key={r.id} className="py-3">
+                            <span className={answerColor(answer?.value)}>
+                              {answer?.value ?? '−'}
+                            </span>
+                            {answer?.value === '-' && answer.note && (
+                              <p className="mt-0.5 text-xs text-stone-400">（{answer.note}）</p>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
