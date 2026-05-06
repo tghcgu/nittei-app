@@ -527,24 +527,22 @@ export default function Home() {
         {/* フォームカード */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl bg-white/70 px-6 py-4 shadow-sm backdrop-blur"
+          className="rounded-2xl bg-white/70 px-6 pb-3 pt-4 shadow-sm backdrop-blur"
         >
-          {/* 上部の作成するボタン（候補日が多いとき用） */}
-          <div className="mb-1 flex justify-end">
-            <button
-              type="submit"
-              disabled={isSubmitting || !hasDatedCandidates}
-              className="rounded-full bg-rose-800 px-6 py-2 text-sm font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isSubmitting ? '作成中...' : '作成する'}
-            </button>
-          </div>
-
           {/* イベント名 */}
-          <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium text-stone-700">
-              イベント名 <span className="text-rose-700">*</span>
-            </label>
+          <div className="mb-2">
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="block text-sm font-medium text-stone-700">
+                イベント名 <span className="text-rose-700">*</span>
+              </label>
+              <button
+                type="submit"
+                disabled={isSubmitting || !hasDatedCandidates}
+                className="shrink-0 rounded-full bg-rose-800 px-5 py-1.5 text-sm font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSubmitting ? '作成中...' : '作成する'}
+              </button>
+            </div>
             <input
               type="text"
               required
