@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import ICAL from 'ical.js'
 import { supabase } from '@/lib/supabase'
@@ -23,7 +23,8 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 
 type Candidate = {
-  id: number
+  id: string
+  dbId?: string
   date: string
   timeLabel: string
 }
@@ -129,9 +130,9 @@ function SortableCandidate({
 }: {
   c: Candidate
   selected: boolean
-  onToggleSelected: (id: number) => void
-  onUpdate: (id: number, field: 'date' | 'timeLabel', value: string) => void
-  onRemove: (id: number) => void
+  onToggleSelected: (id: string) => void
+  onUpdate: (id: string, field: 'date' | 'timeLabel', value: string) => void
+  onRemove: (id: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: c.id })
@@ -196,8 +197,12 @@ export default function Home() {
   const [description, setDescription] = useState('')
   const [defaultTime, setDefaultTime] = useState('21:00〜')
   const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<number>>(new Set())
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
   const [nextId, setNextId] = useState(1)
+  const [editShareId, setEditShareId] = useState<string | null>(null)
+  const [editEventId, setEditEventId] = useState<string | null>(null)
+  const [originalCandidateIds, setOriginalCandidateIds] = useState<Set<string>>(new Set())
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
@@ -222,6 +227,66 @@ export default function Home() {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const shareId = params.get('edit')
+    if (!shareId) return
+    const editingShareId = shareId
+
+    let cancelled = false
+
+    async function loadEventForEdit() {
+      setIsLoadingEdit(true)
+      setError(null)
+
+      try {
+        const { data: event, error: eventError } = await supabase
+          .from('events')
+          .select('*')
+          .eq('share_id', editingShareId)
+          .single()
+
+        if (eventError || !event) throw eventError ?? new Error('Event not found')
+
+        const { data: loadedCandidates, error: candidatesError } = await supabase
+          .from('candidates')
+          .select('*')
+          .eq('event_id', event.id)
+          .order('sort_order')
+
+        if (candidatesError) throw candidatesError
+        if (cancelled) return
+
+        const drafts = (loadedCandidates ?? []).map((candidate) => ({
+          id: candidate.id,
+          dbId: candidate.id,
+          date: candidate.date,
+          timeLabel: candidate.time_label ?? '',
+        }))
+
+        setEditShareId(editingShareId)
+        setEditEventId(event.id)
+        setEventName(event.name)
+        setDescription(event.description ?? '')
+        setCandidates(drafts)
+        setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
+        setSelectedCandidateIds(new Set())
+        setDefaultTime(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '21:00〜')
+      } catch (err) {
+        console.error(err)
+        if (!cancelled) setError('編集する日程を読み込めませんでした。')
+      } finally {
+        if (!cancelled) setIsLoadingEdit(false)
+      }
+    }
+
+    loadEventForEdit()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // ---- ドラッグ終了時の並び替え ----
   function handleDragEnd(event: DragEndEvent) {
@@ -252,7 +317,7 @@ export default function Home() {
     const newCandidateTime = defaultTime.trim()
     let id = nextId
     const newItems = toAdd.map((d) => ({
-      id: id++,
+      id: `new-${id++}`,
       date: d,
       timeLabel: newCandidateTime,
     }))
@@ -275,7 +340,7 @@ export default function Home() {
     )
   }
 
-  function toggleCandidateSelection(id: number) {
+  function toggleCandidateSelection(id: string) {
     setSelectedCandidateIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -284,7 +349,7 @@ export default function Home() {
     })
   }
 
-  function removeCandidate(id: number) {
+  function removeCandidate(id: string) {
     setCandidates((prev) => prev.filter((c) => c.id !== id))
     setSelectedCandidateIds((prev) => {
       if (!prev.has(id)) return prev
@@ -294,7 +359,7 @@ export default function Home() {
     })
   }
 
-  function updateCandidate(id: number, field: 'date' | 'timeLabel', value: string) {
+  function updateCandidate(id: string, field: 'date' | 'timeLabel', value: string) {
     if (field === 'timeLabel') {
       setDefaultTime(value)
     }
@@ -375,7 +440,7 @@ export default function Home() {
         }
       }
 
-      const busyIds = new Set<number>()
+      const busyIds = new Set<string>()
       for (const c of datedCandidates) {
         const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
         const csMs = new Date(cs).getTime()
@@ -474,6 +539,66 @@ export default function Home() {
     setError(null)
 
     try {
+      if (editEventId && editShareId) {
+        const { error: eventError } = await supabase
+          .from('events')
+          .update({ name: eventName, description: description || null })
+          .eq('id', editEventId)
+
+        if (eventError) throw eventError
+
+        const existingCandidates = validCandidates.filter(
+          (candidate): candidate is Candidate & { dbId: string } => Boolean(candidate.dbId)
+        )
+        const newCandidates = validCandidates.filter((candidate) => !candidate.dbId)
+        const keptCandidateIds = new Set(existingCandidates.map((candidate) => candidate.dbId))
+        const removedCandidateIds = [...originalCandidateIds].filter(
+          (candidateId) => !keptCandidateIds.has(candidateId)
+        )
+
+        const updateResults = await Promise.all(
+          existingCandidates.map((candidate) =>
+            supabase
+              .from('candidates')
+              .update({
+                date: candidate.date,
+                time_label: candidate.timeLabel || null,
+                sort_order: validCandidates.indexOf(candidate),
+              })
+              .eq('id', candidate.dbId)
+          )
+        )
+        const candidateUpdateError = updateResults.find((result) => result.error)?.error
+        if (candidateUpdateError) throw candidateUpdateError
+
+        if (newCandidates.length > 0) {
+          const { error: insertError } = await supabase
+            .from('candidates')
+            .insert(
+              newCandidates.map((candidate) => ({
+                event_id: editEventId,
+                date: candidate.date,
+                time_label: candidate.timeLabel || null,
+                sort_order: validCandidates.indexOf(candidate),
+              }))
+            )
+
+          if (insertError) throw insertError
+        }
+
+        if (removedCandidateIds.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('candidates')
+            .delete()
+            .in('id', removedCandidateIds)
+
+          if (deleteError) throw deleteError
+        }
+
+        router.push(`/e/${editShareId}`)
+        return
+      }
+
       const shareId = generateShareId()
 
       const { data: event, error: eventError } = await supabase
@@ -513,6 +638,9 @@ export default function Home() {
     return acc
   }, {})
   const hasDatedCandidates = candidates.some((c) => c.date)
+  const isEditMode = Boolean(editEventId && editShareId)
+  const submitLabel = isEditMode ? '更新する' : '作成する'
+  const submittingLabel = isEditMode ? '更新中...' : '作成中...'
 
   return (
     <div className="min-h-screen px-4 py-3">
@@ -520,7 +648,11 @@ export default function Home() {
         {/* ヘッダー */}
         <div className="mb-2 text-center">
           <p className="text-sm text-stone-500">
-            候補日を入力して、参加者に共有しましょう
+            {isLoadingEdit
+              ? '日程を読み込んでいます...'
+              : isEditMode
+              ? '日程を編集して、共有ページに戻りましょう'
+              : '候補日を入力して、参加者に共有しましょう'}
           </p>
         </div>
 
@@ -537,10 +669,10 @@ export default function Home() {
               </label>
               <button
                 type="submit"
-                disabled={isSubmitting || !hasDatedCandidates}
+                disabled={isSubmitting || isLoadingEdit || !hasDatedCandidates}
                 className="shrink-0 rounded-full bg-rose-800 px-5 py-1.5 text-sm font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isSubmitting ? '作成中...' : '作成する'}
+                {isSubmitting ? submittingLabel : submitLabel}
               </button>
             </div>
             <input
@@ -764,10 +896,10 @@ export default function Home() {
           {/* 送信ボタン */}
           <button
             type="submit"
-            disabled={isSubmitting || !hasDatedCandidates}
+            disabled={isSubmitting || isLoadingEdit || !hasDatedCandidates}
             className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isSubmitting ? '作成中...' : '作成する'}
+            {isSubmitting ? submittingLabel : submitLabel}
           </button>
         </form>
       </div>

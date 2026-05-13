@@ -436,12 +436,20 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       <div className="mx-auto max-w-2xl">
 
         {/* 戻るリンク */}
-        <Link
-          href="/"
-          className="mb-2 inline-block text-sm text-stone-400 transition-colors hover:text-rose-700"
-        >
-          ← 新しいイベントを作る
-        </Link>
+        <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
+          <Link
+            href="/"
+            className="text-stone-400 transition-colors hover:text-rose-700"
+          >
+            ← 新しいイベントを作る
+          </Link>
+          <Link
+            href={`/?edit=${shareId}`}
+            className="text-stone-400 transition-colors hover:text-rose-700"
+          >
+            日程を編集
+          </Link>
+        </div>
 
         {/* イベントヘッダー */}
         <div className="mb-1">

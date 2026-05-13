@@ -1,7 +1,6 @@
 -- Phase 1 RLS policies for the public scheduling app.
--- This keeps the current no-login flow working while blocking deletes.
--- Run this in Supabase SQL Editor after deploying the code change that
--- removes answers.delete() from response editing.
+-- This keeps the current no-login flow working while allowing event/candidate edits.
+-- Run this in Supabase SQL Editor after deploying code changes that need these policies.
 
 alter table public.events enable row level security;
 alter table public.candidates enable row level security;
@@ -10,8 +9,11 @@ alter table public.answers enable row level security;
 
 drop policy if exists "events_select_public" on public.events;
 drop policy if exists "events_insert_public" on public.events;
+drop policy if exists "events_update_public" on public.events;
 drop policy if exists "candidates_select_public" on public.candidates;
 drop policy if exists "candidates_insert_public" on public.candidates;
+drop policy if exists "candidates_update_public" on public.candidates;
+drop policy if exists "candidates_delete_public" on public.candidates;
 drop policy if exists "responses_select_public" on public.responses;
 drop policy if exists "responses_insert_public" on public.responses;
 drop policy if exists "responses_update_public" on public.responses;
@@ -31,6 +33,13 @@ for insert
 to anon, authenticated
 with check (true);
 
+create policy "events_update_public"
+on public.events
+for update
+to anon, authenticated
+using (true)
+with check (true);
+
 create policy "candidates_select_public"
 on public.candidates
 for select
@@ -42,6 +51,37 @@ on public.candidates
 for insert
 to anon, authenticated
 with check (
+  exists (
+    select 1
+    from public.events
+    where events.id = candidates.event_id
+  )
+);
+
+create policy "candidates_update_public"
+on public.candidates
+for update
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.events
+    where events.id = candidates.event_id
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.events
+    where events.id = candidates.event_id
+  )
+);
+
+create policy "candidates_delete_public"
+on public.candidates
+for delete
+to anon, authenticated
+using (
   exists (
     select 1
     from public.events
