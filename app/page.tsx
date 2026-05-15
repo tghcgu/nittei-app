@@ -922,6 +922,16 @@ export default function Home() {
             {isSubmitting ? submittingLabel : submitLabel}
           </button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-stone-400">
+          不具合・ご要望はこちら:{' '}
+          <a
+            href="mailto:nittei.app5@gmail.com"
+            className="underline underline-offset-2 transition-colors hover:text-rose-700"
+          >
+            nittei.app5@gmail.com
+          </a>
+        </p>
       </div>
 
       {/* カレンダーモーダル */}
