@@ -17,9 +17,11 @@ drop policy if exists "candidates_delete_public" on public.candidates;
 drop policy if exists "responses_select_public" on public.responses;
 drop policy if exists "responses_insert_public" on public.responses;
 drop policy if exists "responses_update_public" on public.responses;
+drop policy if exists "responses_delete_public" on public.responses;
 drop policy if exists "answers_select_public" on public.answers;
 drop policy if exists "answers_insert_public" on public.answers;
 drop policy if exists "answers_update_public" on public.answers;
+drop policy if exists "answers_delete_public" on public.answers;
 
 create policy "events_select_public"
 on public.events
@@ -120,6 +122,18 @@ with check (
   )
 );
 
+create policy "responses_delete_public"
+on public.responses
+for delete
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.events
+    where events.id = responses.event_id
+  )
+);
+
 create policy "answers_select_public"
 on public.answers
 for select
@@ -152,6 +166,18 @@ with check (
     join public.candidates on candidates.id = answers.candidate_id
     where responses.id = answers.response_id
       and candidates.event_id = responses.event_id
+  )
+);
+
+create policy "answers_delete_public"
+on public.answers
+for delete
+to anon, authenticated
+using (
+  exists (
+    select 1
+    from public.responses
+    where responses.id = answers.response_id
   )
 );
 

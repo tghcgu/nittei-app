@@ -154,6 +154,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
   const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
+  const [deletingResponseId, setDeletingResponseId] = useState<string | null>(null)
 
   // 範囲で一括回答
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -202,6 +203,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
     return map
   }, [responses])
+  const editingResponse = editingResponseId
+    ? responses.find((response) => response.id === editingResponseId) ?? null
+    : null
 
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
@@ -231,6 +235,41 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setSharedNote('')
     setEditingResponseId(null)
     setError(null)
+  }
+
+  async function handleDeleteResponse(r: ResponseWithAnswers) {
+    const ok = window.confirm(`${r.name} さんの回答を削除します。`)
+    if (!ok) return
+
+    setDeletingResponseId(r.id)
+    setError(null)
+
+    try {
+      const { error: answersError } = await supabase
+        .from('answers')
+        .delete()
+        .eq('response_id', r.id)
+
+      if (answersError) throw answersError
+
+      const { error: responseError } = await supabase
+        .from('responses')
+        .delete()
+        .eq('id', r.id)
+
+      if (responseError) throw responseError
+
+      if (editingResponseId === r.id) {
+        handleCancelEdit()
+      }
+
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+      setError('回答の削除に失敗しました。もう一度試してください。')
+    } finally {
+      setDeletingResponseId(null)
+    }
   }
 
   // time_label（例: "19:00〜22:00" や "21:00〜"）をパースしてISO文字列のstart/endを返す
@@ -388,6 +427,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (deletingResponseId) return
+
     setIsSubmitting(true)
     setError(null)
 
@@ -512,13 +553,25 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               {editingResponseId ? '回答を編集' : '回答する'}
             </h2>
             {editingResponseId && (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="text-sm text-stone-400 transition-colors hover:text-rose-700"
-              >
-                キャンセル
-              </button>
+              <div className="flex items-center gap-3">
+                {editingResponse && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteResponse(editingResponse)}
+                    disabled={deletingResponseId === editingResponse.id}
+                    className="text-sm text-stone-400 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {deletingResponseId === editingResponse.id ? '削除中...' : '削除'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="text-sm text-stone-400 transition-colors hover:text-rose-700"
+                >
+                  キャンセル
+                </button>
+              </div>
             )}
           </div>
 
@@ -777,7 +830,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || Boolean(deletingResponseId)}
             className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
