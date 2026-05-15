@@ -926,12 +926,7 @@ export default function Home() {
 
         <p className="mt-4 text-center text-xs text-stone-400">
           不具合・ご要望はこちら:{' '}
-          <a
-            href="mailto:nittei.app5@gmail.com"
-            className="underline underline-offset-2 transition-colors hover:text-rose-700"
-          >
-            nittei.app5@gmail.com
-          </a>
+          <span>nittei.app5@gmail.com</span>
         </p>
       </div>
 
