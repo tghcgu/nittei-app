@@ -407,6 +407,22 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setBulkOpen(false)
   }
 
+  function handleSetAllAnswers(value: AnswerValue) {
+    const isAlreadyAllSelected =
+      candidates.length > 0 && candidates.every((c) => answers[c.id] === value)
+
+    if (isAlreadyAllSelected) {
+      setAnswers({})
+      setDetailNotes({})
+      return
+    }
+
+    setAnswers(Object.fromEntries(candidates.map((c) => [c.id, value])))
+    if (value !== '-') {
+      setDetailNotes({})
+    }
+  }
+
   function handleAnswerChange(candidateId: string, value: AnswerValue) {
     setAnswers((prev) => {
       if (prev[candidateId] === value) {
@@ -685,20 +701,23 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               </button>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-stone-400">全部これに揃える：</span>
-                {ANSWER_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() =>
-                      setAnswers(
-                        Object.fromEntries(candidates.map((c) => [c.id, opt.value]))
-                      )
-                    }
-                    className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${opt.idle} hover:scale-110`}
-                  >
-                    {opt.value === '-' ? '−' : opt.value}
-                  </button>
-                ))}
+                {ANSWER_OPTIONS.map((opt) => {
+                  const isAllSelected =
+                    candidates.length > 0 && candidates.every((c) => answers[c.id] === opt.value)
+
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleSetAllAnswers(opt.value)}
+                      className={`h-8 w-8 rounded-full border-2 text-sm transition-all hover:scale-110 ${
+                        isAllSelected ? opt.active : opt.idle
+                      }`}
+                    >
+                      {opt.value === '-' ? '−' : opt.value}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
