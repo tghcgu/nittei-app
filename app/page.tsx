@@ -667,6 +667,7 @@ export default function Home() {
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
         <div className="mb-2 text-center">
+          <h1 className="font-serif text-3xl text-rose-800">日程組</h1>
           <p className="text-sm text-stone-500">
             {isLoadingEdit
               ? '日程を読み込んでいます...'
