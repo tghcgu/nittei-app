@@ -180,6 +180,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
+  const editingResponse = editingResponseId
+    ? responses.find((response) => response.id === editingResponseId) ?? null
+    : null
 
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
@@ -516,13 +519,25 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               {editingResponseId ? '回答を編集' : '回答する'}
             </h2>
             {editingResponseId && (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                className="text-sm text-stone-400 transition-colors hover:text-rose-700"
-              >
-                キャンセル
-              </button>
+              <div className="flex items-center gap-3">
+                {editingResponse && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteResponse(editingResponse)}
+                    disabled={deletingResponseId === editingResponse.id}
+                    className="text-sm text-stone-400 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {deletingResponseId === editingResponse.id ? '削除中...' : '削除'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="text-sm text-stone-400 transition-colors hover:text-rose-700"
+                >
+                  キャンセル
+                </button>
+              </div>
             )}
           </div>
 
@@ -879,14 +894,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         >
                           編集
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteResponse(r)}
-                          disabled={deletingResponseId === r.id}
-                          className="ml-2 text-xs text-stone-300 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {deletingResponseId === r.id ? '削除中...' : '削除'}
-                        </button>
                       </td>
                     </tr>
                   ))}
@@ -914,14 +921,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           className="text-xs font-normal text-stone-300 transition-colors hover:text-rose-700"
                         >
                           編集
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteResponse(r)}
-                          disabled={deletingResponseId === r.id}
-                          className="ml-2 text-xs font-normal text-stone-300 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {deletingResponseId === r.id ? '削除中...' : '削除'}
                         </button>
                       </th>
                     ))}
