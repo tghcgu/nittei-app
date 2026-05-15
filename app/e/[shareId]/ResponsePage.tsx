@@ -685,7 +685,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               </button>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-stone-400">全部これに揃える：</span>
-                {ANSWER_OPTIONS.filter((o) => o.value !== '-').map((opt) => (
+                {ANSWER_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
@@ -696,7 +696,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     }
                     className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${opt.idle} hover:scale-110`}
                   >
-                    {opt.value}
+                    {opt.value === '-' ? '−' : opt.value}
                   </button>
                 ))}
               </div>
