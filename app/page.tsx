@@ -945,11 +945,7 @@ export default function Home() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-stone-400">
-          不具合・ご要望はこちら:{' '}
-          <span>nittei.app5@gmail.com</span>
-        </p>
-        <div className="mt-2 text-center">
+        <div className="mt-4 text-center">
           <button
             type="button"
             onClick={scrollToPageTop}
@@ -958,6 +954,10 @@ export default function Home() {
             ↑ 最上部へ
           </button>
         </div>
+        <p className="mt-2 text-center text-xs text-stone-400">
+          不具合・ご要望はこちら:{' '}
+          <span>nittei.app5@gmail.com</span>
+        </p>
       </div>
 
       {/* カレンダーモーダル */}
