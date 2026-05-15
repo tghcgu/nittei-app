@@ -140,6 +140,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
   const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
+  const [deletingResponseId, setDeletingResponseId] = useState<string | null>(null)
 
   // 範囲で一括回答
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -208,6 +209,41 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setSharedNote('')
     setEditingResponseId(null)
     setError(null)
+  }
+
+  async function handleDeleteResponse(r: ResponseWithAnswers) {
+    const ok = window.confirm(`${r.name} さんの回答を削除します。`)
+    if (!ok) return
+
+    setDeletingResponseId(r.id)
+    setError(null)
+
+    try {
+      const { error: answersError } = await supabase
+        .from('answers')
+        .delete()
+        .eq('response_id', r.id)
+
+      if (answersError) throw answersError
+
+      const { error: responseError } = await supabase
+        .from('responses')
+        .delete()
+        .eq('id', r.id)
+
+      if (responseError) throw responseError
+
+      if (editingResponseId === r.id) {
+        handleCancelEdit()
+      }
+
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+      setError('回答の削除に失敗しました。もう一度試してください。')
+    } finally {
+      setDeletingResponseId(null)
+    }
   }
 
   // time_label（例: "19:00〜22:00" や "21:00〜"）をパースしてISO文字列のstart/endを返す
@@ -843,6 +879,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         >
                           編集
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteResponse(r)}
+                          disabled={deletingResponseId === r.id}
+                          className="ml-2 text-xs text-stone-300 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {deletingResponseId === r.id ? '削除中...' : '削除'}
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -870,6 +914,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           className="text-xs font-normal text-stone-300 transition-colors hover:text-rose-700"
                         >
                           編集
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteResponse(r)}
+                          disabled={deletingResponseId === r.id}
+                          className="ml-2 text-xs font-normal text-stone-300 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {deletingResponseId === r.id ? '削除中...' : '削除'}
                         </button>
                       </th>
                     ))}
