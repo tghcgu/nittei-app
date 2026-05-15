@@ -542,7 +542,6 @@ export default function Home() {
   function handleAddCurrentMonthFromToday() {
     if (addableMonthDates.length === 0) return
     addDatesFromList(addableMonthDates)
-    setCalOpen(false)
   }
 
   // ---- フォーム送信 ----
