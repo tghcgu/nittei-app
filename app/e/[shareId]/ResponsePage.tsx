@@ -180,6 +180,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     })
   }
 
+  function scrollToAnswerForm() {
+    document.getElementById('answer-form')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   function toggleBulkOpen() {
     if (bulkOpen) {
       setBulkOpen(false)
@@ -577,8 +584,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         {/* 回答フォーム */}
         <form
+          id="answer-form"
           onSubmit={handleSubmit}
-          className="mb-8 rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur"
+          className="mb-8 scroll-mt-4 rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur"
         >
           <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
@@ -874,36 +882,45 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         {/* 集計テーブル */}
         <div id="responses-section" className="scroll-mt-4 rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
-            {responses.length > 0 && (
-              <div className="flex overflow-hidden rounded-full border border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => setTableLayout('h')}
-                  title="横向き表示"
-                  className={`px-3 py-1.5 text-xs transition-colors ${
-                    tableLayout === 'h'
-                      ? 'bg-rose-800 text-white'
-                      : 'text-stone-400 hover:bg-stone-50'
-                  }`}
-                >
-                  ╠═╣ 横
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTableLayout('v')}
-                  title="縦向き表示"
-                  className={`border-l border-stone-200 px-3 py-1.5 text-xs transition-colors ${
-                    tableLayout === 'v'
-                      ? 'bg-rose-800 text-white'
-                      : 'text-stone-400 hover:bg-stone-50'
-                  }`}
-                >
-                  縦 ╦
-                </button>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={scrollToAnswerForm}
+                className="rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+              >
+                ↑ 回答へ
+              </button>
+              {responses.length > 0 && (
+                <div className="flex overflow-hidden rounded-full border border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setTableLayout('h')}
+                    title="横向き表示"
+                    className={`px-3 py-1.5 text-xs transition-colors ${
+                      tableLayout === 'h'
+                        ? 'bg-rose-800 text-white'
+                        : 'text-stone-400 hover:bg-stone-50'
+                    }`}
+                  >
+                    ╠═╣ 横
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableLayout('v')}
+                    title="縦向き表示"
+                    className={`border-l border-stone-200 px-3 py-1.5 text-xs transition-colors ${
+                      tableLayout === 'v'
+                        ? 'bg-rose-800 text-white'
+                        : 'text-stone-400 hover:bg-stone-50'
+                    }`}
+                  >
+                    縦 ╦
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {responses.length === 0 ? (

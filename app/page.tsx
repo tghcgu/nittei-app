@@ -669,6 +669,13 @@ export default function Home() {
     })
   }
 
+  function scrollToPageTop() {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
+  }
+
   return (
     <div className="min-h-screen px-4 py-3">
       <div className="mx-auto max-w-xl">
@@ -942,6 +949,15 @@ export default function Home() {
           不具合・ご要望はこちら:{' '}
           <span>nittei.app5@gmail.com</span>
         </p>
+        <div className="mt-2 text-center">
+          <button
+            type="button"
+            onClick={scrollToPageTop}
+            className="rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+          >
+            ↑ 最上部へ
+          </button>
+        </div>
       </div>
 
       {/* カレンダーモーダル */}
