@@ -173,6 +173,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     })
   }
 
+  function scrollToResponses() {
+    document.getElementById('responses-section')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   function toggleBulkOpen() {
     if (bulkOpen) {
       setBulkOpen(false)
@@ -546,17 +553,26 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           {event.description && (
             <p className="mt-1 text-stone-600">{event.description}</p>
           )}
-          <button
-            type="button"
-            onClick={handleCopyUrl}
-            className="mt-0.5 inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
-          >
-            {copied ? (
-              <>✓ コピーしました</>
-            ) : (
-              <>/e/{shareId} ⧉</>
-            )}
-          </button>
+          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyUrl}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+            >
+              {copied ? (
+                <>✓ コピーしました</>
+              ) : (
+                <>/e/{shareId} ⧉</>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={scrollToResponses}
+              className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+            >
+              ↓ みんなの回答へ
+            </button>
+          </div>
         </div>
 
         {/* 回答フォーム */}
@@ -857,7 +873,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         </form>
 
         {/* 集計テーブル */}
-        <div className="rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur">
+        <div id="responses-section" className="scroll-mt-4 rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
             {responses.length > 0 && (
