@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import ICAL from 'ical.js'
+import { useMemo, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -51,6 +50,21 @@ const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
 
+type CalendarComponent = {
+  getAllProperties: (name: string) => { getValues: () => unknown[] }[]
+  getFirstPropertyValue: (name: string) => unknown
+}
+
+type CalendarEvent = {
+  startDate: { isDate: boolean }
+}
+
+type BusyPeriod = {
+  start: Date
+  end: Date
+  isAllDay: boolean
+}
+
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -78,7 +92,7 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   return dateStr >= startDate && dateStr < endDate
 }
 
-function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
+function getCalendarPropertyText(vevent: CalendarComponent, name: string): string {
   return vevent
     .getAllProperties(name)
     .flatMap((property) => property.getValues())
@@ -86,7 +100,7 @@ function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
     .join(' ')
 }
 
-function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+function isNonBlockingAllDayEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
   if (!event.startDate.isDate) return false
 
   const text = [
@@ -100,7 +114,7 @@ function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): bo
   return NON_BLOCKING_ALL_DAY_KEYWORDS.some((keyword) => normalized.includes(keyword.toUpperCase()))
 }
 
-function isBlockingCalendarEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+function isBlockingCalendarEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
@@ -179,6 +193,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
+  const answerByResponseAndCandidate = useMemo(() => {
+    const map = new Map<string, Answer>()
+    for (const response of responses) {
+      for (const answer of response.answers) {
+        map.set(`${response.id}:${answer.candidate_id}`, answer)
+      }
+    }
+    return map
+  }, [responses])
 
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
@@ -239,6 +262,35 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // ---- .ics ファイルから日程を読み取り ----
   const icsInputRef = useRef<HTMLInputElement>(null)
 
+  function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
+    const newAnswers: Record<string, AnswerValue> = {}
+    for (const c of candidates) {
+      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
+      const csMs = new Date(cs).getTime()
+      const ceMs = new Date(ce).getTime()
+      const datePrefix = c.date
+
+      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
+        if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
+        return start.getTime() < ceMs && end.getTime() > csMs
+      })
+
+      newAnswers[c.id] = isBusy ? '✕' : '○'
+    }
+
+    // 既に✕になっている候補は次の読み込みでも✕を維持する
+    setAnswers((prev) => {
+      const merged: Record<string, AnswerValue> = { ...prev }
+      for (const [id, val] of Object.entries(newAnswers)) {
+        if (prev[id] === '✕') continue
+        merged[id] = val
+      }
+      return merged
+    })
+    setIcsStatus('done')
+    setIcsMessage(doneMessage)
+  }
+
   async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -248,6 +300,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setIcsMessage('')
 
     try {
+      const ICAL = (await import('ical.js')).default
       const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
       const rangeStart = ICAL.Time.fromDateTimeString(sortedDates[0].date + 'T00:00:00')
       const rangeEnd = ICAL.Time.fromDateTimeString(sortedDates[sortedDates.length - 1].date + 'T23:59:59')
@@ -270,46 +323,25 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         if (!isBlockingCalendarEvent(vevent, event)) continue
         if (event.isRecurring()) {
           const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-          let next: ICAL.Time | null
           let count = 0
-          while ((next = expand.next()) && count < MAX_RECURRING_OCCURRENCES) {
+          let next = expand.next()
+          while (next && count < MAX_RECURRING_OCCURRENCES) {
             count++
             const detail = event.getOccurrenceDetails(next)
             if (detail.startDate.compare(rangeEnd) > 0) break
             if (detail.endDate.compare(rangeStart) <= 0) continue
             busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+            next = expand.next()
           }
         } else {
           busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
-      const newAnswers: Record<string, AnswerValue> = {}
-      for (const c of candidates) {
-        const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
-        const csMs = new Date(cs).getTime()
-        const ceMs = new Date(ce).getTime()
-        const datePrefix = c.date
-
-        const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-          if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
-          return start.getTime() < ceMs && end.getTime() > csMs
-        })
-
-        newAnswers[c.id] = isBusy ? '✕' : '○'
-      }
-
-      // 既に✕になっている候補は次のファイルを読んでも✕を維持する
-      setAnswers((prev) => {
-        const merged: Record<string, AnswerValue> = { ...prev }
-        for (const [id, val] of Object.entries(newAnswers)) {
-          if (prev[id] === '✕') continue
-          merged[id] = val
-        }
-        return merged
-      })
-      setIcsStatus('done')
-      setIcsMessage('.ics を解析しました。内容を確認してから送信してください。')
+      applyBusyPeriodsToAnswers(
+        busyPeriods,
+        '.ics を解析しました。内容を確認してから送信してください。'
+      )
     } catch {
       setIcsStatus('error')
       setIcsMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
@@ -820,7 +852,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </td>
                       {candidates.map((c) => {
-                        const answer = r.answers.find((a) => a.candidate_id === c.id)
+                        const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
                           <td
                             key={c.id}
@@ -887,7 +919,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </td>
                       {responses.map((r) => {
-                        const answer = r.answers.find((a) => a.candidate_id === c.id)
+                        const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
                           <td key={r.id} className="py-3">
                             <span className={answerColor(answer?.value)}>

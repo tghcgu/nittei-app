@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import ICAL from 'ical.js'
 import { supabase } from '@/lib/supabase'
 import {
   DndContext,
@@ -27,6 +26,21 @@ type Candidate = {
   dbId?: string
   date: string
   timeLabel: string
+}
+
+type CalendarComponent = {
+  getAllProperties: (name: string) => { getValues: () => unknown[] }[]
+  getFirstPropertyValue: (name: string) => unknown
+}
+
+type CalendarEvent = {
+  startDate: { isDate: boolean }
+}
+
+type BusyPeriod = {
+  start: Date
+  end: Date
+  isAllDay: boolean
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
@@ -91,7 +105,7 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   return dateStr >= startDate && dateStr < endDate
 }
 
-function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
+function getCalendarPropertyText(vevent: CalendarComponent, name: string): string {
   return vevent
     .getAllProperties(name)
     .flatMap((property) => property.getValues())
@@ -99,7 +113,7 @@ function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
     .join(' ')
 }
 
-function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+function isNonBlockingAllDayEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
   if (!event.startDate.isDate) return false
 
   const text = [
@@ -113,7 +127,7 @@ function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): bo
   return NON_BLOCKING_ALL_DAY_KEYWORDS.some((keyword) => normalized.includes(keyword.toUpperCase()))
 }
 
-function isBlockingCalendarEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+function isBlockingCalendarEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
@@ -390,6 +404,43 @@ export default function Home() {
     return { start: startDate.toISOString(), end: endDate.toISOString() }
   }
 
+  function removeBusyCandidates(busyPeriods: BusyPeriod[], datedCandidates: Candidate[]) {
+    const busyIds = new Set<string>()
+    for (const c of datedCandidates) {
+      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
+      const csMs = new Date(cs).getTime()
+      const ceMs = new Date(ce).getTime()
+      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
+        if (isAllDay) return isDateInAllDayRange(c.date, start, end)
+        return start.getTime() < ceMs && end.getTime() > csMs
+      })
+      if (isBusy) busyIds.add(c.id)
+    }
+
+    if (busyIds.size === 0) {
+      setIcsStatus('done')
+      setIcsMessage('予定と重なる日程はありませんでした。')
+      return
+    }
+
+    setCandidates((prev) => {
+      return prev.filter((c) => !busyIds.has(c.id))
+    })
+    setSelectedCandidateIds((prev) => {
+      const next = new Set(prev)
+      for (const id of busyIds) next.delete(id)
+      return next
+    })
+    const removed = busyIds.size
+    const kept = datedCandidates.length - removed
+    setIcsStatus('done')
+    setIcsMessage(
+      kept > 0
+        ? `${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`
+        : `${removed}件すべて予定と重なったため削除しました。候補日を追加し直してください。`
+    )
+  }
+
   async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -406,6 +457,7 @@ export default function Home() {
         return
       }
 
+      const ICAL = (await import('ical.js')).default
       const sorted = [...datedCandidates].sort((a, b) => a.date.localeCompare(b.date))
       const rangeStart = ICAL.Time.fromDateTimeString(sorted[0].date + 'T00:00:00')
       const rangeEnd = ICAL.Time.fromDateTimeString(sorted[sorted.length - 1].date + 'T23:59:59')
@@ -426,54 +478,22 @@ export default function Home() {
         if (!isBlockingCalendarEvent(vevent, event)) continue
         if (event.isRecurring()) {
           const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-          let next: ICAL.Time | null
           let count = 0
-          while ((next = expand.next()) && count < MAX_RECURRING_OCCURRENCES) {
+          let next = expand.next()
+          while (next && count < MAX_RECURRING_OCCURRENCES) {
             count++
             const detail = event.getOccurrenceDetails(next)
             if (detail.startDate.compare(rangeEnd) > 0) break
             if (detail.endDate.compare(rangeStart) <= 0) continue
             busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+            next = expand.next()
           }
         } else {
           busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
-      const busyIds = new Set<string>()
-      for (const c of datedCandidates) {
-        const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
-        const csMs = new Date(cs).getTime()
-        const ceMs = new Date(ce).getTime()
-        const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-          if (isAllDay) return isDateInAllDayRange(c.date, start, end)
-          return start.getTime() < ceMs && end.getTime() > csMs
-        })
-        if (isBusy) busyIds.add(c.id)
-      }
-
-      if (busyIds.size === 0) {
-        setIcsStatus('done')
-        setIcsMessage('予定と重なる日程はありませんでした。')
-        return
-      }
-
-      setCandidates((prev) => {
-        return prev.filter((c) => !busyIds.has(c.id))
-      })
-      setSelectedCandidateIds((prev) => {
-        const next = new Set(prev)
-        for (const id of busyIds) next.delete(id)
-        return next
-      })
-      const removed = busyIds.size
-      const kept = datedCandidates.length - removed
-      setIcsStatus('done')
-      setIcsMessage(
-        kept > 0
-          ? `${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`
-          : `${removed}件すべて予定と重なったため削除しました。候補日を追加し直してください。`
-      )
+      removeBusyCandidates(busyPeriods, datedCandidates)
     } catch {
       setIcsStatus('error')
       setIcsMessage('読み取りに失敗しました。.ics ファイルか確認してください。')
