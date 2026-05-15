@@ -662,6 +662,13 @@ export default function Home() {
   const submitLabel = isEditMode ? '更新する' : '作成する'
   const submittingLabel = isEditMode ? '更新中...' : '作成中...'
 
+  function scrollToPageBottom() {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth',
+    })
+  }
+
   return (
     <div className="min-h-screen px-4 py-3">
       <div className="mx-auto max-w-xl">
@@ -675,6 +682,13 @@ export default function Home() {
               ? '日程を編集して、共有ページに戻りましょう'
               : '候補日を入力して、参加者に共有しましょう'}
           </p>
+          <button
+            type="button"
+            onClick={scrollToPageBottom}
+            className="mt-1 rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+          >
+            ↓ 最下部へ
+          </button>
         </div>
 
         {/* フォームカード */}
