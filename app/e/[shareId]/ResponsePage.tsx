@@ -395,6 +395,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (deletingResponseId) return
+
     setIsSubmitting(true)
     setError(null)
 
@@ -796,7 +798,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || Boolean(deletingResponseId)}
             className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
