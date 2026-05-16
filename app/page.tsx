@@ -664,14 +664,14 @@ export default function Home() {
   function scrollToPageBottom() {
     window.scrollTo({
       top: document.documentElement.scrollHeight,
-      behavior: 'smooth',
+      behavior: 'auto',
     })
   }
 
   function scrollToPageTop() {
     window.scrollTo({
       top: 0,
-      behavior: 'smooth',
+      behavior: 'auto',
     })
   }
 

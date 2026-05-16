@@ -173,18 +173,22 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     })
   }
 
-  function scrollToResponses() {
-    document.getElementById('responses-section')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
+  function jumpToElement(id: string) {
+    const element = document.getElementById(id)
+    if (!element) return
+
+    window.scrollTo({
+      top: element.getBoundingClientRect().top + window.scrollY,
+      behavior: 'auto',
     })
   }
 
+  function scrollToResponses() {
+    jumpToElement('responses-section')
+  }
+
   function scrollToAnswerForm() {
-    document.getElementById('answer-form')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
+    jumpToElement('answer-form')
   }
 
   function toggleBulkOpen() {
