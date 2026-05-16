@@ -188,7 +188,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function scrollToAnswerForm() {
-    jumpToElement('answer-form')
+    jumpToElement('answer-actions')
   }
 
   function toggleBulkOpen() {
@@ -564,7 +564,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           {event.description && (
             <p className="mt-1 text-stone-600">{event.description}</p>
           )}
-          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+          <div id="answer-actions" className="mt-0.5 flex scroll-mt-4 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleCopyUrl}
