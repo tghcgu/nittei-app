@@ -184,7 +184,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function scrollToResponses() {
-    jumpToElement('answer-submit-area', 72)
+    jumpToElement('answer-submit-area', 16)
   }
 
   function scrollToAnswerForm() {
