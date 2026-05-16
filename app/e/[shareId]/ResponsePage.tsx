@@ -887,8 +887,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         </form>
 
         {/* 集計テーブル */}
-        <div id="responses-section" className="scroll-mt-4 rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div id="responses-section" className="scroll-mt-4 rounded-2xl bg-white/70 px-6 py-6 shadow-sm backdrop-blur">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -938,11 +938,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="w-28 pb-4 text-left text-xs font-normal text-stone-400">名前</th>
+                    <th className="w-28 pb-3 text-left text-xs font-normal text-stone-400">名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="pb-4 font-normal text-stone-500"
+                        className="pb-3 font-normal text-stone-500"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
@@ -950,13 +950,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </th>
                     ))}
-                    <th className="pb-4"></th>
+                    <th className="pb-3"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {responses.map((r) => (
                     <tr key={r.id} className="border-t border-stone-100">
-                      <td className="py-3 text-left text-stone-700">
+                      <td className="py-2 text-left text-stone-700">
                         <div>{r.name}</div>
                         {r.note && (
                           <div className="text-xs text-stone-400">（{r.note}）</div>
@@ -967,7 +967,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={c.id}
-                            className="py-3"
+                            className="py-2"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
@@ -978,7 +978,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           </td>
                         )
                       })}
-                      <td className="py-3">
+                      <td className="py-2">
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
@@ -1000,9 +1000,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="pb-4 text-left text-xs font-normal text-stone-400">候補日</th>
+                    <th className="pb-3 text-left text-xs font-normal text-stone-400">候補日</th>
                     {responses.map((r) => (
-                      <th key={r.id} className="pb-4 font-normal text-stone-500">
+                      <th key={r.id} className="pb-3 font-normal text-stone-500">
                         <div>{r.name}</div>
                         {r.note && (
                           <div className="text-xs font-normal text-stone-400">（{r.note}）</div>
@@ -1021,7 +1021,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-100">
-                      <td className="py-3 text-left">
+                      <td className="py-2 text-left">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -1032,7 +1032,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       {responses.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="py-3">
+                          <td key={r.id} className="py-2">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
