@@ -173,22 +173,22 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     })
   }
 
-  function jumpToElement(id: string) {
+  function jumpToElement(id: string, topPadding = 32) {
     const element = document.getElementById(id)
     if (!element) return
 
     window.scrollTo({
-      top: element.getBoundingClientRect().top + window.scrollY,
+      top: Math.max(0, element.getBoundingClientRect().top + window.scrollY - topPadding),
       behavior: 'auto',
     })
   }
 
   function scrollToResponses() {
-    jumpToElement('responses-section')
+    jumpToElement('answer-submit-area', 72)
   }
 
   function scrollToAnswerForm() {
-    jumpToElement('answer-actions')
+    jumpToElement('answer-actions', 40)
   }
 
   function toggleBulkOpen() {
@@ -863,25 +863,27 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             />
           </div>
 
-          {/* エラー・成功メッセージ */}
-          {error && (
-            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
-              {error}
-            </p>
-          )}
-          {submitSuccess && (
-            <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-              {editingResponseId ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
-            </p>
-          )}
+          <div id="answer-submit-area">
+            {/* エラー・成功メッセージ */}
+            {error && (
+              <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+                {error}
+              </p>
+            )}
+            {submitSuccess && (
+              <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+                {editingResponseId ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
+              </p>
+            )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting || Boolean(deletingResponseId)}
-            className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
-          </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || Boolean(deletingResponseId)}
+              className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
+            </button>
+          </div>
         </form>
 
         {/* 集計テーブル */}
