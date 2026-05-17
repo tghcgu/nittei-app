@@ -606,7 +606,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="mb-1">
           <h1 className="font-serif text-3xl text-rose-800">{event.name}</h1>
           {event.description && (
-            <p className="mt-1 text-stone-600">{event.description}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-stone-600">{event.description}</p>
           )}
           <div id="answer-actions" className="mt-0.5 flex scroll-mt-4 flex-wrap items-center gap-2">
             <button
