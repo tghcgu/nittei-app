@@ -13,25 +13,24 @@ export default async function Page({
   // イベントを取得
   const { data: event } = await supabase
     .from('events')
-    .select('*')
+    .select('id, share_id, name, description, created_at')
     .eq('share_id', shareId)
     .single()
 
   if (!event) notFound()
 
-  // 候補日を取得
-  const { data: candidates } = await supabase
-    .from('candidates')
-    .select('*')
-    .eq('event_id', event.id)
-    .order('sort_order')
-
-  // 回答者と回答を取得
-  const { data: responses } = await supabase
-    .from('responses')
-    .select('*, answers(*)')
-    .eq('event_id', event.id)
-    .order('created_at')
+  const [{ data: candidates }, { data: responses }] = await Promise.all([
+    supabase
+      .from('candidates')
+      .select('id, event_id, date, time_label, sort_order')
+      .eq('event_id', event.id)
+      .order('sort_order'),
+    supabase
+      .from('responses')
+      .select('id, event_id, name, note, created_at, answers(id, response_id, candidate_id, value, note)')
+      .eq('event_id', event.id)
+      .order('created_at'),
+  ])
 
   type ResponseWithAnswers = {
     id: string
