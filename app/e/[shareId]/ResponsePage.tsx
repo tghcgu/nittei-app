@@ -161,6 +161,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkStart, setBulkStart] = useState('')
   const [bulkEnd, setBulkEnd] = useState('')
   const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
+  const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
@@ -426,6 +427,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function handleSetAllAnswers(value: AnswerValue) {
+    if (keepExistingAnswers) {
+      const updates = Object.fromEntries(
+        candidates
+          .filter((c) => answers[c.id] === undefined)
+          .map((c) => [c.id, value])
+      )
+
+      setAnswers((prev) => ({ ...prev, ...updates }))
+      return
+    }
+
     const isAlreadyAllSelected =
       candidates.length > 0 && candidates.every((c) => answers[c.id] === value)
 
@@ -744,9 +756,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     >
                       {opt.value === '-' ? '−' : opt.value}
                     </button>
-                  )
-                })}
+                    )
+                  })}
               </div>
+              <label className="flex items-center gap-1.5 text-xs text-stone-400">
+                <input
+                  type="checkbox"
+                  checked={keepExistingAnswers}
+                  onChange={(e) => setKeepExistingAnswers(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
+                />
+                入力済の行は変更しない
+              </label>
             </div>
 
             {bulkOpen && (
