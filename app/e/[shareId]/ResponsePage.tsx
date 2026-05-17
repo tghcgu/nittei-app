@@ -162,6 +162,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkEnd, setBulkEnd] = useState('')
   const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
+  const [lastSetAllAnswers, setLastSetAllAnswers] = useState<{
+    value: AnswerValue
+    candidateIds: string[]
+  } | null>(null)
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
@@ -241,6 +245,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setEditingAnswerIds(newAnswerIds)
     setSharedNote(r.note ?? '')
     setEditingResponseId(r.id)
+    setLastSetAllAnswers(null)
     setSubmitSuccess(false)
     setError(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -253,6 +258,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setEditingAnswerIds({})
     setSharedNote('')
     setEditingResponseId(null)
+    setLastSetAllAnswers(null)
     setError(null)
   }
 
@@ -345,6 +351,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       }
       return merged
     })
+    setLastSetAllAnswers(null)
     setIcsStatus('done')
     setIcsMessage(doneMessage)
   }
@@ -415,6 +422,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       }
     }
     setAnswers((prev) => ({ ...prev, ...updates }))
+    setLastSetAllAnswers(null)
     // 「-」以外なら個別メモをクリア
     if (bulkValue !== '-') {
       setDetailNotes((prev) => {
@@ -428,15 +436,37 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   function handleSetAllAnswers(value: AnswerValue) {
     if (keepExistingAnswers) {
-      const updates = Object.fromEntries(
-        candidates
-          .filter((c) => answers[c.id] === undefined)
-          .map((c) => [c.id, value])
+      if (lastSetAllAnswers?.value === value) {
+        const idsToClear = lastSetAllAnswers.candidateIds
+        setAnswers((prev) => {
+          const next = { ...prev }
+          for (const id of idsToClear) {
+            if (next[id] === value) delete next[id]
+          }
+          return next
+        })
+        setDetailNotes((prev) => {
+          const next = { ...prev }
+          for (const id of idsToClear) delete next[id]
+          return next
+        })
+        setLastSetAllAnswers(null)
+        return
+      }
+
+      const candidateIds = candidates
+        .filter((c) => answers[c.id] === undefined)
+        .map((c) => c.id)
+      const updates: Record<string, AnswerValue> = Object.fromEntries(
+        candidateIds.map((id) => [id, value])
       )
 
       setAnswers((prev) => ({ ...prev, ...updates }))
+      setLastSetAllAnswers(candidateIds.length > 0 ? { value, candidateIds } : null)
       return
     }
+
+    setLastSetAllAnswers(null)
 
     const isAlreadyAllSelected =
       candidates.length > 0 && candidates.every((c) => answers[c.id] === value)
@@ -454,6 +484,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function handleAnswerChange(candidateId: string, value: AnswerValue) {
+    setLastSetAllAnswers(null)
     setAnswers((prev) => {
       if (prev[candidateId] === value) {
         const next = { ...prev }
@@ -538,6 +569,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setEditingAnswerIds({})
       setSharedNote('')
       setEditingResponseId(null)
+      setLastSetAllAnswers(null)
       setSubmitSuccess(true)
 
       router.refresh()
@@ -742,8 +774,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <div className="flex items-center gap-1">
                 <span className="text-xs text-stone-400">全部これに揃える：</span>
                 {ANSWER_OPTIONS.map((opt) => {
-                  const isAllSelected =
-                    candidates.length > 0 && candidates.every((c) => answers[c.id] === opt.value)
+                  const isActive = keepExistingAnswers
+                    ? lastSetAllAnswers?.value === opt.value &&
+                      lastSetAllAnswers.candidateIds.some((id) => answers[id] === opt.value)
+                    : candidates.length > 0 && candidates.every((c) => answers[c.id] === opt.value)
 
                   return (
                     <button
@@ -751,7 +785,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       type="button"
                       onClick={() => handleSetAllAnswers(opt.value)}
                       className={`h-8 w-8 rounded-full border-2 text-sm transition-all hover:scale-110 ${
-                        isAllSelected ? opt.active : opt.idle
+                        isActive ? opt.active : opt.idle
                       }`}
                     >
                       {opt.value === '-' ? '−' : opt.value}
@@ -763,7 +797,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <input
                   type="checkbox"
                   checked={keepExistingAnswers}
-                  onChange={(e) => setKeepExistingAnswers(e.target.checked)}
+                  onChange={(e) => {
+                    setKeepExistingAnswers(e.target.checked)
+                    setLastSetAllAnswers(null)
+                  }}
                   className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
                 />
                 入力済の行は変更しない
