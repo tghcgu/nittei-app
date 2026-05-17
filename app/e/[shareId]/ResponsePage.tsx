@@ -546,7 +546,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="relative mb-2 flex min-h-8 items-center justify-center">
           <Link
             href="/"
-            className="font-serif text-2xl text-rose-800 transition-colors hover:text-rose-900"
+            className="font-serif text-2xl text-stone-700 transition-colors hover:text-stone-900"
           >
             日程組
           </Link>
