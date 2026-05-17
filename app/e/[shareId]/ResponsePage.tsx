@@ -188,7 +188,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function scrollToAnswerForm() {
-    jumpToElement('answer-actions', 40)
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   function toggleBulkOpen() {
