@@ -542,17 +542,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     <div className="min-h-screen px-4 py-4">
       <div className="mx-auto max-w-2xl">
 
-        {/* 戻るリンク */}
-        <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
+        {/* サイトヘッダー */}
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/"
-            className="text-stone-400 transition-colors hover:text-rose-700"
+            className="font-serif text-2xl text-rose-800 transition-colors hover:text-rose-900"
           >
-            ← 新しいイベントを作る
+            日程組
           </Link>
           <Link
             href={`/?edit=${shareId}`}
-            className="text-stone-400 transition-colors hover:text-rose-700"
+            className="text-sm text-stone-400 transition-colors hover:text-rose-700"
           >
             日程を編集
           </Link>
