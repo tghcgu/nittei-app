@@ -543,7 +543,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       <div className="mx-auto max-w-2xl">
 
         {/* サイトヘッダー */}
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <div className="relative mb-2 flex min-h-8 items-center justify-center">
           <Link
             href="/"
             className="font-serif text-2xl text-rose-800 transition-colors hover:text-rose-900"
@@ -552,7 +552,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </Link>
           <Link
             href={`/?edit=${shareId}`}
-            className="text-sm text-stone-400 transition-colors hover:text-rose-700"
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-stone-400 transition-colors hover:text-rose-700"
           >
             日程を編集
           </Link>
