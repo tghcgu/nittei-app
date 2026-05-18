@@ -1,7 +1,6 @@
 'use client'
 
-import { useMemo, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
@@ -141,7 +140,10 @@ function getFirstCandidateMonthRange(candidates: Candidate[]) {
 
 // ---- メインコンポーネント ----
 export function ResponsePage({ shareId, event, candidates, responses }: Props) {
-  const router = useRouter()
+  const [responseRows, setResponseRows] = useState<ResponseWithAnswers[]>(responses)
+  const [isLoadingResponses, setIsLoadingResponses] = useState(false)
+  const [responsesError, setResponsesError] = useState<string | null>(null)
+  const hasLoadedResponsesRef = useRef(false)
   const [name, setName] = useState('')
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({})
   // 個別メモ：「-」選択時のみ、候補日ごと（answers.note に保存）
@@ -217,18 +219,47 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
+  const loadResponses = useCallback(async () => {
+    setIsLoadingResponses(true)
+    setResponsesError(null)
+
+    try {
+      const { data, error } = await supabase
+        .from('responses')
+        .select('id, event_id, name, note, created_at, answers(id, response_id, candidate_id, value, note)')
+        .eq('event_id', event.id)
+        .order('created_at')
+
+      if (error) throw error
+
+      setResponseRows((data ?? []) as ResponseWithAnswers[])
+    } catch (err) {
+      console.error(err)
+      setResponsesError('回答一覧の読み込みに失敗しました。再読み込みしてください。')
+    } finally {
+      setIsLoadingResponses(false)
+    }
+  }, [event.id])
+
+  useEffect(() => {
+    if (hasLoadedResponsesRef.current) return
+    hasLoadedResponsesRef.current = true
+    void loadResponses()
+  }, [loadResponses])
+
   const answerByResponseAndCandidate = useMemo(() => {
     const map = new Map<string, Answer>()
-    for (const response of responses) {
+    for (const response of responseRows) {
       for (const answer of response.answers) {
         map.set(`${response.id}:${answer.candidate_id}`, answer)
       }
     }
     return map
-  }, [responses])
+  }, [responseRows])
   const editingResponse = editingResponseId
-    ? responses.find((response) => response.id === editingResponseId) ?? null
+    ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
+  const hasResponses = responseRows.length > 0
 
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
@@ -288,7 +319,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         handleCancelEdit()
       }
 
-      router.refresh()
+      setResponseRows((prev) => prev.filter((response) => response.id !== r.id))
     } catch (err) {
       console.error(err)
       setError('回答の削除に失敗しました。もう一度試してください。')
@@ -572,7 +603,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setLastSetAllAnswers(null)
       setSubmitSuccess(true)
 
-      router.refresh()
+      await loadResponses()
       setTimeout(() => setSubmitSuccess(false), 3000)
     } catch (err) {
       console.error(err)
@@ -956,7 +987,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               >
                 ↑ 回答へ
               </button>
-              {responses.length > 0 && (
+              {hasResponses && (
                 <div className="flex overflow-hidden rounded-full border border-stone-200">
                   <button
                     type="button"
@@ -987,7 +1018,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </div>
           </div>
 
-          {responses.length === 0 ? (
+          {responsesError && (
+            <p className="mb-3 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700">
+              {responsesError}
+            </p>
+          )}
+
+          {isLoadingResponses && !hasResponses ? (
+            <p className="text-sm text-stone-400">回答一覧を読み込み中...</p>
+          ) : !hasResponses ? (
             <p className="text-sm text-stone-400">まだ回答がありません。</p>
           ) : tableLayout === 'h' ? (
 
@@ -1012,7 +1051,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {responses.map((r) => (
+                  {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-100">
                       <td className="py-2 text-left text-stone-700">
                         <div>{r.name}</div>
@@ -1059,7 +1098,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <thead>
                   <tr>
                     <th className="pb-3 text-left text-xs font-normal text-stone-400">候補日</th>
-                    {responses.map((r) => (
+                    {responseRows.map((r) => (
                       <th key={r.id} className="pb-3 font-normal text-stone-500">
                         <div>{r.name}</div>
                         {r.note && (
@@ -1087,7 +1126,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
                         )}
                       </td>
-                      {responses.map((r) => {
+                      {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
                           <td key={r.id} className="py-2">

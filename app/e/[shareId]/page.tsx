@@ -4,7 +4,6 @@ import { cache } from 'react'
 import { supabase } from '@/lib/supabase'
 import { siteDescription, siteName, siteTitle, siteUrl } from '@/lib/site'
 import { ResponsePage } from './ResponsePage'
-import type { Answer } from '@/lib/database.types'
 
 type Props = {
   params: Promise<{ shareId: string }>
@@ -72,34 +71,18 @@ export default async function Page({
 
   if (!event) notFound()
 
-  const [{ data: candidates }, { data: responses }] = await Promise.all([
-    supabase
-      .from('candidates')
-      .select('id, event_id, date, time_label, sort_order')
-      .eq('event_id', event.id)
-      .order('sort_order'),
-    supabase
-      .from('responses')
-      .select('id, event_id, name, note, created_at, answers(id, response_id, candidate_id, value, note)')
-      .eq('event_id', event.id)
-      .order('created_at'),
-  ])
-
-  type ResponseWithAnswers = {
-    id: string
-    event_id: string
-    name: string
-    note: string | null
-    created_at: string
-    answers: Answer[]
-  }
+  const { data: candidates } = await supabase
+    .from('candidates')
+    .select('id, event_id, date, time_label, sort_order')
+    .eq('event_id', event.id)
+    .order('sort_order')
 
   return (
     <ResponsePage
       shareId={shareId}
       event={event}
       candidates={candidates ?? []}
-      responses={(responses ?? []) as ResponseWithAnswers[]}
+      responses={[]}
     />
   )
 }
