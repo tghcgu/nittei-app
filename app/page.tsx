@@ -46,7 +46,6 @@ type BusyPeriod = {
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
-const DEFAULT_CLOCK_TIME = '21:00'
 
 function generateShareId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -215,7 +214,10 @@ function SortableCandidate({
           type="time"
           step={900}
           value={toStartClockValue(c.timeLabel)}
-          onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(e.target.value, toEndClockValue(c.timeLabel)))}
+          onChange={(e) => {
+            const start = e.target.value
+            onUpdate(c.id, 'timeLabel', toTimeLabel(start, start ? toEndClockValue(c.timeLabel) : ''))
+          }}
           aria-label="開始時間"
           className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
         />
@@ -225,8 +227,9 @@ function SortableCandidate({
           step={900}
           value={toEndClockValue(c.timeLabel)}
           onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(toStartClockValue(c.timeLabel), e.target.value))}
+          disabled={!toStartClockValue(c.timeLabel)}
           aria-label="終了時間（任意）"
-          className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+          className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300"
         />
       </div>
       <button
@@ -245,7 +248,7 @@ export default function Home() {
   const router = useRouter()
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
-  const [defaultStartTime, setDefaultStartTime] = useState(DEFAULT_CLOCK_TIME)
+  const [defaultStartTime, setDefaultStartTime] = useState('')
   const [defaultEndTime, setDefaultEndTime] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
@@ -324,7 +327,7 @@ export default function Home() {
         setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
         setSelectedCandidateIds(new Set())
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
-        setDefaultStartTime(draftTime.start || DEFAULT_CLOCK_TIME)
+        setDefaultStartTime(draftTime.start)
         setDefaultEndTime(draftTime.end)
       } catch (err) {
         console.error(err)
@@ -417,7 +420,7 @@ export default function Home() {
   function updateCandidate(id: string, field: 'date' | 'timeLabel', value: string) {
     if (field === 'timeLabel') {
       const nextTime = parseTimeLabel(value)
-      setDefaultStartTime(nextTime.start || DEFAULT_CLOCK_TIME)
+      setDefaultStartTime(nextTime.start)
       setDefaultEndTime(nextTime.end)
     }
 
@@ -797,7 +800,11 @@ export default function Home() {
                   type="time"
                   step={900}
                   value={defaultStartTime}
-                  onChange={(e) => setDefaultStartTime(e.target.value || DEFAULT_CLOCK_TIME)}
+                  onChange={(e) => {
+                    const start = e.target.value
+                    setDefaultStartTime(start)
+                    if (!start) setDefaultEndTime('')
+                  }}
                   aria-label="開始時間"
                   className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                 />
@@ -807,8 +814,9 @@ export default function Home() {
                   step={900}
                   value={defaultEndTime}
                   onChange={(e) => setDefaultEndTime(e.target.value)}
+                  disabled={!defaultStartTime}
                   aria-label="終了時間（任意）"
-                  className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                  className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300"
                 />
               </div>
               <button
