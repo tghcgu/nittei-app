@@ -32,6 +32,7 @@ type Candidate = {
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
+const DEFAULT_CLOCK_TIME = '21:00'
 
 function generateShareId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -64,6 +65,17 @@ function getCalendarGrid(year: number, month: number): (Date | null)[] {
   const grid: (Date | null)[] = Array(firstDay.getDay()).fill(null)
   for (let d = 1; d <= lastDate; d++) grid.push(new Date(year, month, d))
   return grid
+}
+
+function toClockValue(timeLabel: string): string {
+  const match = timeLabel.match(/(\d{1,2}):(\d{2})/)
+  if (!match) return ''
+
+  return `${match[1].padStart(2, '0')}:${match[2]}`
+}
+
+function toTimeLabel(clockValue: string): string {
+  return clockValue ? `${clockValue}〜` : ''
 }
 
 function getMonthDatesFromToday(year: number, month: number): string[] {
@@ -172,13 +184,17 @@ function SortableCandidate({
         onChange={(e) => onUpdate(c.id, 'date', e.target.value)}
         className="flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
       />
-      <input
-        type="text"
-        value={c.timeLabel}
-        onChange={(e) => onUpdate(c.id, 'timeLabel', e.target.value)}
-        placeholder="19:00〜"
-        className="w-24 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-      />
+      <div className="flex shrink-0 items-center gap-1">
+        <input
+          type="time"
+          step={900}
+          value={toClockValue(c.timeLabel)}
+          onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(e.target.value))}
+          aria-label="候補時間"
+          className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+        />
+        <span className="text-sm text-stone-400">〜</span>
+      </div>
       <button
         type="button"
         onClick={() => onRemove(c.id)}
@@ -195,7 +211,7 @@ export default function Home() {
   const router = useRouter()
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
-  const [defaultTime, setDefaultTime] = useState('21:00〜')
+  const [defaultTime, setDefaultTime] = useState(DEFAULT_CLOCK_TIME)
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
   const [nextId, setNextId] = useState(1)
@@ -272,7 +288,7 @@ export default function Home() {
         setCandidates(drafts)
         setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
         setSelectedCandidateIds(new Set())
-        setDefaultTime(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '21:00〜')
+        setDefaultTime(toClockValue(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '') || DEFAULT_CLOCK_TIME)
       } catch (err) {
         console.error(err)
         if (!cancelled) setError('編集する日程を読み込めませんでした。')
@@ -314,7 +330,7 @@ export default function Home() {
   function addDatesFromList(dates: string[]) {
     const toAdd = dates.filter(Boolean).sort()
     if (toAdd.length === 0) return
-    const newCandidateTime = defaultTime.trim()
+    const newCandidateTime = toTimeLabel(defaultTime)
     let id = nextId
     const newItems = toAdd.map((d) => ({
       id: `new-${id++}`,
@@ -328,14 +344,16 @@ export default function Home() {
 
   // ---- 時間一括適用 ----
   function applyTimeToAll() {
-    setCandidates((prev) => prev.map((c) => ({ ...c, timeLabel: defaultTime })))
+    const timeLabel = toTimeLabel(defaultTime)
+    setCandidates((prev) => prev.map((c) => ({ ...c, timeLabel })))
   }
 
   function applyTimeToSelected() {
     if (selectedCandidateIds.size === 0) return
+    const timeLabel = toTimeLabel(defaultTime)
     setCandidates((prev) =>
       prev.map((c) =>
-        selectedCandidateIds.has(c.id) ? { ...c, timeLabel: defaultTime } : c
+        selectedCandidateIds.has(c.id) ? { ...c, timeLabel } : c
       )
     )
   }
@@ -361,7 +379,7 @@ export default function Home() {
 
   function updateCandidate(id: string, field: 'date' | 'timeLabel', value: string) {
     if (field === 'timeLabel') {
-      setDefaultTime(value)
+      setDefaultTime(toClockValue(value))
     }
 
     setCandidates((prev) =>
@@ -708,13 +726,17 @@ export default function Home() {
             {/* 時間帯バー */}
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
               <span className="shrink-0 text-sm text-stone-500">時間帯：</span>
-              <input
-                type="text"
-                value={defaultTime}
-                onChange={(e) => setDefaultTime(e.target.value)}
-                placeholder="19:00〜"
-                className="w-24 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-              />
+              <div className="flex items-center gap-1">
+                <input
+                  type="time"
+                  step={900}
+                  value={defaultTime}
+                  onChange={(e) => setDefaultTime(e.target.value)}
+                  aria-label="時間帯"
+                  className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                />
+                <span className="text-sm text-stone-400">〜</span>
+              </div>
               <button
                 type="button"
                 onClick={applyTimeToAll}
