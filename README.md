@@ -1,36 +1,171 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 日程組
 
-## Getting Started
+候補日を作ってURLを共有するだけで、参加者がログイン不要で回答できる日程調整Webアプリです。
 
-First, run the development server:
+公開URL: https://nittei-app-five.vercel.app/
+
+## 概要
+
+飲み会、会議、面談などの日程調整を、できるだけ少ない手間で行うためのサービスです。
+
+主催者はイベント名と候補日を登録し、発行されたURLを参加者へ共有します。参加者は共有URLからアクセスし、各候補日に対して「○」「△」「✕」「-」で回答できます。
+
+「-」を選んだ場合は、「夕方以降ならOK」「仕事次第」などの補足コメントを残せます。単純な○△✕だけでは表しにくい予定のニュアンスも共有できるようにしました。
+
+## 主な機能
+
+- イベント作成
+- 共有URLの発行
+- 候補日の手動追加
+- 範囲指定による候補日の一括追加
+- カレンダーからの候補日選択
+- 候補日の並び替え
+- `.ics`ファイル読み込みによる予定日の自動判定
+- 回答者による○ / △ / ✕ / - の4択回答
+- 「-」選択時の個別コメント入力
+- 回答者ごとの編集・削除
+- 回答一覧の縦表示 / 横表示切り替え
+- 回答時の`.ics`読み込みによる、予定がある日の一括✕設定
+- スマートフォン / PC 両対応
+- ログイン不要
+
+## 使用技術
+
+| 分類 | 技術 |
+| --- | --- |
+| 言語 | TypeScript |
+| フロントエンド | React |
+| フレームワーク | Next.js App Router |
+| スタイリング | Tailwind CSS |
+| データベース | Supabase |
+| ホスティング | Vercel |
+| カレンダー解析 | ical.js |
+| 並び替えUI | dnd-kit |
+| 計測 | Vercel Analytics / Speed Insights |
+
+## 技術構成
+
+### Next.js
+
+Next.jsのApp Routerを使い、トップページと共有URLごとの回答ページを実装しています。
+
+- `app/page.tsx`: イベント作成・編集画面
+- `app/e/[shareId]/page.tsx`: 共有URLごとの回答ページ
+- `app/e/[shareId]/ResponsePage.tsx`: 回答画面のUIと操作
+- `app/layout.tsx`: サイト全体のメタデータ、Analytics設定
+
+共有URLの`shareId`をもとにSupabaseからイベント情報を取得し、存在しないイベントの場合は404を返すようにしています。
+
+### React
+
+Reactでは、ユーザー操作に応じて変化する画面状態を管理しています。
+
+- イベント名、説明文、候補日リスト
+- 候補日の選択状態
+- 回答者名、回答内容、コメント
+- 編集中・削除中・送信中などの状態
+- エラー表示
+- 回答一覧の表示切り替え
+
+フォーム入力、候補日の追加、回答の編集、`.ics`読み込み結果の反映など、ユーザーが操作する部分をReactで実装しています。
+
+### TypeScript
+
+Supabaseのテーブル構造をTypeScriptの型として定義し、扱うデータの形を明確にしています。
+
+主な型定義は`lib/database.types.ts`にまとめています。
+
+- `events`: イベント本体
+- `candidates`: 候補日
+- `responses`: 回答者ごとの回答
+- `answers`: 各候補日に対する回答
+
+回答値は`○ | △ | ✕ | -`に限定し、想定外の値を扱いにくくしています。
+
+### Supabase
+
+Supabaseをデータベースとして利用しています。
+
+イベント作成時には`events`テーブルにイベント情報を保存し、`candidates`テーブルに候補日を保存します。回答時には`responses`テーブルに回答者情報を保存し、`answers`テーブルに候補日ごとの回答を保存します。
+
+データを分けて管理することで、イベント、候補日、回答者、回答内容を扱いやすくしています。
+
+### Vercel
+
+Vercelにデプロイし、本番URLで実際に利用できる状態にしています。
+
+公開URL: https://nittei-app-five.vercel.app/
+
+Vercel AnalyticsとSpeed Insightsも導入し、公開後の利用状況やパフォーマンスを確認できる構成にしています。
+
+## 工夫した点
+
+### 4択回答とコメント
+
+一般的な日程調整では○△✕の3択が多いですが、このアプリでは「-」を追加しました。
+
+「参加できるか未定だが、条件付きで可能」「その日は状況次第」など、△だけでは伝えにくい情報をコメント付きで残せるようにしています。
+
+### 候補日入力の手間を減らすUI
+
+候補日を1日ずつ追加するだけでなく、範囲指定やカレンダー選択にも対応しました。
+
+日数が多いイベントでも、候補日をまとめて登録しやすいようにしています。
+
+### `.ics`ファイルの活用
+
+カレンダーアプリから出力できる`.ics`ファイルを読み込み、予定がある日を判定できるようにしました。
+
+主催者側では、自分の予定と重なる日を候補日から外せます。回答者側では、予定が入っている日をまとめて✕にできます。
+
+### ログイン不要の設計
+
+日程調整では、参加者にアカウント作成を求めると回答のハードルが上がります。
+
+そのため、URLを共有するだけで回答できる設計にし、できるだけすぐ使える体験を重視しました。
+
+## ローカルでの起動方法
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+起動後、ブラウザで以下を開きます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 環境変数
 
-## Learn More
+`.env.local`に以下の環境変数を設定します。
 
-To learn more about Next.js, take a look at the following resources:
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=
+GEMINI_API_KEY=
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+実際の値は公開しないでください。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 確認コマンド
 
-## Deploy on Vercel
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 今後の改善案
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 回答集計の見やすさ改善
+- 候補日ごとの参加人数表示の強化
+- Googleカレンダー連携の改善
+- イベント編集時の権限管理
+- 共有時のOGP表示の改善
+
+## お問い合わせ
+
+nittei.app5@gmail.com

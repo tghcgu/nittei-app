@@ -1,8 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import ICAL from 'ical.js'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
@@ -51,6 +49,21 @@ const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
 
+type CalendarComponent = {
+  getAllProperties: (name: string) => { getValues: () => unknown[] }[]
+  getFirstPropertyValue: (name: string) => unknown
+}
+
+type CalendarEvent = {
+  startDate: { isDate: boolean }
+}
+
+type BusyPeriod = {
+  start: Date
+  end: Date
+  isAllDay: boolean
+}
+
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -78,7 +91,7 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   return dateStr >= startDate && dateStr < endDate
 }
 
-function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
+function getCalendarPropertyText(vevent: CalendarComponent, name: string): string {
   return vevent
     .getAllProperties(name)
     .flatMap((property) => property.getValues())
@@ -86,7 +99,7 @@ function getCalendarPropertyText(vevent: ICAL.Component, name: string): string {
     .join(' ')
 }
 
-function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+function isNonBlockingAllDayEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
   if (!event.startDate.isDate) return false
 
   const text = [
@@ -100,7 +113,7 @@ function isNonBlockingAllDayEvent(vevent: ICAL.Component, event: ICAL.Event): bo
   return NON_BLOCKING_ALL_DAY_KEYWORDS.some((keyword) => normalized.includes(keyword.toUpperCase()))
 }
 
-function isBlockingCalendarEvent(vevent: ICAL.Component, event: ICAL.Event): boolean {
+function isBlockingCalendarEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
@@ -127,7 +140,10 @@ function getFirstCandidateMonthRange(candidates: Candidate[]) {
 
 // ---- メインコンポーネント ----
 export function ResponsePage({ shareId, event, candidates, responses }: Props) {
-  const router = useRouter()
+  const [responseRows, setResponseRows] = useState<ResponseWithAnswers[]>(responses)
+  const [isLoadingResponses, setIsLoadingResponses] = useState(false)
+  const [responsesError, setResponsesError] = useState<string | null>(null)
+  const hasLoadedResponsesRef = useRef(false)
   const [name, setName] = useState('')
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({})
   // 個別メモ：「-」選択時のみ、候補日ごと（answers.note に保存）
@@ -147,6 +163,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkStart, setBulkStart] = useState('')
   const [bulkEnd, setBulkEnd] = useState('')
   const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
+  const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
+  const [lastSetAllAnswers, setLastSetAllAnswers] = useState<{
+    value: AnswerValue
+    candidateIds: string[]
+  } | null>(null)
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
@@ -157,6 +178,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  function jumpToElement(id: string, topPadding = 32) {
+    const element = document.getElementById(id)
+    if (!element) return
+
+    window.scrollTo({
+      top: Math.max(0, element.getBoundingClientRect().top + window.scrollY - topPadding),
+      behavior: 'auto',
+    })
+  }
+
+  function scrollToResponses() {
+    jumpToElement('answer-submit-area', 16)
+  }
+
+  function scrollToAnswerForm() {
+    window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
   function toggleBulkOpen() {
@@ -180,9 +219,47 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
+  const loadResponses = useCallback(async () => {
+    setIsLoadingResponses(true)
+    setResponsesError(null)
+
+    try {
+      const { data, error } = await supabase
+        .from('responses')
+        .select('id, event_id, name, note, created_at, answers(id, response_id, candidate_id, value, note)')
+        .eq('event_id', event.id)
+        .order('created_at')
+
+      if (error) throw error
+
+      setResponseRows((data ?? []) as ResponseWithAnswers[])
+    } catch (err) {
+      console.error(err)
+      setResponsesError('回答一覧の読み込みに失敗しました。再読み込みしてください。')
+    } finally {
+      setIsLoadingResponses(false)
+    }
+  }, [event.id])
+
+  useEffect(() => {
+    if (hasLoadedResponsesRef.current) return
+    hasLoadedResponsesRef.current = true
+    void loadResponses()
+  }, [loadResponses])
+
+  const answerByResponseAndCandidate = useMemo(() => {
+    const map = new Map<string, Answer>()
+    for (const response of responseRows) {
+      for (const answer of response.answers) {
+        map.set(`${response.id}:${answer.candidate_id}`, answer)
+      }
+    }
+    return map
+  }, [responseRows])
   const editingResponse = editingResponseId
-    ? responses.find((response) => response.id === editingResponseId) ?? null
+    ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
+  const hasResponses = responseRows.length > 0
 
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
@@ -199,6 +276,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setEditingAnswerIds(newAnswerIds)
     setSharedNote(r.note ?? '')
     setEditingResponseId(r.id)
+    setLastSetAllAnswers(null)
     setSubmitSuccess(false)
     setError(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -211,6 +289,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setEditingAnswerIds({})
     setSharedNote('')
     setEditingResponseId(null)
+    setLastSetAllAnswers(null)
     setError(null)
   }
 
@@ -240,7 +319,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         handleCancelEdit()
       }
 
-      router.refresh()
+      setResponseRows((prev) => prev.filter((response) => response.id !== r.id))
     } catch (err) {
       console.error(err)
       setError('回答の削除に失敗しました。もう一度試してください。')
@@ -278,6 +357,36 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // ---- .ics ファイルから日程を読み取り ----
   const icsInputRef = useRef<HTMLInputElement>(null)
 
+  function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
+    const newAnswers: Record<string, AnswerValue> = {}
+    for (const c of candidates) {
+      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
+      const csMs = new Date(cs).getTime()
+      const ceMs = new Date(ce).getTime()
+      const datePrefix = c.date
+
+      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
+        if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
+        return start.getTime() < ceMs && end.getTime() > csMs
+      })
+
+      newAnswers[c.id] = isBusy ? '✕' : '○'
+    }
+
+    // 既に✕になっている候補は次の読み込みでも✕を維持する
+    setAnswers((prev) => {
+      const merged: Record<string, AnswerValue> = { ...prev }
+      for (const [id, val] of Object.entries(newAnswers)) {
+        if (prev[id] === '✕') continue
+        merged[id] = val
+      }
+      return merged
+    })
+    setLastSetAllAnswers(null)
+    setIcsStatus('done')
+    setIcsMessage(doneMessage)
+  }
+
   async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -287,6 +396,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setIcsMessage('')
 
     try {
+      const ICAL = (await import('ical.js')).default
       const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
       const rangeStart = ICAL.Time.fromDateTimeString(sortedDates[0].date + 'T00:00:00')
       const rangeEnd = ICAL.Time.fromDateTimeString(sortedDates[sortedDates.length - 1].date + 'T23:59:59')
@@ -309,46 +419,25 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         if (!isBlockingCalendarEvent(vevent, event)) continue
         if (event.isRecurring()) {
           const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-          let next: ICAL.Time | null
           let count = 0
-          while ((next = expand.next()) && count < MAX_RECURRING_OCCURRENCES) {
+          let next = expand.next()
+          while (next && count < MAX_RECURRING_OCCURRENCES) {
             count++
             const detail = event.getOccurrenceDetails(next)
             if (detail.startDate.compare(rangeEnd) > 0) break
             if (detail.endDate.compare(rangeStart) <= 0) continue
             busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+            next = expand.next()
           }
         } else {
           busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
-      const newAnswers: Record<string, AnswerValue> = {}
-      for (const c of candidates) {
-        const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
-        const csMs = new Date(cs).getTime()
-        const ceMs = new Date(ce).getTime()
-        const datePrefix = c.date
-
-        const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-          if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
-          return start.getTime() < ceMs && end.getTime() > csMs
-        })
-
-        newAnswers[c.id] = isBusy ? '✕' : '○'
-      }
-
-      // 既に✕になっている候補は次のファイルを読んでも✕を維持する
-      setAnswers((prev) => {
-        const merged: Record<string, AnswerValue> = { ...prev }
-        for (const [id, val] of Object.entries(newAnswers)) {
-          if (prev[id] === '✕') continue
-          merged[id] = val
-        }
-        return merged
-      })
-      setIcsStatus('done')
-      setIcsMessage('.ics を解析しました。内容を確認してから送信してください。')
+      applyBusyPeriodsToAnswers(
+        busyPeriods,
+        '.ics を解析しました。内容を確認してから送信してください。'
+      )
     } catch {
       setIcsStatus('error')
       setIcsMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
@@ -364,6 +453,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       }
     }
     setAnswers((prev) => ({ ...prev, ...updates }))
+    setLastSetAllAnswers(null)
     // 「-」以外なら個別メモをクリア
     if (bulkValue !== '-') {
       setDetailNotes((prev) => {
@@ -375,7 +465,57 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setBulkOpen(false)
   }
 
+  function handleSetAllAnswers(value: AnswerValue) {
+    if (keepExistingAnswers) {
+      if (lastSetAllAnswers?.value === value) {
+        const idsToClear = lastSetAllAnswers.candidateIds
+        setAnswers((prev) => {
+          const next = { ...prev }
+          for (const id of idsToClear) {
+            if (next[id] === value) delete next[id]
+          }
+          return next
+        })
+        setDetailNotes((prev) => {
+          const next = { ...prev }
+          for (const id of idsToClear) delete next[id]
+          return next
+        })
+        setLastSetAllAnswers(null)
+        return
+      }
+
+      const candidateIds = candidates
+        .filter((c) => answers[c.id] === undefined)
+        .map((c) => c.id)
+      const updates: Record<string, AnswerValue> = Object.fromEntries(
+        candidateIds.map((id) => [id, value])
+      )
+
+      setAnswers((prev) => ({ ...prev, ...updates }))
+      setLastSetAllAnswers(candidateIds.length > 0 ? { value, candidateIds } : null)
+      return
+    }
+
+    setLastSetAllAnswers(null)
+
+    const isAlreadyAllSelected =
+      candidates.length > 0 && candidates.every((c) => answers[c.id] === value)
+
+    if (isAlreadyAllSelected) {
+      setAnswers({})
+      setDetailNotes({})
+      return
+    }
+
+    setAnswers(Object.fromEntries(candidates.map((c) => [c.id, value])))
+    if (value !== '-') {
+      setDetailNotes({})
+    }
+  }
+
   function handleAnswerChange(candidateId: string, value: AnswerValue) {
+    setLastSetAllAnswers(null)
     setAnswers((prev) => {
       if (prev[candidateId] === value) {
         const next = { ...prev }
@@ -460,9 +600,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setEditingAnswerIds({})
       setSharedNote('')
       setEditingResponseId(null)
+      setLastSetAllAnswers(null)
       setSubmitSuccess(true)
 
-      router.refresh()
+      await loadResponses()
       setTimeout(() => setSubmitSuccess(false), 3000)
     } catch (err) {
       console.error(err)
@@ -476,17 +617,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     <div className="min-h-screen px-4 py-4">
       <div className="mx-auto max-w-2xl">
 
-        {/* 戻るリンク */}
-        <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
+        {/* サイトヘッダー */}
+        <div className="relative mb-2 flex min-h-8 items-center justify-center">
           <Link
             href="/"
-            className="text-stone-400 transition-colors hover:text-rose-700"
+            className="font-serif text-2xl text-stone-700 transition-colors hover:text-stone-900"
           >
-            ← 新しいイベントを作る
+            日程組
           </Link>
           <Link
             href={`/?edit=${shareId}`}
-            className="text-stone-400 transition-colors hover:text-rose-700"
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-stone-400 transition-colors hover:text-rose-700"
           >
             日程を編集
           </Link>
@@ -496,25 +637,35 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="mb-1">
           <h1 className="font-serif text-3xl text-rose-800">{event.name}</h1>
           {event.description && (
-            <p className="mt-1 text-stone-600">{event.description}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-stone-600">{event.description}</p>
           )}
-          <button
-            type="button"
-            onClick={handleCopyUrl}
-            className="mt-0.5 inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
-          >
-            {copied ? (
-              <>✓ コピーしました</>
-            ) : (
-              <>/e/{shareId} ⧉</>
-            )}
-          </button>
+          <div id="answer-actions" className="mt-0.5 flex scroll-mt-4 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopyUrl}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+            >
+              {copied ? (
+                <>✓ コピーしました</>
+              ) : (
+                <>/e/{shareId} ⧉</>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={scrollToResponses}
+              className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+            >
+              ↓ みんなの回答へ
+            </button>
+          </div>
         </div>
 
         {/* 回答フォーム */}
         <form
+          id="answer-form"
           onSubmit={handleSubmit}
-          className="mb-8 rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur"
+          className="mb-8 scroll-mt-4 rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur"
         >
           <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
@@ -653,21 +804,38 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               </button>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-stone-400">全部これに揃える：</span>
-                {ANSWER_OPTIONS.filter((o) => o.value !== '-').map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() =>
-                      setAnswers(
-                        Object.fromEntries(candidates.map((c) => [c.id, opt.value]))
-                      )
-                    }
-                    className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${opt.idle} hover:scale-110`}
-                  >
-                    {opt.value}
-                  </button>
-                ))}
+                {ANSWER_OPTIONS.map((opt) => {
+                  const isActive = keepExistingAnswers
+                    ? lastSetAllAnswers?.value === opt.value &&
+                      lastSetAllAnswers.candidateIds.some((id) => answers[id] === opt.value)
+                    : candidates.length > 0 && candidates.every((c) => answers[c.id] === opt.value)
+
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleSetAllAnswers(opt.value)}
+                      className={`h-8 w-8 rounded-full border-2 text-sm transition-all hover:scale-110 ${
+                        isActive ? opt.active : opt.idle
+                      }`}
+                    >
+                      {opt.value === '-' ? '−' : opt.value}
+                    </button>
+                    )
+                  })}
               </div>
+              <label className="flex items-center gap-1.5 text-xs text-stone-400">
+                <input
+                  type="checkbox"
+                  checked={keepExistingAnswers}
+                  onChange={(e) => {
+                    setKeepExistingAnswers(e.target.checked)
+                    setLastSetAllAnswers(null)
+                  }}
+                  className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
+                />
+                入力済の行は変更しない
+              </label>
             </div>
 
             {bulkOpen && (
@@ -784,62 +952,81 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             />
           </div>
 
-          {/* エラー・成功メッセージ */}
-          {error && (
-            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
-              {error}
-            </p>
-          )}
-          {submitSuccess && (
-            <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-              {editingResponseId ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
-            </p>
-          )}
+          <div id="answer-submit-area">
+            {/* エラー・成功メッセージ */}
+            {error && (
+              <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+                {error}
+              </p>
+            )}
+            {submitSuccess && (
+              <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+                {editingResponseId ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
+              </p>
+            )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting || Boolean(deletingResponseId)}
-            className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
-          </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || Boolean(deletingResponseId)}
+              className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
+            </button>
+          </div>
         </form>
 
         {/* 集計テーブル */}
-        <div className="rounded-2xl bg-white/70 px-8 py-8 shadow-sm backdrop-blur">
-          <div className="mb-6 flex items-center justify-between">
+        <div id="responses-section" className="scroll-mt-4 rounded-2xl bg-white/70 px-6 py-6 shadow-sm backdrop-blur">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
-            {responses.length > 0 && (
-              <div className="flex overflow-hidden rounded-full border border-stone-200">
-                <button
-                  type="button"
-                  onClick={() => setTableLayout('h')}
-                  title="横向き表示"
-                  className={`px-3 py-1.5 text-xs transition-colors ${
-                    tableLayout === 'h'
-                      ? 'bg-rose-800 text-white'
-                      : 'text-stone-400 hover:bg-stone-50'
-                  }`}
-                >
-                  ╠═╣ 横
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTableLayout('v')}
-                  title="縦向き表示"
-                  className={`border-l border-stone-200 px-3 py-1.5 text-xs transition-colors ${
-                    tableLayout === 'v'
-                      ? 'bg-rose-800 text-white'
-                      : 'text-stone-400 hover:bg-stone-50'
-                  }`}
-                >
-                  縦 ╦
-                </button>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={scrollToAnswerForm}
+                className="rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+              >
+                ↑ 回答へ
+              </button>
+              {hasResponses && (
+                <div className="flex overflow-hidden rounded-full border border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => setTableLayout('h')}
+                    title="横向き表示"
+                    className={`px-3 py-1.5 text-xs transition-colors ${
+                      tableLayout === 'h'
+                        ? 'bg-rose-800 text-white'
+                        : 'text-stone-400 hover:bg-stone-50'
+                    }`}
+                  >
+                    ╠═╣ 横
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTableLayout('v')}
+                    title="縦向き表示"
+                    className={`border-l border-stone-200 px-3 py-1.5 text-xs transition-colors ${
+                      tableLayout === 'v'
+                        ? 'bg-rose-800 text-white'
+                        : 'text-stone-400 hover:bg-stone-50'
+                    }`}
+                  >
+                    縦 ╦
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {responses.length === 0 ? (
+          {responsesError && (
+            <p className="mb-3 rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700">
+              {responsesError}
+            </p>
+          )}
+
+          {isLoadingResponses && !hasResponses ? (
+            <p className="text-sm text-stone-400">回答一覧を読み込み中...</p>
+          ) : !hasResponses ? (
             <p className="text-sm text-stone-400">まだ回答がありません。</p>
           ) : tableLayout === 'h' ? (
 
@@ -848,11 +1035,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="w-28 pb-4 text-left text-xs font-normal text-stone-400">名前</th>
+                    <th className="w-28 pb-3 text-left text-xs font-normal text-stone-400">名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="pb-4 font-normal text-stone-500"
+                        className="pb-3 font-normal text-stone-500"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
@@ -860,24 +1047,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </th>
                     ))}
-                    <th className="pb-4"></th>
+                    <th className="pb-3"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {responses.map((r) => (
+                  {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-100">
-                      <td className="py-3 text-left text-stone-700">
+                      <td className="py-2 text-left text-stone-700">
                         <div>{r.name}</div>
                         {r.note && (
                           <div className="text-xs text-stone-400">（{r.note}）</div>
                         )}
                       </td>
                       {candidates.map((c) => {
-                        const answer = r.answers.find((a) => a.candidate_id === c.id)
+                        const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
                           <td
                             key={c.id}
-                            className="py-3"
+                            className="py-2"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
@@ -888,7 +1075,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           </td>
                         )
                       })}
-                      <td className="py-3">
+                      <td className="py-2">
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
@@ -910,9 +1097,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="pb-4 text-left text-xs font-normal text-stone-400">候補日</th>
-                    {responses.map((r) => (
-                      <th key={r.id} className="pb-4 font-normal text-stone-500">
+                    <th className="pb-3 text-left text-xs font-normal text-stone-400">候補日</th>
+                    {responseRows.map((r) => (
+                      <th key={r.id} className="pb-3 font-normal text-stone-500">
                         <div>{r.name}</div>
                         {r.note && (
                           <div className="text-xs font-normal text-stone-400">（{r.note}）</div>
@@ -931,7 +1118,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-100">
-                      <td className="py-3 text-left">
+                      <td className="py-2 text-left">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -939,10 +1126,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
                         )}
                       </td>
-                      {responses.map((r) => {
-                        const answer = r.answers.find((a) => a.candidate_id === c.id)
+                      {responseRows.map((r) => {
+                        const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="py-3">
+                          <td key={r.id} className="py-2">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
