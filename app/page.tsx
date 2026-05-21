@@ -81,15 +81,27 @@ function getCalendarGrid(year: number, month: number): (Date | null)[] {
   return grid
 }
 
-function toClockValue(timeLabel: string): string {
-  const match = timeLabel.match(/(\d{1,2}):(\d{2})/)
-  if (!match) return ''
+function parseTimeLabel(timeLabel: string): { start: string; end: string } {
+  const match = timeLabel.match(/(\d{1,2}):(\d{2})(?:[〜~\-](\d{1,2}):(\d{2}))?/)
+  if (!match) return { start: '', end: '' }
 
-  return `${match[1].padStart(2, '0')}:${match[2]}`
+  return {
+    start: `${match[1].padStart(2, '0')}:${match[2]}`,
+    end: match[3] ? `${match[3].padStart(2, '0')}:${match[4]}` : '',
+  }
 }
 
-function toTimeLabel(clockValue: string): string {
-  return clockValue ? `${clockValue}〜` : ''
+function toStartClockValue(timeLabel: string): string {
+  return parseTimeLabel(timeLabel).start
+}
+
+function toEndClockValue(timeLabel: string): string {
+  return parseTimeLabel(timeLabel).end
+}
+
+function toTimeLabel(startClockValue: string, endClockValue = ''): string {
+  if (!startClockValue) return ''
+  return endClockValue ? `${startClockValue}〜${endClockValue}` : `${startClockValue}〜`
 }
 
 function getMonthDatesFromToday(year: number, month: number): string[] {
@@ -173,7 +185,7 @@ function SortableCandidate({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 ${isDragging ? 'opacity-60' : ''}`}
+      className={`flex flex-wrap items-center gap-2 ${isDragging ? 'opacity-60' : ''}`}
     >
       {/* ドラッグハンドル */}
       <span
@@ -196,18 +208,26 @@ function SortableCandidate({
         required
         value={c.date}
         onChange={(e) => onUpdate(c.id, 'date', e.target.value)}
-        className="flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+        className="min-w-36 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
       />
       <div className="flex shrink-0 items-center gap-1">
         <input
           type="time"
           step={900}
-          value={toClockValue(c.timeLabel)}
-          onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(e.target.value))}
-          aria-label="候補時間"
+          value={toStartClockValue(c.timeLabel)}
+          onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(e.target.value, toEndClockValue(c.timeLabel)))}
+          aria-label="開始時間"
           className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
         />
         <span className="text-sm text-stone-400">〜</span>
+        <input
+          type="time"
+          step={900}
+          value={toEndClockValue(c.timeLabel)}
+          onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(toStartClockValue(c.timeLabel), e.target.value))}
+          aria-label="終了時間（任意）"
+          className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+        />
       </div>
       <button
         type="button"
@@ -225,7 +245,8 @@ export default function Home() {
   const router = useRouter()
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
-  const [defaultTime, setDefaultTime] = useState(DEFAULT_CLOCK_TIME)
+  const [defaultStartTime, setDefaultStartTime] = useState(DEFAULT_CLOCK_TIME)
+  const [defaultEndTime, setDefaultEndTime] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
   const [nextId, setNextId] = useState(1)
@@ -302,7 +323,9 @@ export default function Home() {
         setCandidates(drafts)
         setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
         setSelectedCandidateIds(new Set())
-        setDefaultTime(toClockValue(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '') || DEFAULT_CLOCK_TIME)
+        const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
+        setDefaultStartTime(draftTime.start || DEFAULT_CLOCK_TIME)
+        setDefaultEndTime(draftTime.end)
       } catch (err) {
         console.error(err)
         if (!cancelled) setError('編集する日程を読み込めませんでした。')
@@ -344,7 +367,7 @@ export default function Home() {
   function addDatesFromList(dates: string[]) {
     const toAdd = dates.filter(Boolean).sort()
     if (toAdd.length === 0) return
-    const newCandidateTime = toTimeLabel(defaultTime)
+    const newCandidateTime = toTimeLabel(defaultStartTime, defaultEndTime)
     let id = nextId
     const newItems = toAdd.map((d) => ({
       id: `new-${id++}`,
@@ -358,13 +381,13 @@ export default function Home() {
 
   // ---- 時間一括適用 ----
   function applyTimeToAll() {
-    const timeLabel = toTimeLabel(defaultTime)
+    const timeLabel = toTimeLabel(defaultStartTime, defaultEndTime)
     setCandidates((prev) => prev.map((c) => ({ ...c, timeLabel })))
   }
 
   function applyTimeToSelected() {
     if (selectedCandidateIds.size === 0) return
-    const timeLabel = toTimeLabel(defaultTime)
+    const timeLabel = toTimeLabel(defaultStartTime, defaultEndTime)
     setCandidates((prev) =>
       prev.map((c) =>
         selectedCandidateIds.has(c.id) ? { ...c, timeLabel } : c
@@ -393,7 +416,9 @@ export default function Home() {
 
   function updateCandidate(id: string, field: 'date' | 'timeLabel', value: string) {
     if (field === 'timeLabel') {
-      setDefaultTime(toClockValue(value))
+      const nextTime = parseTimeLabel(value)
+      setDefaultStartTime(nextTime.start || DEFAULT_CLOCK_TIME)
+      setDefaultEndTime(nextTime.end)
     }
 
     setCandidates((prev) =>
@@ -771,12 +796,20 @@ export default function Home() {
                 <input
                   type="time"
                   step={900}
-                  value={defaultTime}
-                  onChange={(e) => setDefaultTime(e.target.value)}
-                  aria-label="時間帯"
+                  value={defaultStartTime}
+                  onChange={(e) => setDefaultStartTime(e.target.value || DEFAULT_CLOCK_TIME)}
+                  aria-label="開始時間"
                   className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                 />
                 <span className="text-sm text-stone-400">〜</span>
+                <input
+                  type="time"
+                  step={900}
+                  value={defaultEndTime}
+                  onChange={(e) => setDefaultEndTime(e.target.value)}
+                  aria-label="終了時間（任意）"
+                  className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                />
               </div>
               <button
                 type="button"
