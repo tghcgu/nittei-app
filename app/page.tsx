@@ -46,6 +46,7 @@ type BusyPeriod = {
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
+const DEFAULT_CLOCK_TIME = '21:00'
 
 function generateShareId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -248,7 +249,7 @@ export default function Home() {
   const router = useRouter()
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
-  const [defaultStartTime, setDefaultStartTime] = useState('')
+  const [defaultStartTime, setDefaultStartTime] = useState(DEFAULT_CLOCK_TIME)
   const [defaultEndTime, setDefaultEndTime] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
@@ -327,7 +328,7 @@ export default function Home() {
         setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
         setSelectedCandidateIds(new Set())
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
-        setDefaultStartTime(draftTime.start)
+        setDefaultStartTime(draftTime.start || DEFAULT_CLOCK_TIME)
         setDefaultEndTime(draftTime.end)
       } catch (err) {
         console.error(err)
