@@ -219,8 +219,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
-  const [icsBusyValue, setIcsBusyValue] = useState<AnswerValue>('✕')
-  const [icsFreeValue, setIcsFreeValue] = useState<AnswerValue>('○')
+  const [icsBusyValue, setIcsBusyValue] = useState<AnswerValue | null>('✕')
+  const [icsFreeValue, setIcsFreeValue] = useState<AnswerValue | null>('○')
   const loadResponses = useCallback(async () => {
     setIsLoadingResponses(true)
     setResponsesError(null)
@@ -360,7 +360,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const icsInputRef = useRef<HTMLInputElement>(null)
 
   function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
-    const newAnswers: Record<string, AnswerValue> = {}
+    const newAnswers: Record<string, AnswerValue | null> = {}
     for (const c of candidates) {
       const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
       const csMs = new Date(cs).getTime()
@@ -379,6 +379,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setAnswers((prev) => {
       const merged: Record<string, AnswerValue> = { ...prev }
       for (const [id, val] of Object.entries(newAnswers)) {
+        if (val === null) continue
         if (prev[id] === icsBusyValue && val === icsFreeValue) continue
         merged[id] = val
       }
@@ -752,8 +753,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => setIcsBusyValue(opt.value)}
-                      aria-label={`予定ありを${opt.value}にする`}
+                      onClick={() => setIcsBusyValue((current) => current === opt.value ? null : opt.value)}
+                      aria-label={icsBusyValue === opt.value ? '予定ありの入力を解除する' : `予定ありを${opt.value}にする`}
                       className={`h-7 w-7 rounded-full border-2 text-xs transition-all ${
                         icsBusyValue === opt.value ? opt.active : opt.idle
                       }`}
@@ -770,8 +771,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => setIcsFreeValue(opt.value)}
-                      aria-label={`予定なしを${opt.value}にする`}
+                      onClick={() => setIcsFreeValue((current) => current === opt.value ? null : opt.value)}
+                      aria-label={icsFreeValue === opt.value ? '予定なしの入力を解除する' : `予定なしを${opt.value}にする`}
                       className={`h-7 w-7 rounded-full border-2 text-xs transition-all ${
                         icsFreeValue === opt.value ? opt.active : opt.idle
                       }`}
