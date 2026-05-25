@@ -745,17 +745,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <p className="mt-1 text-xs text-stone-400">
               カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-500">
-              <div className="flex items-center gap-1.5">
-                <span>予定あり：</span>
-                <div className="flex gap-1">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] leading-none text-stone-500">
+              <div className="flex items-center gap-1">
+                <span className="shrink-0">予定あり：</span>
+                <div className="flex gap-0.5">
                   {ANSWER_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setIcsBusyValue((current) => current === opt.value ? null : opt.value)}
                       aria-label={icsBusyValue === opt.value ? '予定ありの入力を解除する' : `予定ありを${opt.value}にする`}
-                      className={`h-7 w-7 rounded-full border-2 text-xs transition-all ${
+                      className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
                         icsBusyValue === opt.value ? opt.active : opt.idle
                       }`}
                     >
@@ -764,16 +764,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   ))}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span>予定なし：</span>
-                <div className="flex gap-1">
+              <div className="flex items-center gap-1">
+                <span className="shrink-0">予定なし：</span>
+                <div className="flex gap-0.5">
                   {ANSWER_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
                       onClick={() => setIcsFreeValue((current) => current === opt.value ? null : opt.value)}
                       aria-label={icsFreeValue === opt.value ? '予定なしの入力を解除する' : `予定なしを${opt.value}にする`}
-                      className={`h-7 w-7 rounded-full border-2 text-xs transition-all ${
+                      className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
                         icsFreeValue === opt.value ? opt.active : opt.idle
                       }`}
                     >
