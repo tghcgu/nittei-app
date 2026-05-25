@@ -219,6 +219,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
+  const [icsBusyValue, setIcsBusyValue] = useState<AnswerValue>('✕')
+  const [icsFreeValue, setIcsFreeValue] = useState<AnswerValue>('○')
   const loadResponses = useCallback(async () => {
     setIsLoadingResponses(true)
     setResponsesError(null)
@@ -370,14 +372,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         return start.getTime() < ceMs && end.getTime() > csMs
       })
 
-      newAnswers[c.id] = isBusy ? '✕' : '○'
+      newAnswers[c.id] = isBusy ? icsBusyValue : icsFreeValue
     }
 
-    // 既に✕になっている候補は次の読み込みでも✕を維持する
+    // 複数の .ics を読むとき、先に「予定あり」になった候補は次の読み込みで戻さない
     setAnswers((prev) => {
       const merged: Record<string, AnswerValue> = { ...prev }
       for (const [id, val] of Object.entries(newAnswers)) {
-        if (prev[id] === '✕') continue
+        if (prev[id] === icsBusyValue && val === icsFreeValue) continue
         merged[id] = val
       }
       return merged
@@ -740,8 +742,46 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               )}
             </button>
             <p className="mt-1 text-xs text-stone-400">
-              カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程を自動で✕にまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
+              カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
             </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-500">
+              <div className="flex items-center gap-1.5">
+                <span>予定あり：</span>
+                <div className="flex gap-1">
+                  {ANSWER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setIcsBusyValue(opt.value)}
+                      aria-label={`予定ありを${opt.value}にする`}
+                      className={`h-7 w-7 rounded-full border-2 text-xs transition-all ${
+                        icsBusyValue === opt.value ? opt.active : opt.idle
+                      }`}
+                    >
+                      {opt.value === '-' ? '−' : opt.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span>予定なし：</span>
+                <div className="flex gap-1">
+                  {ANSWER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setIcsFreeValue(opt.value)}
+                      aria-label={`予定なしを${opt.value}にする`}
+                      className={`h-7 w-7 rounded-full border-2 text-xs transition-all ${
+                        icsFreeValue === opt.value ? opt.active : opt.idle
+                      }`}
+                    >
+                      {opt.value === '-' ? '−' : opt.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setIcsGuideOpen((v) => !v)}
