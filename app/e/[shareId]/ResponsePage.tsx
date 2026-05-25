@@ -722,67 +722,69 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               className="hidden"
               onChange={handleIcsUpload}
             />
-            <button
-              type="button"
-              onClick={() => icsInputRef.current?.click()}
-              disabled={icsStatus === 'loading'}
-              className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {icsStatus === 'loading' ? (
-                <>
-                  <span className="animate-spin">⟳</span>
-                  解析中...
-                </>
-              ) : (
-                <>
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/>
-                  </svg>
-                  .ics から自動入力
-                </>
-              )}
-            </button>
-            <p className="mt-1 text-xs text-stone-400">
-              カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
-            </p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] leading-none text-stone-500">
-              <div className="flex items-center gap-1">
-                <span className="shrink-0">予定あり：</span>
-                <div className="flex gap-0.5">
-                  {ANSWER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setIcsBusyValue((current) => current === opt.value ? null : opt.value)}
-                      aria-label={icsBusyValue === opt.value ? '予定ありの入力を解除する' : `予定ありを${opt.value}にする`}
-                      className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
-                        icsBusyValue === opt.value ? opt.active : opt.idle
-                      }`}
-                    >
-                      {opt.value === '-' ? '−' : opt.value}
-                    </button>
-                  ))}
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              <button
+                type="button"
+                onClick={() => icsInputRef.current?.click()}
+                disabled={icsStatus === 'loading'}
+                className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {icsStatus === 'loading' ? (
+                  <>
+                    <span className="animate-spin">⟳</span>
+                    解析中...
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/>
+                    </svg>
+                    .ics から自動入力
+                  </>
+                )}
+              </button>
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] leading-none text-stone-500">
+                <div className="flex items-center gap-1">
+                  <span className="shrink-0">予定あり：</span>
+                  <div className="flex gap-0.5">
+                    {ANSWER_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setIcsBusyValue((current) => current === opt.value ? null : opt.value)}
+                        aria-label={icsBusyValue === opt.value ? '予定ありの入力を解除する' : `予定ありを${opt.value}にする`}
+                        className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
+                          icsBusyValue === opt.value ? opt.active : opt.idle
+                        }`}
+                      >
+                        {opt.value === '-' ? '−' : opt.value}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="shrink-0">予定なし：</span>
-                <div className="flex gap-0.5">
-                  {ANSWER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setIcsFreeValue((current) => current === opt.value ? null : opt.value)}
-                      aria-label={icsFreeValue === opt.value ? '予定なしの入力を解除する' : `予定なしを${opt.value}にする`}
-                      className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
-                        icsFreeValue === opt.value ? opt.active : opt.idle
-                      }`}
-                    >
-                      {opt.value === '-' ? '−' : opt.value}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-1">
+                  <span className="shrink-0">予定なし：</span>
+                  <div className="flex gap-0.5">
+                    {ANSWER_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setIcsFreeValue((current) => current === opt.value ? null : opt.value)}
+                        aria-label={icsFreeValue === opt.value ? '予定なしの入力を解除する' : `予定なしを${opt.value}にする`}
+                        className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
+                          icsFreeValue === opt.value ? opt.active : opt.idle
+                        }`}
+                      >
+                        {opt.value === '-' ? '−' : opt.value}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
+            <p className="mt-1 text-xs text-stone-400">
+              カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
+            </p>
             <button
               type="button"
               onClick={() => setIcsGuideOpen((v) => !v)}
