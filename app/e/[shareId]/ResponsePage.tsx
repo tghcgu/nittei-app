@@ -624,9 +624,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="relative mb-2 flex min-h-8 items-center justify-center">
           <Link
             href="/"
-            className="font-serif text-2xl text-stone-700 transition-colors hover:text-stone-900"
+            className="inline-flex items-baseline gap-0.5 font-serif text-2xl text-stone-700 transition-colors hover:text-stone-900"
           >
-            日程組
+            <span>日程組</span>
+            <span className="text-sm text-stone-500">で作成</span>
           </Link>
           <Link
             href={`/?edit=${shareId}`}
