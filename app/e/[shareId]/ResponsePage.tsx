@@ -982,7 +982,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </div>
                 {/* 個別メモ：「-」選択時のみ表示 */}
                 {answers[c.id] === '-' && (
-                  <div className="ml-[9.5rem] mt-1">
+                  <div className="mt-1 sm:ml-[9.5rem]">
                     <input
                       type="text"
                       value={detailNotes[c.id] ?? ''}
