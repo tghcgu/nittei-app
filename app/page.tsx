@@ -185,13 +185,13 @@ function SortableCandidate({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex flex-wrap items-center gap-2 ${isDragging ? 'opacity-60' : ''}`}
+      className={`grid grid-cols-[auto_auto_minmax(7rem,1fr)_auto_auto] items-center gap-x-1 gap-y-1 sm:flex sm:flex-wrap sm:gap-2 ${isDragging ? 'opacity-60' : ''}`}
     >
       {/* ドラッグハンドル */}
       <span
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none select-none text-base text-stone-300 hover:text-stone-500 active:cursor-grabbing"
+        className="shrink-0 cursor-grab touch-none select-none text-sm text-stone-300 hover:text-stone-500 active:cursor-grabbing sm:text-base"
         title="ドラッグで並び替え"
       >
         ⠿
@@ -208,9 +208,9 @@ function SortableCandidate({
         required
         value={c.date}
         onChange={(e) => onUpdate(c.id, 'date', e.target.value)}
-        className="min-w-36 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+        className="min-w-0 rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 sm:min-w-36 sm:flex-1 sm:px-3 sm:text-base"
       />
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
         <input
           type="time"
           step={900}
@@ -220,7 +220,7 @@ function SortableCandidate({
             onUpdate(c.id, 'timeLabel', toTimeLabel(start, start ? toEndClockValue(c.timeLabel) : ''))
           }}
           aria-label="開始時間"
-          className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+          className="w-[4.35rem] rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 sm:w-28 sm:px-3 sm:text-base"
         />
         <span className="text-sm text-stone-400">〜</span>
         <input
@@ -230,7 +230,7 @@ function SortableCandidate({
           onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(toStartClockValue(c.timeLabel), e.target.value))}
           disabled={!toStartClockValue(c.timeLabel)}
           aria-label="終了時間（任意）"
-          className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300"
+          className="w-[4.35rem] rounded-lg border border-stone-200 bg-white px-2 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300 sm:w-28 sm:px-3 sm:text-base"
         />
       </div>
       <button
