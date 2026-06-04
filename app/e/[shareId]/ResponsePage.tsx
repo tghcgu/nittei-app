@@ -959,10 +959,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             {candidates.map((c) => (
               <div key={c.id}>
                 <div className="flex flex-wrap items-center gap-2 py-0">
-                  <div className="w-32 shrink-0">
+                  <div className="w-max min-w-[9rem] shrink-0 whitespace-nowrap">
                     <span className="font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
                     {c.time_label && (
-                      <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
+                      <span className="ml-1 text-xs text-stone-400 whitespace-nowrap">{c.time_label}</span>
                     )}
                   </div>
                   <div className="flex gap-1.5">
@@ -1096,11 +1096,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="pb-3 font-normal text-stone-500"
+                        className="pb-3 font-normal text-stone-500 whitespace-nowrap"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
-                          <div className="text-xs text-stone-400">{c.time_label}</div>
+                          <div className="text-xs text-stone-400 whitespace-nowrap">{c.time_label}</div>
                         )}
                       </th>
                     ))}
@@ -1175,12 +1175,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-100">
-                      <td className="py-2 text-left">
+                      <td className="py-2 text-left whitespace-nowrap">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
                         {c.time_label && (
-                          <span className="ml-1 text-xs text-stone-400">{c.time_label}</span>
+                          <span className="ml-1 text-xs text-stone-400 whitespace-nowrap">{c.time_label}</span>
                         )}
                       </td>
                       {responseRows.map((r) => {
