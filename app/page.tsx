@@ -774,7 +774,7 @@ export default function Home() {
           </div>
 
           {/* 説明 */}
-          <div className="mb-4">
+          <div className="mb-2">
             <label className="mb-1 block text-sm font-medium text-stone-700">
               説明（任意）
             </label>
@@ -1055,10 +1055,10 @@ export default function Home() {
               type="button"
               onClick={handleAddCurrentMonthFromToday}
               disabled={addableMonthDates.length === 0}
-              className="mb-4 w-full rounded-full border border-rose-200 px-4 py-2 text-sm text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-stone-200 disabled:text-stone-300 disabled:hover:bg-transparent"
+              className="mb-4 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-white disabled:text-stone-300 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
             >
               {addableMonthDates.length > 0
-                ? `この月の今日以降を追加（${addableMonthDates.length}日）`
+                ? `＋ この月の今日以降を追加（${addableMonthDates.length}日）`
                 : 'この月は追加できる日がありません'}
             </button>
 
