@@ -774,7 +774,7 @@ export default function Home() {
           </div>
 
           {/* 説明 */}
-          <div className="mb-4">
+          <div className="mb-2">
             <label className="mb-1 block text-sm font-medium text-stone-700">
               説明（任意）
             </label>
