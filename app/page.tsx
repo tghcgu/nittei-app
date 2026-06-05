@@ -774,7 +774,7 @@ export default function Home() {
           </div>
 
           {/* 説明 */}
-          <div className="mb-2">
+          <div className="mb-0">
             <label className="mb-1 block text-sm font-medium text-stone-700">
               説明（任意）
             </label>
@@ -783,13 +783,13 @@ export default function Home() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="場所や詳細など"
               rows={3}
-              className="w-full resize-none rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              className="block w-full resize-none rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
           {/* 候補日時 */}
           <div className="mb-8">
-            <label className="mb-2 block text-sm font-medium text-stone-700">
+            <label className="mb-1 block text-sm font-medium text-stone-700">
               候補日時 <span className="text-rose-700">*</span>
             </label>
 
