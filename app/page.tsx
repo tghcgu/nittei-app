@@ -48,12 +48,7 @@ function areCandidatesEqual(a: Candidate[], b: Candidate[]) {
 }
 
 type CalendarComponent = {
-  getAllProperties: (name: string) => { getValues: () => unknown[] }[]
   getFirstPropertyValue: (name: string) => unknown
-}
-
-type CalendarEvent = {
-  startDate: { isDate: boolean }
 }
 
 type BusyPeriod = {
@@ -64,7 +59,6 @@ type BusyPeriod = {
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
-const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
 const DEFAULT_CLOCK_TIME = '21:00'
 
 function generateShareId(): string {
@@ -148,33 +142,10 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   return dateStr >= startDate && dateStr < endDate
 }
 
-function getCalendarPropertyText(vevent: CalendarComponent, name: string): string {
-  return vevent
-    .getAllProperties(name)
-    .flatMap((property) => property.getValues())
-    .map((value) => String(value ?? ''))
-    .join(' ')
-}
-
-function isNonBlockingAllDayEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
-  if (!event.startDate.isDate) return false
-
-  const text = [
-    getCalendarPropertyText(vevent, 'summary'),
-    getCalendarPropertyText(vevent, 'categories'),
-    getCalendarPropertyText(vevent, 'description'),
-    getCalendarPropertyText(vevent, 'x-google-calendar-content-title'),
-  ].join(' ')
-
-  const normalized = text.toUpperCase()
-  return NON_BLOCKING_ALL_DAY_KEYWORDS.some((keyword) => normalized.includes(keyword.toUpperCase()))
-}
-
-function isBlockingCalendarEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
+function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
-    && !isNonBlockingAllDayEvent(vevent, event)
 }
 
 // ---- ドラッグ可能な候補日行 ----
@@ -601,7 +572,7 @@ export default function Home() {
       const vevents = comp.getAllSubcomponents('vevent')
       for (const vevent of vevents) {
         const event = new ICAL.Event(vevent)
-        if (!isBlockingCalendarEvent(vevent, event)) continue
+        if (!isBlockingCalendarEvent(vevent)) continue
         if (event.isRecurring()) {
           const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
           let count = 0
