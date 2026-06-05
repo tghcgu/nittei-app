@@ -28,13 +28,27 @@ type Candidate = {
   timeLabel: string
 }
 
-type CalendarComponent = {
-  getAllProperties: (name: string) => { getValues: () => unknown[] }[]
-  getFirstPropertyValue: (name: string) => unknown
+const MAX_CANDIDATE_HISTORY = 50
+
+function cloneCandidates(items: Candidate[]) {
+  return items.map((item) => ({ ...item }))
 }
 
-type CalendarEvent = {
-  startDate: { isDate: boolean }
+function areCandidatesEqual(a: Candidate[], b: Candidate[]) {
+  if (a.length !== b.length) return false
+  return a.every((item, index) => {
+    const other = b[index]
+    return (
+      item.id === other.id &&
+      item.dbId === other.dbId &&
+      item.date === other.date &&
+      item.timeLabel === other.timeLabel
+    )
+  })
+}
+
+type CalendarComponent = {
+  getFirstPropertyValue: (name: string) => unknown
 }
 
 type BusyPeriod = {
@@ -45,7 +59,6 @@ type BusyPeriod = {
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
-const NON_BLOCKING_ALL_DAY_KEYWORDS = ['BIRTHDAY', 'ANNIVERSARY', 'HOLIDAY', '誕生日', '記念日', '祝日']
 const DEFAULT_CLOCK_TIME = '21:00'
 
 function generateShareId(): string {
@@ -129,33 +142,10 @@ function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
   return dateStr >= startDate && dateStr < endDate
 }
 
-function getCalendarPropertyText(vevent: CalendarComponent, name: string): string {
-  return vevent
-    .getAllProperties(name)
-    .flatMap((property) => property.getValues())
-    .map((value) => String(value ?? ''))
-    .join(' ')
-}
-
-function isNonBlockingAllDayEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
-  if (!event.startDate.isDate) return false
-
-  const text = [
-    getCalendarPropertyText(vevent, 'summary'),
-    getCalendarPropertyText(vevent, 'categories'),
-    getCalendarPropertyText(vevent, 'description'),
-    getCalendarPropertyText(vevent, 'x-google-calendar-content-title'),
-  ].join(' ')
-
-  const normalized = text.toUpperCase()
-  return NON_BLOCKING_ALL_DAY_KEYWORDS.some((keyword) => normalized.includes(keyword.toUpperCase()))
-}
-
-function isBlockingCalendarEvent(vevent: CalendarComponent, event: CalendarEvent): boolean {
+function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
-    && !isNonBlockingAllDayEvent(vevent, event)
 }
 
 // ---- ドラッグ可能な候補日行 ----
@@ -252,6 +242,8 @@ export default function Home() {
   const [defaultStartTime, setDefaultStartTime] = useState(DEFAULT_CLOCK_TIME)
   const [defaultEndTime, setDefaultEndTime] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [candidatePast, setCandidatePast] = useState<Candidate[][]>([])
+  const [candidateFuture, setCandidateFuture] = useState<Candidate[][]>([])
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
   const [nextId, setNextId] = useState(1)
   const [editShareId, setEditShareId] = useState<string | null>(null)
@@ -325,6 +317,8 @@ export default function Home() {
         setEventName(event.name)
         setDescription(event.description ?? '')
         setCandidates(drafts)
+        setCandidatePast([])
+        setCandidateFuture([])
         setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
         setSelectedCandidateIds(new Set())
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
@@ -345,11 +339,69 @@ export default function Home() {
     }
   }, [])
 
+  function syncSelectedCandidates(nextCandidates: Candidate[]) {
+    const ids = new Set(nextCandidates.map((candidate) => candidate.id))
+    setSelectedCandidateIds((prev) => {
+      const next = new Set([...prev].filter((id) => ids.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }
+
+  function restoreCandidateSnapshot(snapshot: Candidate[]) {
+    const nextCandidates = cloneCandidates(snapshot)
+    setCandidates(nextCandidates)
+    syncSelectedCandidates(nextCandidates)
+
+    const nextTime = parseTimeLabel(
+      nextCandidates.find((candidate) => candidate.timeLabel)?.timeLabel ?? ''
+    )
+    setDefaultStartTime(nextTime.start || DEFAULT_CLOCK_TIME)
+    setDefaultEndTime(nextTime.end)
+  }
+
+  function commitCandidateChange(nextOrUpdater: Candidate[] | ((items: Candidate[]) => Candidate[])) {
+    const nextCandidates =
+      typeof nextOrUpdater === 'function' ? nextOrUpdater(candidates) : nextOrUpdater
+
+    if (areCandidatesEqual(candidates, nextCandidates)) return
+
+    setCandidatePast((past) => [
+      ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
+      cloneCandidates(candidates),
+    ])
+    setCandidateFuture([])
+    setCandidates(cloneCandidates(nextCandidates))
+  }
+
+  function undoCandidateChange() {
+    if (candidatePast.length === 0) return
+
+    const previous = candidatePast[candidatePast.length - 1]
+    setCandidatePast((past) => past.slice(0, -1))
+    setCandidateFuture((future) => [
+      cloneCandidates(candidates),
+      ...future.slice(0, MAX_CANDIDATE_HISTORY - 1),
+    ])
+    restoreCandidateSnapshot(previous)
+  }
+
+  function redoCandidateChange() {
+    if (candidateFuture.length === 0) return
+
+    const next = candidateFuture[0]
+    setCandidatePast((past) => [
+      ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
+      cloneCandidates(candidates),
+    ])
+    setCandidateFuture((future) => future.slice(1))
+    restoreCandidateSnapshot(next)
+  }
+
   // ---- ドラッグ終了時の並び替え ----
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (over && active.id !== over.id) {
-      setCandidates((items) => {
+      commitCandidateChange((items) => {
         const oldIndex = items.findIndex((i) => i.id === active.id)
         const newIndex = items.findIndex((i) => i.id === over.id)
         return arrayMove(items, oldIndex, newIndex)
@@ -359,7 +411,7 @@ export default function Home() {
 
   // ---- 日付順に並べ替え ----
   function sortByDate() {
-    setCandidates((prev) =>
+    commitCandidateChange((prev) =>
       [...prev].sort((a, b) => {
         if (a.date !== b.date) return a.date.localeCompare(b.date)
         return a.timeLabel.localeCompare(b.timeLabel)
@@ -379,20 +431,20 @@ export default function Home() {
       timeLabel: newCandidateTime,
     }))
     const kept = candidates.filter((c) => c.date)
-    setCandidates([...kept, ...newItems])
+    commitCandidateChange([...kept, ...newItems])
     setNextId(id)
   }
 
   // ---- 時間一括適用 ----
   function applyTimeToAll() {
     const timeLabel = toTimeLabel(defaultStartTime, defaultEndTime)
-    setCandidates((prev) => prev.map((c) => ({ ...c, timeLabel })))
+    commitCandidateChange((prev) => prev.map((c) => ({ ...c, timeLabel })))
   }
 
   function applyTimeToSelected() {
     if (selectedCandidateIds.size === 0) return
     const timeLabel = toTimeLabel(defaultStartTime, defaultEndTime)
-    setCandidates((prev) =>
+    commitCandidateChange((prev) =>
       prev.map((c) =>
         selectedCandidateIds.has(c.id) ? { ...c, timeLabel } : c
       )
@@ -409,7 +461,7 @@ export default function Home() {
   }
 
   function removeCandidate(id: string) {
-    setCandidates((prev) => prev.filter((c) => c.id !== id))
+    commitCandidateChange((prev) => prev.filter((c) => c.id !== id))
     setSelectedCandidateIds((prev) => {
       if (!prev.has(id)) return prev
       const next = new Set(prev)
@@ -425,7 +477,7 @@ export default function Home() {
       setDefaultEndTime(nextTime.end)
     }
 
-    setCandidates((prev) =>
+    commitCandidateChange((prev) =>
       prev.map((c) => (c.id === id ? { ...c, [field]: value } : c))
     )
   }
@@ -470,9 +522,7 @@ export default function Home() {
       return
     }
 
-    setCandidates((prev) => {
-      return prev.filter((c) => !busyIds.has(c.id))
-    })
+    commitCandidateChange((prev) => prev.filter((c) => !busyIds.has(c.id)))
     setSelectedCandidateIds((prev) => {
       const next = new Set(prev)
       for (const id of busyIds) next.delete(id)
@@ -522,7 +572,7 @@ export default function Home() {
       const vevents = comp.getAllSubcomponents('vevent')
       for (const vevent of vevents) {
         const event = new ICAL.Event(vevent)
-        if (!isBlockingCalendarEvent(vevent, event)) continue
+        if (!isBlockingCalendarEvent(vevent)) continue
         if (event.isRecurring()) {
           const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
           let count = 0
@@ -704,6 +754,8 @@ export default function Home() {
     return acc
   }, {})
   const hasDatedCandidates = candidates.some((c) => c.date)
+  const canUndoCandidates = candidatePast.length > 0
+  const canRedoCandidates = candidateFuture.length > 0
   const isEditMode = Boolean(editEventId && editShareId)
   const submitLabel = isEditMode ? '更新する' : '作成する'
   const submittingLabel = isEditMode ? '更新中...' : '作成中...'
@@ -841,6 +893,24 @@ export default function Home() {
                   {selectedCandidateIds.size}件選択中
                 </span>
               )}
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={undoCandidateChange}
+                  disabled={!canUndoCandidates}
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ↶ 戻す
+                </button>
+                <button
+                  type="button"
+                  onClick={redoCandidateChange}
+                  disabled={!canRedoCandidates}
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ↷ 進む
+                </button>
+              </div>
             </div>
 
             {/* 候補日リスト（ドラッグ&ドロップ対応） */}
