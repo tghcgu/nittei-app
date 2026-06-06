@@ -63,6 +63,19 @@ type ClockRange = {
   end: number | null
 }
 
+type LastSetAllAnswers = {
+  value: AnswerValue
+  candidateIds: string[]
+}
+
+type AnswerHistorySnapshot = {
+  answers: Record<string, AnswerValue>
+  detailNotes: Record<string, string>
+  lastSetAllAnswers: LastSetAllAnswers | null
+}
+
+const MAX_ANSWER_HISTORY = 50
+
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -94,6 +107,42 @@ function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
+}
+
+function cloneLastSetAllAnswers(value: LastSetAllAnswers | null): LastSetAllAnswers | null {
+  if (!value) return null
+  return { value: value.value, candidateIds: [...value.candidateIds] }
+}
+
+function cloneAnswerSnapshot(snapshot: AnswerHistorySnapshot): AnswerHistorySnapshot {
+  return {
+    answers: { ...snapshot.answers },
+    detailNotes: { ...snapshot.detailNotes },
+    lastSetAllAnswers: cloneLastSetAllAnswers(snapshot.lastSetAllAnswers),
+  }
+}
+
+function areRecordsEqual<T>(a: Record<string, T>, b: Record<string, T>) {
+  const aKeys = Object.keys(a)
+  const bKeys = Object.keys(b)
+  if (aKeys.length !== bKeys.length) return false
+
+  return aKeys.every((key) => Object.is(a[key], b[key]))
+}
+
+function areLastSetAllAnswersEqual(a: LastSetAllAnswers | null, b: LastSetAllAnswers | null) {
+  if (!a || !b) return a === b
+  if (a.value !== b.value || a.candidateIds.length !== b.candidateIds.length) return false
+
+  return a.candidateIds.every((id, index) => id === b.candidateIds[index])
+}
+
+function areAnswerSnapshotsEqual(a: AnswerHistorySnapshot, b: AnswerHistorySnapshot) {
+  return (
+    areRecordsEqual(a.answers, b.answers) &&
+    areRecordsEqual(a.detailNotes, b.detailNotes) &&
+    areLastSetAllAnswersEqual(a.lastSetAllAnswers, b.lastSetAllAnswers)
+  )
 }
 
 function clockToMinutes(value: string): number | null {
@@ -198,10 +247,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkTimeEnd, setBulkTimeEnd] = useState('')
   const [bulkTimeValue, setBulkTimeValue] = useState<AnswerValue>(ANSWER_OPTIONS[2].value)
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
-  const [lastSetAllAnswers, setLastSetAllAnswers] = useState<{
-    value: AnswerValue
-    candidateIds: string[]
-  } | null>(null)
+  const [lastSetAllAnswers, setLastSetAllAnswers] = useState<LastSetAllAnswers | null>(null)
+  const [answerPast, setAnswerPast] = useState<AnswerHistorySnapshot[]>([])
+  const [answerFuture, setAnswerFuture] = useState<AnswerHistorySnapshot[]>([])
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
@@ -230,6 +278,65 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   function scrollToAnswerForm() {
     window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  function getAnswerSnapshot(): AnswerHistorySnapshot {
+    return {
+      answers: { ...answers },
+      detailNotes: { ...detailNotes },
+      lastSetAllAnswers: cloneLastSetAllAnswers(lastSetAllAnswers),
+    }
+  }
+
+  function restoreAnswerSnapshot(snapshot: AnswerHistorySnapshot) {
+    const next = cloneAnswerSnapshot(snapshot)
+    setAnswers(next.answers)
+    setDetailNotes(next.detailNotes)
+    setLastSetAllAnswers(next.lastSetAllAnswers)
+  }
+
+  function resetAnswerHistory() {
+    setAnswerPast([])
+    setAnswerFuture([])
+  }
+
+  function commitAnswerChange(
+    updater: (current: AnswerHistorySnapshot) => AnswerHistorySnapshot
+  ) {
+    const current = getAnswerSnapshot()
+    const next = cloneAnswerSnapshot(updater(cloneAnswerSnapshot(current)))
+    if (areAnswerSnapshotsEqual(current, next)) return
+
+    setAnswerPast((past) => [
+      ...past.slice(-(MAX_ANSWER_HISTORY - 1)),
+      cloneAnswerSnapshot(current),
+    ])
+    setAnswerFuture([])
+    restoreAnswerSnapshot(next)
+  }
+
+  function undoAnswerChange() {
+    if (answerPast.length === 0) return
+
+    const previous = answerPast[answerPast.length - 1]
+    setAnswerPast((past) => past.slice(0, -1))
+    setAnswerFuture((future) => [
+      getAnswerSnapshot(),
+      ...future.slice(0, MAX_ANSWER_HISTORY - 1),
+    ])
+    restoreAnswerSnapshot(previous)
+  }
+
+  function redoAnswerChange() {
+    if (answerFuture.length === 0) return
+
+    const next = answerFuture[0]
+    setAnswerPast((past) => [
+      ...past.slice(-(MAX_ANSWER_HISTORY - 1)),
+      getAnswerSnapshot(),
+    ])
+    setAnswerFuture((future) => future.slice(1))
+    restoreAnswerSnapshot(next)
   }
 
   function toggleBulkOpen() {
@@ -314,6 +421,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setSharedNote(r.note ?? '')
     setEditingResponseId(r.id)
     setLastSetAllAnswers(null)
+    resetAnswerHistory()
     setSubmitSuccess(false)
     setError(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -327,6 +435,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setSharedNote('')
     setEditingResponseId(null)
     setLastSetAllAnswers(null)
+    resetAnswerHistory()
     setError(null)
   }
 
@@ -411,16 +520,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
 
     // 複数の .ics を読むとき、先に「予定あり」になった候補は次の読み込みで戻さない
-    setAnswers((prev) => {
-      const merged: Record<string, AnswerValue> = { ...prev }
+    commitAnswerChange((current) => {
+      const merged: Record<string, AnswerValue> = { ...current.answers }
       for (const [id, val] of Object.entries(newAnswers)) {
         if (val === null) continue
-        if (prev[id] === icsBusyValue && val === icsFreeValue) continue
+        if (current.answers[id] === icsBusyValue && val === icsFreeValue) continue
         merged[id] = val
       }
-      return merged
+      return {
+        ...current,
+        answers: merged,
+        lastSetAllAnswers: null,
+      }
     })
-    setLastSetAllAnswers(null)
     setIcsStatus('done')
     setIcsMessage(doneMessage)
   }
@@ -490,16 +602,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         updates[c.id] = bulkValue
       }
     }
-    setAnswers((prev) => ({ ...prev, ...updates }))
-    setLastSetAllAnswers(null)
-    // 「-」以外なら個別メモをクリア
-    if (bulkValue !== '-') {
-      setDetailNotes((prev) => {
-        const next = { ...prev }
-        for (const id of Object.keys(updates)) delete next[id]
-        return next
-      })
-    }
+    commitAnswerChange((current) => {
+      const nextDetailNotes = { ...current.detailNotes }
+      // 「-」以外なら個別メモをクリア
+      if (bulkValue !== '-') {
+        for (const id of Object.keys(updates)) delete nextDetailNotes[id]
+      }
+
+      return {
+        answers: { ...current.answers, ...updates },
+        detailNotes: nextDetailNotes,
+        lastSetAllAnswers: null,
+      }
+    })
     setBulkOpen(false)
   }
 
@@ -530,15 +645,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const updatedIds = Object.keys(updates)
     if (updatedIds.length === 0) return
 
-    setAnswers((prev) => ({ ...prev, ...updates }))
-    setLastSetAllAnswers(null)
-    if (bulkTimeValue !== '-') {
-      setDetailNotes((prev) => {
-        const next = { ...prev }
-        for (const id of updatedIds) delete next[id]
-        return next
-      })
-    }
+    commitAnswerChange((current) => {
+      const nextDetailNotes = { ...current.detailNotes }
+      if (bulkTimeValue !== '-') {
+        for (const id of updatedIds) delete nextDetailNotes[id]
+      }
+
+      return {
+        answers: { ...current.answers, ...updates },
+        detailNotes: nextDetailNotes,
+        lastSetAllAnswers: null,
+      }
+    })
     setBulkOpen(false)
   }
 
@@ -546,68 +664,81 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     if (keepExistingAnswers) {
       if (lastSetAllAnswers?.value === value) {
         const idsToClear = lastSetAllAnswers.candidateIds
-        setAnswers((prev) => {
-          const next = { ...prev }
+        commitAnswerChange((current) => {
+          const nextAnswers = { ...current.answers }
+          const nextDetailNotes = { ...current.detailNotes }
           for (const id of idsToClear) {
-            if (next[id] === value) delete next[id]
+            if (nextAnswers[id] === value) delete nextAnswers[id]
+            delete nextDetailNotes[id]
           }
-          return next
+
+          return {
+            answers: nextAnswers,
+            detailNotes: nextDetailNotes,
+            lastSetAllAnswers: null,
+          }
         })
-        setDetailNotes((prev) => {
-          const next = { ...prev }
-          for (const id of idsToClear) delete next[id]
-          return next
-        })
-        setLastSetAllAnswers(null)
         return
       }
 
-      const candidateIds = candidates
-        .filter((c) => answers[c.id] === undefined)
-        .map((c) => c.id)
-      const updates: Record<string, AnswerValue> = Object.fromEntries(
-        candidateIds.map((id) => [id, value])
-      )
+      commitAnswerChange((current) => {
+        const candidateIds = candidates
+          .filter((c) => current.answers[c.id] === undefined)
+          .map((c) => c.id)
+        const updates: Record<string, AnswerValue> = Object.fromEntries(
+          candidateIds.map((id) => [id, value])
+        )
 
-      setAnswers((prev) => ({ ...prev, ...updates }))
-      setLastSetAllAnswers(candidateIds.length > 0 ? { value, candidateIds } : null)
+        return {
+          answers: { ...current.answers, ...updates },
+          detailNotes: current.detailNotes,
+          lastSetAllAnswers: candidateIds.length > 0 ? { value, candidateIds } : null,
+        }
+      })
       return
     }
 
-    setLastSetAllAnswers(null)
+    commitAnswerChange((current) => {
+      const isAlreadyAllSelected =
+        candidates.length > 0 && candidates.every((c) => current.answers[c.id] === value)
 
-    const isAlreadyAllSelected =
-      candidates.length > 0 && candidates.every((c) => answers[c.id] === value)
+      if (isAlreadyAllSelected) {
+        return {
+          answers: {},
+          detailNotes: {},
+          lastSetAllAnswers: null,
+        }
+      }
 
-    if (isAlreadyAllSelected) {
-      setAnswers({})
-      setDetailNotes({})
-      return
-    }
-
-    setAnswers(Object.fromEntries(candidates.map((c) => [c.id, value])))
-    if (value !== '-') {
-      setDetailNotes({})
-    }
+      return {
+        answers: Object.fromEntries(candidates.map((c) => [c.id, value])),
+        detailNotes: value === '-' ? current.detailNotes : {},
+        lastSetAllAnswers: null,
+      }
+    })
   }
 
   function handleAnswerChange(candidateId: string, value: AnswerValue) {
-    setLastSetAllAnswers(null)
-    setAnswers((prev) => {
-      if (prev[candidateId] === value) {
-        const next = { ...prev }
-        delete next[candidateId]
-        return next
+    commitAnswerChange((current) => {
+      const nextAnswers = { ...current.answers }
+      const nextDetailNotes = { ...current.detailNotes }
+
+      if (nextAnswers[candidateId] === value) {
+        delete nextAnswers[candidateId]
+      } else {
+        nextAnswers[candidateId] = value
       }
-      return { ...prev, [candidateId]: value }
+
+      if (value !== '-') {
+        delete nextDetailNotes[candidateId]
+      }
+
+      return {
+        answers: nextAnswers,
+        detailNotes: nextDetailNotes,
+        lastSetAllAnswers: null,
+      }
     })
-    if (value !== '-') {
-      setDetailNotes((prev) => {
-        const next = { ...prev }
-        delete next[candidateId]
-        return next
-      })
-    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -678,6 +809,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setSharedNote('')
       setEditingResponseId(null)
       setLastSetAllAnswers(null)
+      resetAnswerHistory()
       setSubmitSuccess(true)
 
       await loadResponses()
@@ -966,6 +1098,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 />
                 入力済の行は変更しない
               </label>
+              <div className="ml-auto flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={undoAnswerChange}
+                  disabled={answerPast.length === 0}
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ↶ 戻す
+                </button>
+                <button
+                  type="button"
+                  onClick={redoAnswerChange}
+                  disabled={answerFuture.length === 0}
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ↷ 進む
+                </button>
+              </div>
             </div>
 
             {bulkOpen && (
