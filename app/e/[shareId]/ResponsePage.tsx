@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
 
 // ---- 型定義 ----
@@ -553,44 +554,40 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 
-      const text = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsText(file, 'utf-8')
-      })
+      const calendarFiles = await readCalendarFileTexts(file)
+      for (const { text } of calendarFiles.texts) {
+        const jcal = ICAL.parse(text)
+        const comp = new ICAL.Component(jcal)
+        const vevents = comp.getAllSubcomponents('vevent')
 
-      const jcal = ICAL.parse(text)
-      const comp = new ICAL.Component(jcal)
-      const vevents = comp.getAllSubcomponents('vevent')
-
-      for (const vevent of vevents) {
-        const event = new ICAL.Event(vevent)
-        if (!isBlockingCalendarEvent(vevent)) continue
-        if (event.isRecurring()) {
-          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-          let count = 0
-          let next = expand.next()
-          while (next && count < MAX_RECURRING_OCCURRENCES) {
-            count++
-            const detail = event.getOccurrenceDetails(next)
-            if (detail.startDate.compare(rangeEnd) > 0) break
-            if (detail.endDate.compare(rangeStart) <= 0) continue
-            busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            next = expand.next()
+        for (const vevent of vevents) {
+          const event = new ICAL.Event(vevent)
+          if (!isBlockingCalendarEvent(vevent)) continue
+          if (event.isRecurring()) {
+            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+            let count = 0
+            let next = expand.next()
+            while (next && count < MAX_RECURRING_OCCURRENCES) {
+              count++
+              const detail = event.getOccurrenceDetails(next)
+              if (detail.startDate.compare(rangeEnd) > 0) break
+              if (detail.endDate.compare(rangeStart) <= 0) continue
+              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+              next = expand.next()
+            }
+          } else {
+            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
           }
-        } else {
-          busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
       applyBusyPeriodsToAnswers(
         busyPeriods,
-        '.ics を解析しました。内容を確認してから送信してください。'
+        `${describeCalendarFileRead(calendarFiles)} 内容を確認してから送信してください。`
       )
     } catch {
       setIcsStatus('error')
-      setIcsMessage('読み取りに失敗しました。.ics ファイルか確認して、手動で入力してください。')
+      setIcsMessage('読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。')
     }
   }
 
@@ -925,7 +922,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <input
               ref={icsInputRef}
               type="file"
-              accept=".ics"
+              accept=".ics,.zip"
               className="hidden"
               onChange={handleIcsUpload}
             />
@@ -946,7 +943,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/>
                     </svg>
-                    .ics から自動入力
+                    .ics / zip から自動入力
                   </>
                 )}
               </button>
@@ -1000,7 +997,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </div>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                  カレンダーアプリから書き出した .ics ファイルをアップロード。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
+                  カレンダーアプリから書き出した .ics または zip ファイルをアップロード。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。Googleカレンダーのzipでは誕生日カレンダーを除外します。ファイルは端末内で処理され、送信・保存されません。
                 </p>
               </div>
             )}
@@ -1017,8 +1014,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Google カレンダー</a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
                     <li>リンクを開く → 「エクスポート」をクリック</li>
-                    <li>ZIP がダウンロードされる → 解凍すると .ics</li>
-                    <li>その .ics をアップロード</li>
+                    <li>ZIP がダウンロードされる</li>
+                    <li>その ZIP をそのままアップロード（誕生日カレンダーは除外）</li>
                   </ol>
                 </div>
                 <div>
