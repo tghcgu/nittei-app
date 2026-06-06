@@ -506,10 +506,21 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   function applyBulkTimeAnswer() {
     const rangeStart = clockToMinutes(bulkTimeStart)
     const rangeEnd = clockToMinutes(bulkTimeEnd)
-    if (rangeStart === null || rangeEnd === null || rangeStart === rangeEnd) return
+    if (
+      !bulkStart ||
+      !bulkEnd ||
+      bulkStart > bulkEnd ||
+      rangeStart === null ||
+      rangeEnd === null ||
+      rangeStart === rangeEnd
+    ) {
+      return
+    }
 
     const updates: Record<string, AnswerValue> = {}
     for (const c of candidates) {
+      if (c.date < bulkStart || c.date > bulkEnd) continue
+
       const candidateRange = parseCandidateClockRange(c.time_label)
       if (candidateRange && clockRangesOverlap(candidateRange, rangeStart, rangeEnd)) {
         updates[c.id] = bulkTimeValue
@@ -1011,7 +1022,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </button>
                 <div className="mt-4 border-t border-stone-200 pt-3">
                   <p className="mb-2 text-xs font-medium text-stone-500">
-                    時間帯で一括回答
+                    日付範囲 + 時間帯で一括回答
                   </p>
                   <div className="mb-3 flex flex-wrap items-center gap-2">
                     <input
@@ -1047,13 +1058,20 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <button
                       type="button"
                       onClick={applyBulkTimeAnswer}
-                      disabled={!bulkTimeStart || !bulkTimeEnd || bulkTimeStart === bulkTimeEnd}
+                      disabled={
+                        !bulkStart ||
+                        !bulkEnd ||
+                        bulkStart > bulkEnd ||
+                        !bulkTimeStart ||
+                        !bulkTimeEnd ||
+                        bulkTimeStart === bulkTimeEnd
+                      }
                       className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       適用
                     </button>
                     <span className="text-xs text-stone-400">
-                      少しでも時間が重なる候補を変更します
+                      上の日付範囲の中で、少しでも時間が重なる候補を変更します
                     </span>
                   </div>
                 </div>
