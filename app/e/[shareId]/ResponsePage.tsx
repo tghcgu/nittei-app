@@ -128,7 +128,7 @@ function isClockMinuteInRange(minute: number, rangeStart: number, rangeEnd: numb
 
   return [0, 24 * 60].some((offset) => {
     const shiftedMinute = minute + offset
-    return shiftedMinute >= rangeStart && shiftedMinute < adjustedEnd
+    return shiftedMinute >= rangeStart && shiftedMinute <= adjustedEnd
   })
 }
 
@@ -147,7 +147,7 @@ function clockRangesOverlap(candidate: ClockRange, rangeStart: number, rangeEnd:
   return [-24 * 60, 0, 24 * 60].some((offset) => {
     const candidateStart = adjustedCandidate.start + offset
     const candidateEnd = adjustedCandidate.end + offset
-    return candidateStart < adjustedRange.end && candidateEnd > adjustedRange.start
+    return candidateStart <= adjustedRange.end && candidateEnd >= adjustedRange.start
   })
 }
 
