@@ -58,6 +58,11 @@ type BusyPeriod = {
   isAllDay: boolean
 }
 
+type ClockRange = {
+  start: number
+  end: number | null
+}
+
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -89,6 +94,61 @@ function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
   const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
 
   return status !== 'CANCELLED'
+}
+
+function clockToMinutes(value: string): number | null {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return null
+
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null
+
+  return hours * 60 + minutes
+}
+
+function parseCandidateClockRange(timeLabel: string | null): ClockRange | null {
+  if (!timeLabel) return null
+
+  const times = timeLabel.match(/\d{1,2}:\d{2}/g) ?? []
+  const start = times[0] ? clockToMinutes(times[0]) : null
+  if (start === null) return null
+
+  const end = times[1] ? clockToMinutes(times[1]) : null
+  return { start, end }
+}
+
+function adjustedRangeEnd(start: number, end: number) {
+  return end <= start ? end + 24 * 60 : end
+}
+
+function isClockMinuteInRange(minute: number, rangeStart: number, rangeEnd: number) {
+  if (rangeStart === rangeEnd) return false
+  const adjustedEnd = adjustedRangeEnd(rangeStart, rangeEnd)
+
+  return [0, 24 * 60].some((offset) => {
+    const shiftedMinute = minute + offset
+    return shiftedMinute >= rangeStart && shiftedMinute < adjustedEnd
+  })
+}
+
+function clockRangesOverlap(candidate: ClockRange, rangeStart: number, rangeEnd: number) {
+  if (rangeStart === rangeEnd) return false
+  if (candidate.end === null) {
+    return isClockMinuteInRange(candidate.start, rangeStart, rangeEnd)
+  }
+
+  const adjustedRange = { start: rangeStart, end: adjustedRangeEnd(rangeStart, rangeEnd) }
+  const adjustedCandidate = {
+    start: candidate.start,
+    end: adjustedRangeEnd(candidate.start, candidate.end),
+  }
+
+  return [-24 * 60, 0, 24 * 60].some((offset) => {
+    const candidateStart = adjustedCandidate.start + offset
+    const candidateEnd = adjustedCandidate.end + offset
+    return candidateStart < adjustedRange.end && candidateEnd > adjustedRange.start
+  })
 }
 
 function getFirstCandidateMonthRange(candidates: Candidate[]) {
@@ -134,6 +194,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkStart, setBulkStart] = useState('')
   const [bulkEnd, setBulkEnd] = useState('')
   const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
+  const [bulkTimeStart, setBulkTimeStart] = useState('')
+  const [bulkTimeEnd, setBulkTimeEnd] = useState('')
+  const [bulkTimeValue, setBulkTimeValue] = useState<AnswerValue>(ANSWER_OPTIONS[2].value)
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
   const [lastSetAllAnswers, setLastSetAllAnswers] = useState<{
     value: AnswerValue
@@ -434,6 +497,34 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setDetailNotes((prev) => {
         const next = { ...prev }
         for (const id of Object.keys(updates)) delete next[id]
+        return next
+      })
+    }
+    setBulkOpen(false)
+  }
+
+  function applyBulkTimeAnswer() {
+    const rangeStart = clockToMinutes(bulkTimeStart)
+    const rangeEnd = clockToMinutes(bulkTimeEnd)
+    if (rangeStart === null || rangeEnd === null || rangeStart === rangeEnd) return
+
+    const updates: Record<string, AnswerValue> = {}
+    for (const c of candidates) {
+      const candidateRange = parseCandidateClockRange(c.time_label)
+      if (candidateRange && clockRangesOverlap(candidateRange, rangeStart, rangeEnd)) {
+        updates[c.id] = bulkTimeValue
+      }
+    }
+
+    const updatedIds = Object.keys(updates)
+    if (updatedIds.length === 0) return
+
+    setAnswers((prev) => ({ ...prev, ...updates }))
+    setLastSetAllAnswers(null)
+    if (bulkTimeValue !== '-') {
+      setDetailNotes((prev) => {
+        const next = { ...prev }
+        for (const id of updatedIds) delete next[id]
         return next
       })
     }
@@ -918,6 +1009,54 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 >
                   適用
                 </button>
+                <div className="mt-4 border-t border-stone-200 pt-3">
+                  <p className="mb-2 text-xs font-medium text-stone-500">
+                    時間帯で一括回答
+                  </p>
+                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                    <input
+                      type="time"
+                      value={bulkTimeStart}
+                      onChange={(e) => setBulkTimeStart(e.target.value)}
+                      className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                    />
+                    <span className="text-stone-400">〜</span>
+                    <input
+                      type="time"
+                      value={bulkTimeEnd}
+                      onChange={(e) => setBulkTimeEnd(e.target.value)}
+                      className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                    />
+                  </div>
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xs text-stone-400">重なる候補を：</span>
+                    {ANSWER_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setBulkTimeValue(opt.value)}
+                        className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${
+                          bulkTimeValue === opt.value ? opt.active : opt.idle
+                        }`}
+                      >
+                        {opt.value === '-' ? '−' : opt.value}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={applyBulkTimeAnswer}
+                      disabled={!bulkTimeStart || !bulkTimeEnd || bulkTimeStart === bulkTimeEnd}
+                      className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      適用
+                    </button>
+                    <span className="text-xs text-stone-400">
+                      少しでも時間が重なる候補を変更します
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
