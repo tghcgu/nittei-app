@@ -20,6 +20,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
 
 type Candidate = {
   id: string
@@ -503,7 +504,11 @@ export default function Home() {
     return { start: startDate.toISOString(), end: endDate.toISOString() }
   }
 
-  function removeBusyCandidates(busyPeriods: BusyPeriod[], datedCandidates: Candidate[]) {
+  function removeBusyCandidates(
+    busyPeriods: BusyPeriod[],
+    datedCandidates: Candidate[],
+    readSummary = '.ics を解析しました。'
+  ) {
     const busyIds = new Set<string>()
     for (const c of datedCandidates) {
       const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
@@ -518,7 +523,7 @@ export default function Home() {
 
     if (busyIds.size === 0) {
       setIcsStatus('done')
-      setIcsMessage('予定と重なる日程はありませんでした。')
+      setIcsMessage(`${readSummary} 予定と重なる日程はありませんでした。`)
       return
     }
 
@@ -533,8 +538,8 @@ export default function Home() {
     setIcsStatus('done')
     setIcsMessage(
       kept > 0
-        ? `${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`
-        : `${removed}件すべて予定と重なったため削除しました。候補日を追加し直してください。`
+        ? `${readSummary} ${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`
+        : `${readSummary} ${removed}件すべて予定と重なったため削除しました。候補日を追加し直してください。`
     )
   }
 
@@ -561,39 +566,36 @@ export default function Home() {
 
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 
-      const text = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsText(file, 'utf-8')
-      })
-      const jcal = ICAL.parse(text)
-      const comp = new ICAL.Component(jcal)
-      const vevents = comp.getAllSubcomponents('vevent')
-      for (const vevent of vevents) {
-        const event = new ICAL.Event(vevent)
-        if (!isBlockingCalendarEvent(vevent)) continue
-        if (event.isRecurring()) {
-          const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-          let count = 0
-          let next = expand.next()
-          while (next && count < MAX_RECURRING_OCCURRENCES) {
-            count++
-            const detail = event.getOccurrenceDetails(next)
-            if (detail.startDate.compare(rangeEnd) > 0) break
-            if (detail.endDate.compare(rangeStart) <= 0) continue
-            busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            next = expand.next()
+      const calendarFiles = await readCalendarFileTexts(file)
+      for (const { text } of calendarFiles.texts) {
+        const jcal = ICAL.parse(text)
+        const comp = new ICAL.Component(jcal)
+        const vevents = comp.getAllSubcomponents('vevent')
+        for (const vevent of vevents) {
+          const event = new ICAL.Event(vevent)
+          if (!isBlockingCalendarEvent(vevent)) continue
+          if (event.isRecurring()) {
+            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
+            let count = 0
+            let next = expand.next()
+            while (next && count < MAX_RECURRING_OCCURRENCES) {
+              count++
+              const detail = event.getOccurrenceDetails(next)
+              if (detail.startDate.compare(rangeEnd) > 0) break
+              if (detail.endDate.compare(rangeStart) <= 0) continue
+              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
+              next = expand.next()
+            }
+          } else {
+            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
           }
-        } else {
-          busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
         }
       }
 
-      removeBusyCandidates(busyPeriods, datedCandidates)
+      removeBusyCandidates(busyPeriods, datedCandidates, describeCalendarFileRead(calendarFiles))
     } catch {
       setIcsStatus('error')
-      setIcsMessage('読み取りに失敗しました。.ics ファイルか確認してください。')
+      setIcsMessage('読み取りに失敗しました。.ics または .zip ファイルか確認してください。')
     }
   }
 
@@ -972,14 +974,14 @@ export default function Home() {
               >
                 ↕ 日付順に並べ替え
               </button>
-              <input ref={icsInputRef} type="file" accept=".ics" className="hidden" onChange={handleIcsUpload} />
+              <input ref={icsInputRef} type="file" accept=".ics,.zip" className="hidden" onChange={handleIcsUpload} />
               <button
                 type="button"
                 onClick={() => icsInputRef.current?.click()}
                 disabled={icsStatus === 'loading'}
                 className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {icsStatus === 'loading' ? '解析中...' : '📂 .ics で空き日程を絞り込む'}
+                {icsStatus === 'loading' ? '解析中...' : '📂 .ics / zip で空き日程を絞り込む'}
               </button>
             </div>
             {icsMessage && (
@@ -1000,8 +1002,8 @@ export default function Home() {
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Google カレンダー</a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
                     <li>リンクを開く → 「エクスポート」をクリック</li>
-                    <li>ZIP がダウンロードされる → 解凍すると .ics</li>
-                    <li>その .ics をアップロード</li>
+                    <li>ZIP がダウンロードされる</li>
+                    <li>その ZIP をそのままアップロード（誕生日カレンダーは除外）</li>
                   </ol>
                 </div>
                 <div>
