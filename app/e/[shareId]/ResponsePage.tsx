@@ -1011,23 +1011,29 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             {icsGuideOpen && (
               <div className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-600">
                 <div>
-                  <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Google カレンダー</a>
+                  <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
+                    Google カレンダーを開く <span aria-hidden="true">↗</span>
+                  </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
-                    <li>リンクを開く → 「エクスポート」をクリック</li>
+                    <li>開いたページで「エクスポート」をクリック</li>
                     <li>ZIP がダウンロードされる</li>
                     <li>その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）</li>
                   </ol>
                 </div>
                 <div>
-                  <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Apple カレンダー（iCloud）</a>
+                  <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
+                    Apple カレンダー（iCloud）を開く <span aria-hidden="true">↗</span>
+                  </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
-                    <li>PC ブラウザで iCloud カレンダーを開く</li>
+                    <li>PC ブラウザで開く</li>
                     <li>カレンダー名の横の共有マークから書き出し</li>
                     <li>その .ics をアップロード</li>
                   </ol>
                 </div>
                 <div>
-                  <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener noreferrer" className="font-medium text-rose-800 underline">▼ Outlook</a>
+                  <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
+                    Outlook カレンダーを開く <span aria-hidden="true">↗</span>
+                  </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
                     <li>設定 → 共有カレンダー → 書き出し</li>
                     <li>その .ics をアップロード</li>
