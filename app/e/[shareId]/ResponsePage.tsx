@@ -997,7 +997,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </div>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-stone-400">
-                  カレンダーアプリから書き出した .ics または zip ファイルをアップロード。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。Googleカレンダーのzipでは誕生日カレンダーを除外します。ファイルは端末内で処理され、送信・保存されません。
+                  Googleカレンダーから書き出した .ics / .zip ファイルをアップロードできます。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
                 </p>
               </div>
             )}
@@ -1015,7 +1015,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
                     <li>リンクを開く → 「エクスポート」をクリック</li>
                     <li>ZIP がダウンロードされる</li>
-                    <li>その ZIP をそのままアップロード（誕生日カレンダーは除外）</li>
+                    <li>その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）</li>
                   </ol>
                 </div>
                 <div>

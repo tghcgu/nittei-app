@@ -1003,7 +1003,7 @@ export default function Home() {
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
                     <li>リンクを開く → 「エクスポート」をクリック</li>
                     <li>ZIP がダウンロードされる</li>
-                    <li>その ZIP をそのままアップロード（誕生日カレンダーは除外）</li>
+                    <li>その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）</li>
                   </ol>
                 </div>
                 <div>
