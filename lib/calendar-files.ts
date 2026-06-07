@@ -70,7 +70,7 @@ export function describeCalendarFileRead(result: CalendarFileReadResult) {
   const loaded = result.texts.length
 
   if (skipped > 0) {
-    return `zip内の${loaded}件の .ics を解析しました。誕生日カレンダー${skipped}件は除外しました。`
+    return `zip内の${loaded}件の .ics を解析しました。誕生日カレンダー${skipped}件は自動で除外しました。`
   }
 
   return `zip内の${loaded}件の .ics を解析しました。`
