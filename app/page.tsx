@@ -411,13 +411,15 @@ export default function Home() {
   }
 
   // ---- 日付順に並べ替え ----
+  function sortCandidatesByDate(items: Candidate[]) {
+    return [...items].sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return a.timeLabel.localeCompare(b.timeLabel)
+    })
+  }
+
   function sortByDate() {
-    commitCandidateChange((prev) =>
-      [...prev].sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date)
-        return a.timeLabel.localeCompare(b.timeLabel)
-      })
-    )
+    commitCandidateChange((prev) => sortCandidatesByDate(prev))
   }
 
   // ---- 共通: 日付リストを候補に追加 ----
@@ -432,7 +434,7 @@ export default function Home() {
       timeLabel: newCandidateTime,
     }))
     const kept = candidates.filter((c) => c.date)
-    commitCandidateChange([...kept, ...newItems])
+    commitCandidateChange(sortCandidatesByDate([...kept, ...newItems]))
     setNextId(id)
   }
 
