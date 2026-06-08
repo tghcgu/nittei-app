@@ -13,6 +13,13 @@ body {
 
 html[data-theme="dark"] {
   color-scheme: dark;
+  --dark-rose-text: #e7a4b6;
+  --dark-rose-muted: #cf8198;
+  --dark-rose-solid: #9f5b70;
+  --dark-rose-hover: #b86b82;
+  --dark-rose-border: rgba(207, 129, 152, 0.42);
+  --dark-rose-bg: rgba(159, 91, 112, 0.18);
+  --dark-rose-bg-strong: rgba(159, 91, 112, 0.28);
 }
 
 html[data-theme="dark"] body {
@@ -52,15 +59,15 @@ html[data-theme="dark"] body {
 }
 
 html[data-theme="dark"] .theme-toggle {
-  border-color: rgba(244, 63, 94, 0.42);
+  border-color: var(--dark-rose-border);
   background: #050505;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.72);
   color: #f5f5f4;
 }
 
 html[data-theme="dark"] .theme-toggle:hover {
-  background: #13070a;
-  color: #fda4af;
+  background: rgba(159, 91, 112, 0.16);
+  color: var(--dark-rose-text);
 }
 
 html[data-theme="dark"] .bg-white,
@@ -76,7 +83,13 @@ html[data-theme="dark"] .bg-stone-50\/70 {
 
 html[data-theme="dark"] .bg-rose-50,
 html[data-theme="dark"] .bg-rose-100 {
-  background-color: rgba(72, 10, 24, 0.55) !important;
+  background-color: var(--dark-rose-bg) !important;
+}
+
+html[data-theme="dark"] .bg-rose-700,
+html[data-theme="dark"] .bg-rose-800,
+html[data-theme="dark"] .bg-rose-900 {
+  background-color: var(--dark-rose-solid) !important;
 }
 
 html[data-theme="dark"] .bg-blue-50,
@@ -105,7 +118,7 @@ html[data-theme="dark"] .border-stone-300 {
 html[data-theme="dark"] .border-rose-200,
 html[data-theme="dark"] .border-rose-300,
 html[data-theme="dark"] .border-rose-400 {
-  border-color: rgba(244, 63, 94, 0.42) !important;
+  border-color: var(--dark-rose-border) !important;
 }
 
 html[data-theme="dark"] .border-blue-100,
@@ -140,11 +153,11 @@ html[data-theme="dark"] .text-stone-300 {
 
 html[data-theme="dark"] .text-rose-800,
 html[data-theme="dark"] .text-rose-700 {
-  color: #fda4af !important;
+  color: var(--dark-rose-text) !important;
 }
 
 html[data-theme="dark"] .text-rose-400 {
-  color: #fb7185 !important;
+  color: var(--dark-rose-muted) !important;
 }
 
 html[data-theme="dark"] .text-emerald-700,
@@ -194,7 +207,27 @@ html[data-theme="dark"] .shadow-2xl {
 }
 
 html[data-theme="dark"] .hover\:bg-rose-50:hover {
-  background-color: rgba(72, 10, 24, 0.68) !important;
+  background-color: var(--dark-rose-bg-strong) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-rose-100:hover {
+  background-color: rgba(159, 91, 112, 0.36) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-rose-900:hover {
+  background-color: var(--dark-rose-hover) !important;
+}
+
+html[data-theme="dark"] .hover\:text-rose-400:hover,
+html[data-theme="dark"] .hover\:text-rose-700:hover,
+html[data-theme="dark"] .hover\:text-rose-800:hover {
+  color: var(--dark-rose-text) !important;
+}
+
+html[data-theme="dark"] .hover\:border-rose-200:hover,
+html[data-theme="dark"] .hover\:border-rose-300:hover,
+html[data-theme="dark"] .hover\:border-rose-400:hover {
+  border-color: rgba(231, 164, 182, 0.54) !important;
 }
 
 html[data-theme="dark"] .hover\:bg-stone-50:hover,
@@ -212,7 +245,11 @@ html[data-theme="dark"] .hover\:text-stone-900:hover {
 }
 
 html[data-theme="dark"] .focus\:ring-rose-100:focus {
-  --tw-ring-color: rgba(244, 63, 94, 0.32) !important;
+  --tw-ring-color: rgba(207, 129, 152, 0.34) !important;
+}
+
+html[data-theme="dark"] .focus\:ring-rose-200:focus {
+  --tw-ring-color: rgba(207, 129, 152, 0.4) !important;
 }
 
 html[data-theme="dark"] .focus\:ring-blue-100:focus {
