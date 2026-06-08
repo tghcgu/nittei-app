@@ -13,13 +13,13 @@ body {
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --dark-rose-text: #e7a4b6;
-  --dark-rose-muted: #cf8198;
-  --dark-rose-solid: #9f5b70;
-  --dark-rose-hover: #b86b82;
-  --dark-rose-border: rgba(207, 129, 152, 0.42);
-  --dark-rose-bg: rgba(159, 91, 112, 0.18);
-  --dark-rose-bg-strong: rgba(159, 91, 112, 0.28);
+  --dark-rose-text: #f0a6ba;
+  --dark-rose-muted: #dd7794;
+  --dark-rose-solid: #b83262;
+  --dark-rose-hover: #cf4774;
+  --dark-rose-border: rgba(221, 119, 148, 0.48);
+  --dark-rose-bg: rgba(184, 50, 98, 0.16);
+  --dark-rose-bg-strong: rgba(184, 50, 98, 0.28);
 }
 
 html[data-theme="dark"] body {
@@ -66,7 +66,7 @@ html[data-theme="dark"] .theme-toggle {
 }
 
 html[data-theme="dark"] .theme-toggle:hover {
-  background: rgba(159, 91, 112, 0.16);
+  background: rgba(184, 50, 98, 0.18);
   color: var(--dark-rose-text);
 }
 
@@ -90,6 +90,13 @@ html[data-theme="dark"] .bg-rose-700,
 html[data-theme="dark"] .bg-rose-800,
 html[data-theme="dark"] .bg-rose-900 {
   background-color: var(--dark-rose-solid) !important;
+}
+
+html[data-theme="dark"] button.bg-rose-800,
+html[data-theme="dark"] button.bg-rose-900 {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 12px 30px rgba(184, 50, 98, 0.26) !important;
 }
 
 html[data-theme="dark"] .bg-blue-50,
@@ -211,7 +218,7 @@ html[data-theme="dark"] .hover\:bg-rose-50:hover {
 }
 
 html[data-theme="dark"] .hover\:bg-rose-100:hover {
-  background-color: rgba(159, 91, 112, 0.36) !important;
+  background-color: rgba(184, 50, 98, 0.34) !important;
 }
 
 html[data-theme="dark"] .hover\:bg-rose-900:hover {
