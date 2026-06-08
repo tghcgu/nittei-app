@@ -58,6 +58,17 @@ html[data-theme="dark"] body {
   transform: translateY(-1px);
 }
 
+@media (max-width: 640px) {
+  .theme-toggle {
+    right: 0.65rem;
+    bottom: 0.65rem;
+    height: 2.05rem;
+    width: 2.05rem;
+    font-size: 0.68rem;
+    box-shadow: 0 8px 22px rgba(68, 64, 60, 0.16);
+  }
+}
+
 html[data-theme="dark"] .theme-toggle {
   border-color: var(--dark-rose-border);
   background: #050505;
@@ -68,6 +79,12 @@ html[data-theme="dark"] .theme-toggle {
 html[data-theme="dark"] .theme-toggle:hover {
   background: rgba(184, 50, 98, 0.18);
   color: var(--dark-rose-text);
+}
+
+@media (max-width: 640px) {
+  html[data-theme="dark"] .theme-toggle {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.66);
+  }
 }
 
 html[data-theme="dark"] .bg-white,
