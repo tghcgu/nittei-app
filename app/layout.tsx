@@ -8,6 +8,7 @@ import {
   siteTitle,
   siteUrl,
 } from "@/lib/site";
+import { ThemeToggle } from "./ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -67,19 +68,32 @@ const jsonLd = {
   },
 };
 
+const themeInitScript = `
+(() => {
+  try {
+    const theme = localStorage.getItem('nittei-theme');
+    document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
+  } catch {
+    document.documentElement.dataset.theme = 'light';
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {children}
+        <ThemeToggle />
         <Analytics />
         <SpeedInsights />
       </body>
