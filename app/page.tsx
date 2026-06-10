@@ -745,7 +745,7 @@ export default function Home() {
   }
 
   function handleToggleWeekday(weekdayIndex: number) {
-    const dates = addableMonthDates.filter((dateStr) => {
+    const dates = calendarMonthDates.filter((dateStr) => {
       const date = new Date(dateStr + 'T00:00:00')
       return date.getDay() === weekdayIndex
     })
@@ -858,6 +858,7 @@ export default function Home() {
   }
 
   const calGrid = getCalendarGrid(calYear, calMonth)
+  const calendarMonthDates = calGrid.filter((d): d is Date => Boolean(d)).map(toDateStr)
   const addableMonthDates = getMonthDatesFromToday(calYear, calMonth)
   const candidateCountByDate = candidates.reduce<Record<string, number>>((acc, candidate) => {
     if (!candidate.date) return acc
@@ -1252,7 +1253,7 @@ export default function Home() {
             {/* 曜日ヘッダー */}
             <div className="mb-2 grid grid-cols-7 text-center text-xs text-stone-400">
               {WEEKDAYS.map((w, i) => {
-                const weekdayDates = addableMonthDates.filter((dateStr) => {
+                const weekdayDates = calendarMonthDates.filter((dateStr) => {
                   const date = new Date(dateStr + 'T00:00:00')
                   return date.getDay() === i
                 })
