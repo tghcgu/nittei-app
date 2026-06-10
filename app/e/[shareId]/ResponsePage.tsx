@@ -75,7 +75,24 @@ type AnswerHistorySnapshot = {
   lastSetAllAnswers: LastSetAllAnswers | null
 }
 
+type AnswerPaintSession = {
+  pointerId: number
+  pointerType: string
+  startCandidateId: string
+  value: AnswerValue
+  startX: number
+  startY: number
+  isReady: boolean
+  didPaint: boolean
+  activationTimer: number | null
+  paintedValuesByCandidate: Map<string, AnswerValue>
+  originalSnapshot: AnswerHistorySnapshot
+  workingSnapshot: AnswerHistorySnapshot
+}
+
 const MAX_ANSWER_HISTORY = 50
+const ANSWER_PAINT_LONG_PRESS_MS = 220
+const ANSWER_PAINT_MOVE_THRESHOLD = 8
 
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
@@ -251,6 +268,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [lastSetAllAnswers, setLastSetAllAnswers] = useState<LastSetAllAnswers | null>(null)
   const [answerPast, setAnswerPast] = useState<AnswerHistorySnapshot[]>([])
   const [answerFuture, setAnswerFuture] = useState<AnswerHistorySnapshot[]>([])
+  const answerPaintRef = useRef<AnswerPaintSession | null>(null)
+  const suppressNextAnswerClickRef = useRef(false)
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
@@ -713,6 +732,223 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         lastSetAllAnswers: null,
       }
     })
+  }
+
+  function clearAnswerPaintTimer(session: AnswerPaintSession) {
+    if (session.activationTimer === null) return
+    window.clearTimeout(session.activationTimer)
+    session.activationTimer = null
+  }
+
+  function getAnswerValue(value: string | undefined) {
+    return ANSWER_OPTIONS.find((opt) => opt.value === value)?.value ?? null
+  }
+
+  function getAnswerPaintTargetAtPoint(clientX: number, clientY: number) {
+    const element = document.elementFromPoint(clientX, clientY) as HTMLElement | null
+    const target = element?.closest<HTMLElement>(
+      '[data-answer-candidate-id], [data-answer-row-id]'
+    )
+    const candidateId = target?.dataset.answerCandidateId ?? target?.dataset.answerRowId ?? null
+    if (!candidateId) return null
+
+    return {
+      candidateId,
+      value: getAnswerValue(target?.dataset.answerValue),
+    }
+  }
+
+  function applyAnswerPaintToSnapshot(
+    snapshot: AnswerHistorySnapshot,
+    originalSnapshot: AnswerHistorySnapshot,
+    candidateId: string,
+    value: AnswerValue
+  ) {
+    if (originalSnapshot.answers[candidateId] === value) {
+      delete snapshot.answers[candidateId]
+    } else {
+      snapshot.answers[candidateId] = value
+    }
+
+    if (value !== '-') delete snapshot.detailNotes[candidateId]
+    snapshot.lastSetAllAnswers = null
+  }
+
+  function paintAnswerCandidate(candidateId: string, value: AnswerValue) {
+    const session = answerPaintRef.current
+    if (!session || session.paintedValuesByCandidate.get(candidateId) === value) return
+
+    session.value = value
+    session.paintedValuesByCandidate.set(candidateId, value)
+    session.didPaint = true
+    applyAnswerPaintToSnapshot(
+      session.workingSnapshot,
+      session.originalSnapshot,
+      candidateId,
+      value
+    )
+    restoreAnswerSnapshot(session.workingSnapshot)
+  }
+
+  function startAnswerPaintSession(
+    pointerId: number,
+    pointerType: string,
+    candidateId: string,
+    value: AnswerValue,
+    startX: number,
+    startY: number
+  ) {
+    const originalSnapshot = getAnswerSnapshot()
+    const session: AnswerPaintSession = {
+      pointerId,
+      pointerType,
+      startCandidateId: candidateId,
+      value,
+      startX,
+      startY,
+      isReady: pointerType === 'mouse' || pointerType === 'touch',
+      didPaint: false,
+      activationTimer: null,
+      paintedValuesByCandidate: new Map(),
+      originalSnapshot,
+      workingSnapshot: cloneAnswerSnapshot(originalSnapshot),
+    }
+
+    if (!session.isReady) {
+      session.activationTimer = window.setTimeout(() => {
+        const current = answerPaintRef.current
+        if (!current || current.pointerId !== session.pointerId) return
+        current.isReady = true
+        current.activationTimer = null
+      }, ANSWER_PAINT_LONG_PRESS_MS)
+    }
+
+    answerPaintRef.current = session
+  }
+
+  function handleAnswerPaintStart(
+    e: React.PointerEvent<HTMLButtonElement>,
+    candidateId: string,
+    value: AnswerValue
+  ) {
+    if (e.pointerType !== 'mouse' || e.button !== 0) return
+
+    startAnswerPaintSession(e.pointerId, e.pointerType, candidateId, value, e.clientX, e.clientY)
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function cancelAnswerPaint(pointerId: number) {
+    const session = answerPaintRef.current
+    if (!session || session.pointerId !== pointerId) return
+
+    clearAnswerPaintTimer(session)
+    answerPaintRef.current = null
+  }
+
+  function handleAnswerPaintMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const session = answerPaintRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+
+    const distance = Math.hypot(e.clientX - session.startX, e.clientY - session.startY)
+    if (!session.isReady) {
+      if (distance > ANSWER_PAINT_MOVE_THRESHOLD) cancelAnswerPaint(e.pointerId)
+      return
+    }
+
+    const target = getAnswerPaintTargetAtPoint(e.clientX, e.clientY)
+    if (!target) return
+    if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
+
+    e.preventDefault()
+    if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
+    paintAnswerCandidate(target.candidateId, target.value ?? session.value)
+  }
+
+  function finishAnswerPaint(pointerId: number) {
+    const session = answerPaintRef.current
+    if (!session || session.pointerId !== pointerId) return
+
+    clearAnswerPaintTimer(session)
+    answerPaintRef.current = null
+
+    if (!session.didPaint) return
+
+    suppressNextAnswerClickRef.current = true
+    window.setTimeout(() => {
+      suppressNextAnswerClickRef.current = false
+    }, 160)
+
+    if (areAnswerSnapshotsEqual(session.originalSnapshot, session.workingSnapshot)) return
+
+    setAnswerPast((past) => [
+      ...past.slice(-(MAX_ANSWER_HISTORY - 1)),
+      cloneAnswerSnapshot(session.originalSnapshot),
+    ])
+    setAnswerFuture([])
+    restoreAnswerSnapshot(session.workingSnapshot)
+  }
+
+  function handleAnswerPaintEnd(e: React.PointerEvent<HTMLButtonElement>) {
+    finishAnswerPaint(e.pointerId)
+  }
+
+  function getTouchById(touches: React.TouchList, identifier: number) {
+    for (let i = 0; i < touches.length; i += 1) {
+      const touch = touches.item(i)
+      if (touch?.identifier === identifier) return touch
+    }
+
+    return null
+  }
+
+  function handleAnswerTouchStart(
+    e: React.TouchEvent<HTMLButtonElement>,
+    candidateId: string,
+    value: AnswerValue
+  ) {
+    if (e.touches.length !== 1) return
+
+    const touch = e.touches.item(0)
+    if (!touch) return
+
+    startAnswerPaintSession(
+      touch.identifier,
+      'touch',
+      candidateId,
+      value,
+      touch.clientX,
+      touch.clientY
+    )
+  }
+
+  function handleAnswerTouchMove(e: React.TouchEvent<HTMLButtonElement>) {
+    const session = answerPaintRef.current
+    if (!session || session.pointerType !== 'touch') return
+
+    const touch = getTouchById(e.touches, session.pointerId)
+    if (!touch) return
+
+    const distance = Math.hypot(touch.clientX - session.startX, touch.clientY - session.startY)
+    if (!session.isReady) {
+      if (distance > ANSWER_PAINT_MOVE_THRESHOLD) cancelAnswerPaint(session.pointerId)
+      return
+    }
+
+    const target = getAnswerPaintTargetAtPoint(touch.clientX, touch.clientY)
+    if (!target) return
+    if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
+
+    e.preventDefault()
+    if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
+    paintAnswerCandidate(target.candidateId, target.value ?? session.value)
+  }
+
+  function handleAnswerTouchEnd(e: React.TouchEvent<HTMLButtonElement>) {
+    const session = answerPaintRef.current
+    if (!session || session.pointerType !== 'touch') return
+    if (!getTouchById(e.changedTouches, session.pointerId)) return
+
+    finishAnswerPaint(session.pointerId)
   }
 
   function handleAnswerChange(candidateId: string, value: AnswerValue) {
@@ -1238,7 +1474,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               各日程への出欠 <span className="text-rose-700">*</span>
             </div>
             {candidates.map((c) => (
-              <div key={c.id}>
+              <div key={c.id} data-answer-row-id={c.id}>
                 <div className="flex flex-wrap items-center gap-2 py-0">
                   <div className="w-max min-w-[9rem] shrink-0 whitespace-nowrap">
                     <span className="font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
@@ -1251,8 +1487,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => handleAnswerChange(c.id, opt.value)}
-                        className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${
+                        data-answer-candidate-id={c.id}
+                        data-answer-value={opt.value}
+                        onPointerDown={(e) => handleAnswerPaintStart(e, c.id, opt.value)}
+                        onPointerMove={handleAnswerPaintMove}
+                        onPointerUp={handleAnswerPaintEnd}
+                        onPointerCancel={handleAnswerPaintEnd}
+                        onTouchStart={(e) => handleAnswerTouchStart(e, c.id, opt.value)}
+                        onTouchMove={handleAnswerTouchMove}
+                        onTouchEnd={handleAnswerTouchEnd}
+                        onTouchCancel={handleAnswerTouchEnd}
+                        onClick={() => {
+                          if (suppressNextAnswerClickRef.current) {
+                            suppressNextAnswerClickRef.current = false
+                            return
+                          }
+                          handleAnswerChange(c.id, opt.value)
+                        }}
+                        className={`h-8 w-8 touch-none select-none rounded-full border-2 text-sm transition-all ${
                           answers[c.id] === opt.value ? opt.active : opt.idle
                         }`}
                       >
