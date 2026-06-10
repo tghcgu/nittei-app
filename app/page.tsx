@@ -58,9 +58,22 @@ type BusyPeriod = {
   isAllDay: boolean
 }
 
+type CalendarPaintMode = 'add' | 'remove'
+
+type CalendarPaintSession = {
+  pointerId: number
+  mode: CalendarPaintMode
+  startDate: string
+  startX: number
+  startY: number
+  didPaint: boolean
+  initialSelected: Set<string>
+}
+
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
+const CALENDAR_PAINT_MOVE_THRESHOLD = 8
 
 function generateShareId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -85,6 +98,10 @@ function datesBetween(start: string, end: string): string[] {
     cur.setDate(cur.getDate() + 1)
   }
   return result
+}
+
+function datesBetweenAnyOrder(a: string, b: string): string[] {
+  return a <= b ? datesBetween(a, b) : datesBetween(b, a)
 }
 
 function getCalendarGrid(year: number, month: number): (Date | null)[] {
@@ -269,6 +286,8 @@ export default function Home() {
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calSelected, setCalSelected] = useState<Set<string>>(new Set())
+  const calendarPaintRef = useRef<CalendarPaintSession | null>(null)
+  const suppressNextCalendarClickRef = useRef(false)
 
   // dnd-kit センサー設定（マウス・タッチ・キーボードに対応）
   const sensors = useSensors(
@@ -635,14 +654,106 @@ export default function Home() {
     })
   }
 
+  function toggleCalendarDates(dateStrs: string[]) {
+    if (dateStrs.length === 0) return
+
+    setCalSelected((prev) => {
+      const next = new Set(prev)
+      const shouldRemove = dateStrs.every((dateStr) => next.has(dateStr))
+      for (const dateStr of dateStrs) {
+        if (shouldRemove) next.delete(dateStr)
+        else next.add(dateStr)
+      }
+      return next
+    })
+  }
+
+  function getCalendarDateAtPoint(clientX: number, clientY: number) {
+    const element = document.elementFromPoint(clientX, clientY) as HTMLElement | null
+    return element?.closest<HTMLElement>('[data-calendar-date]')?.dataset.calendarDate ?? null
+  }
+
+  function applyCalendarPaintRange(dateStr: string) {
+    const session = calendarPaintRef.current
+    if (!session) return
+
+    session.didPaint = true
+    const next = new Set(session.initialSelected)
+    for (const rangeDate of datesBetweenAnyOrder(session.startDate, dateStr)) {
+      if (session.mode === 'add') next.add(rangeDate)
+      else next.delete(rangeDate)
+    }
+    setCalSelected(next)
+  }
+
+  function handleCalendarPaintStart(e: React.PointerEvent<HTMLButtonElement>, dateStr: string) {
+    if (e.button !== 0) return
+
+    calendarPaintRef.current = {
+      pointerId: e.pointerId,
+      mode: calSelected.has(dateStr) ? 'remove' : 'add',
+      startDate: dateStr,
+      startX: e.clientX,
+      startY: e.clientY,
+      didPaint: false,
+      initialSelected: new Set(calSelected),
+    }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function handleCalendarPaintMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const session = calendarPaintRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+
+    const distance = Math.hypot(e.clientX - session.startX, e.clientY - session.startY)
+    if (!session.didPaint && distance < CALENDAR_PAINT_MOVE_THRESHOLD) return
+
+    const dateStr = getCalendarDateAtPoint(e.clientX, e.clientY)
+    if (!dateStr) return
+
+    e.preventDefault()
+    applyCalendarPaintRange(dateStr)
+  }
+
+  function handleCalendarPaintEnd(e: React.PointerEvent<HTMLButtonElement>) {
+    const session = calendarPaintRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+
+    calendarPaintRef.current = null
+    if (!session.didPaint) return
+
+    suppressNextCalendarClickRef.current = true
+    window.setTimeout(() => {
+      suppressNextCalendarClickRef.current = false
+    }, 160)
+  }
+
   function handleAddFromCalendar() {
     addDatesFromList([...calSelected].sort())
     setCalOpen(false)
   }
 
-  function handleAddCurrentMonthFromToday() {
+  function handleSelectCurrentMonthFromToday() {
     if (addableMonthDates.length === 0) return
-    addDatesFromList(addableMonthDates)
+    toggleCalendarDates(addableMonthDates)
+  }
+
+  function handleToggleWeekday(weekdayIndex: number) {
+    const dates = calendarMonthDates.filter((dateStr) => {
+      const date = new Date(dateStr + 'T00:00:00')
+      return date.getDay() === weekdayIndex
+    })
+    if (dates.length === 0) return
+
+    setCalSelected((prev) => {
+      const next = new Set(prev)
+      const hasSelectedDate = dates.some((dateStr) => next.has(dateStr))
+      for (const dateStr of dates) {
+        if (hasSelectedDate) next.delete(dateStr)
+        else next.add(dateStr)
+      }
+      return next
+    })
   }
 
   // ---- フォーム送信 ----
@@ -751,6 +862,7 @@ export default function Home() {
   }
 
   const calGrid = getCalendarGrid(calYear, calMonth)
+  const calendarMonthDates = calGrid.filter((d): d is Date => Boolean(d)).map(toDateStr)
   const addableMonthDates = getMonthDatesFromToday(calYear, calMonth)
   const candidateCountByDate = candidates.reduce<Record<string, number>>((acc, candidate) => {
     if (!candidate.date) return acc
@@ -1088,7 +1200,7 @@ export default function Home() {
           </button>
         </form>
 
-        <div className="mt-4 text-center">
+        <div className="mt-1 text-center">
           <button
             type="button"
             onClick={scrollToPageTop}
@@ -1133,25 +1245,44 @@ export default function Home() {
 
             <button
               type="button"
-              onClick={handleAddCurrentMonthFromToday}
+              onClick={handleSelectCurrentMonthFromToday}
               disabled={addableMonthDates.length === 0}
               className="mb-4 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-white disabled:text-stone-300 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
             >
               {addableMonthDates.length > 0
-                ? `＋ この月の今日以降を追加（${addableMonthDates.length}日）`
+                ? `この月の今日以降を選択（${addableMonthDates.length}日）`
                 : 'この月は追加できる日がありません'}
             </button>
 
             {/* 曜日ヘッダー */}
             <div className="mb-2 grid grid-cols-7 text-center text-xs text-stone-400">
-              {WEEKDAYS.map((w, i) => (
-                <div
-                  key={w}
-                  className={i === 0 ? 'text-rose-400' : i === 6 ? 'text-blue-400' : ''}
-                >
-                  {w}
-                </div>
-              ))}
+              {WEEKDAYS.map((w, i) => {
+                const weekdayDates = calendarMonthDates.filter((dateStr) => {
+                  const date = new Date(dateStr + 'T00:00:00')
+                  return date.getDay() === i
+                })
+                const isWeekdaySelected = weekdayDates.some((dateStr) => calSelected.has(dateStr))
+
+                return (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => handleToggleWeekday(i)}
+                    disabled={weekdayDates.length === 0}
+                    className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                      isWeekdaySelected
+                        ? 'bg-rose-700 font-bold text-white'
+                        : i === 0
+                        ? 'text-rose-400 hover:bg-rose-50'
+                        : i === 6
+                        ? 'text-blue-400 hover:bg-blue-50'
+                        : 'text-stone-400 hover:bg-stone-100'
+                    }`}
+                  >
+                    {w}
+                  </button>
+                )
+              })}
             </div>
 
             {/* 日付グリッド */}
@@ -1166,8 +1297,19 @@ export default function Home() {
                   <button
                     key={dateStr}
                     type="button"
-                    onClick={() => toggleCalDate(dateStr)}
-                    className={`relative mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors ${
+                    data-calendar-date={dateStr}
+                    onPointerDown={(e) => handleCalendarPaintStart(e, dateStr)}
+                    onPointerMove={handleCalendarPaintMove}
+                    onPointerUp={handleCalendarPaintEnd}
+                    onPointerCancel={handleCalendarPaintEnd}
+                    onClick={() => {
+                      if (suppressNextCalendarClickRef.current) {
+                        suppressNextCalendarClickRef.current = false
+                        return
+                      }
+                      toggleCalDate(dateStr)
+                    }}
+                    className={`relative mx-auto flex h-9 w-9 touch-none select-none items-center justify-center rounded-full text-sm transition-colors ${
                       isSelected
                         ? 'bg-rose-700 font-bold text-white'
                         : dow === 0
