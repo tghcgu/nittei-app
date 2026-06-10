@@ -1200,7 +1200,7 @@ export default function Home() {
           </button>
         </form>
 
-        <div className="mt-4 text-center">
+        <div className="mt-1 text-center">
           <button
             type="button"
             onClick={scrollToPageTop}
