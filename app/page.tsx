@@ -656,6 +656,20 @@ export default function Home() {
     })
   }
 
+  function toggleCalendarDates(dateStrs: string[]) {
+    if (dateStrs.length === 0) return
+
+    setCalSelected((prev) => {
+      const next = new Set(prev)
+      const shouldRemove = dateStrs.every((dateStr) => next.has(dateStr))
+      for (const dateStr of dateStrs) {
+        if (shouldRemove) next.delete(dateStr)
+        else next.add(dateStr)
+      }
+      return next
+    })
+  }
+
   function getCalendarDateAtPoint(clientX: number, clientY: number) {
     const element = document.elementFromPoint(clientX, clientY) as HTMLElement | null
     return element?.closest<HTMLElement>('[data-calendar-date]')?.dataset.calendarDate ?? null
@@ -725,9 +739,17 @@ export default function Home() {
     setCalOpen(false)
   }
 
-  function handleAddCurrentMonthFromToday() {
+  function handleSelectCurrentMonthFromToday() {
     if (addableMonthDates.length === 0) return
-    addDatesFromList(addableMonthDates)
+    toggleCalendarDates(addableMonthDates)
+  }
+
+  function handleToggleWeekday(weekdayIndex: number) {
+    const dates = addableMonthDates.filter((dateStr) => {
+      const date = new Date(dateStr + 'T00:00:00')
+      return date.getDay() === weekdayIndex
+    })
+    toggleCalendarDates(dates)
   }
 
   // ---- フォーム送信 ----
@@ -1218,25 +1240,45 @@ export default function Home() {
 
             <button
               type="button"
-              onClick={handleAddCurrentMonthFromToday}
+              onClick={handleSelectCurrentMonthFromToday}
               disabled={addableMonthDates.length === 0}
               className="mb-4 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-white disabled:text-stone-300 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
             >
               {addableMonthDates.length > 0
-                ? `＋ この月の今日以降を追加（${addableMonthDates.length}日）`
+                ? `この月の今日以降を選択（${addableMonthDates.length}日）`
                 : 'この月は追加できる日がありません'}
             </button>
 
             {/* 曜日ヘッダー */}
             <div className="mb-2 grid grid-cols-7 text-center text-xs text-stone-400">
-              {WEEKDAYS.map((w, i) => (
-                <div
-                  key={w}
-                  className={i === 0 ? 'text-rose-400' : i === 6 ? 'text-blue-400' : ''}
-                >
-                  {w}
-                </div>
-              ))}
+              {WEEKDAYS.map((w, i) => {
+                const weekdayDates = addableMonthDates.filter((dateStr) => {
+                  const date = new Date(dateStr + 'T00:00:00')
+                  return date.getDay() === i
+                })
+                const isWeekdaySelected =
+                  weekdayDates.length > 0 && weekdayDates.every((dateStr) => calSelected.has(dateStr))
+
+                return (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => handleToggleWeekday(i)}
+                    disabled={weekdayDates.length === 0}
+                    className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                      isWeekdaySelected
+                        ? 'bg-rose-700 font-bold text-white'
+                        : i === 0
+                        ? 'text-rose-400 hover:bg-rose-50'
+                        : i === 6
+                        ? 'text-blue-400 hover:bg-blue-50'
+                        : 'text-stone-400 hover:bg-stone-100'
+                    }`}
+                  >
+                    {w}
+                  </button>
+                )
+              })}
             </div>
 
             {/* 日付グリッド */}
