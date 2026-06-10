@@ -806,7 +806,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       value,
       startX,
       startY,
-      isReady: pointerType === 'mouse',
+      isReady: pointerType === 'mouse' || pointerType === 'touch',
       didPaint: false,
       activationTimer: null,
       paintedValuesByCandidate: new Map(),
@@ -1504,7 +1504,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           }
                           handleAnswerChange(c.id, opt.value)
                         }}
-                        className={`h-8 w-8 select-none rounded-full border-2 text-sm transition-all ${
+                        className={`h-8 w-8 touch-none select-none rounded-full border-2 text-sm transition-all ${
                           answers[c.id] === opt.value ? opt.active : opt.idle
                         }`}
                       >
