@@ -85,7 +85,7 @@ type AnswerPaintSession = {
   isReady: boolean
   didPaint: boolean
   activationTimer: number | null
-  paintedCandidateIds: Set<string>
+  paintedValuesByCandidate: Map<string, AnswerValue>
   originalSnapshot: AnswerHistorySnapshot
   workingSnapshot: AnswerHistorySnapshot
 }
@@ -740,32 +740,53 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     session.activationTimer = null
   }
 
-  function getAnswerCandidateIdAtPoint(clientX: number, clientY: number) {
+  function getAnswerValue(value: string | undefined) {
+    return ANSWER_OPTIONS.find((opt) => opt.value === value)?.value ?? null
+  }
+
+  function getAnswerPaintTargetAtPoint(clientX: number, clientY: number) {
     const element = document.elementFromPoint(clientX, clientY) as HTMLElement | null
     const target = element?.closest<HTMLElement>(
       '[data-answer-candidate-id], [data-answer-row-id]'
     )
+    const candidateId = target?.dataset.answerCandidateId ?? target?.dataset.answerRowId ?? null
+    if (!candidateId) return null
 
-    return target?.dataset.answerCandidateId ?? target?.dataset.answerRowId ?? null
+    return {
+      candidateId,
+      value: getAnswerValue(target?.dataset.answerValue),
+    }
   }
 
   function applyAnswerPaintToSnapshot(
     snapshot: AnswerHistorySnapshot,
+    originalSnapshot: AnswerHistorySnapshot,
     candidateId: string,
     value: AnswerValue
   ) {
-    snapshot.answers[candidateId] = value
+    if (originalSnapshot.answers[candidateId] === value) {
+      delete snapshot.answers[candidateId]
+    } else {
+      snapshot.answers[candidateId] = value
+    }
+
     if (value !== '-') delete snapshot.detailNotes[candidateId]
     snapshot.lastSetAllAnswers = null
   }
 
-  function paintAnswerCandidate(candidateId: string) {
+  function paintAnswerCandidate(candidateId: string, value: AnswerValue) {
     const session = answerPaintRef.current
-    if (!session || session.paintedCandidateIds.has(candidateId)) return
+    if (!session || session.paintedValuesByCandidate.get(candidateId) === value) return
 
-    session.paintedCandidateIds.add(candidateId)
+    session.value = value
+    session.paintedValuesByCandidate.set(candidateId, value)
     session.didPaint = true
-    applyAnswerPaintToSnapshot(session.workingSnapshot, candidateId, session.value)
+    applyAnswerPaintToSnapshot(
+      session.workingSnapshot,
+      session.originalSnapshot,
+      candidateId,
+      value
+    )
     restoreAnswerSnapshot(session.workingSnapshot)
   }
 
@@ -788,7 +809,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       isReady: pointerType === 'mouse',
       didPaint: false,
       activationTimer: null,
-      paintedCandidateIds: new Set(),
+      paintedValuesByCandidate: new Map(),
       originalSnapshot,
       workingSnapshot: cloneAnswerSnapshot(originalSnapshot),
     }
@@ -834,13 +855,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       return
     }
 
-    const candidateId = getAnswerCandidateIdAtPoint(e.clientX, e.clientY)
-    if (!candidateId) return
+    const target = getAnswerPaintTargetAtPoint(e.clientX, e.clientY)
+    if (!target) return
     if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
 
     e.preventDefault()
-    if (!session.didPaint) paintAnswerCandidate(session.startCandidateId)
-    paintAnswerCandidate(candidateId)
+    if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
+    paintAnswerCandidate(target.candidateId, target.value ?? session.value)
   }
 
   function finishAnswerPaint(pointerId: number) {
@@ -913,13 +934,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       return
     }
 
-    const candidateId = getAnswerCandidateIdAtPoint(touch.clientX, touch.clientY)
-    if (!candidateId) return
+    const target = getAnswerPaintTargetAtPoint(touch.clientX, touch.clientY)
+    if (!target) return
     if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
 
     e.preventDefault()
-    if (!session.didPaint) paintAnswerCandidate(session.startCandidateId)
-    paintAnswerCandidate(candidateId)
+    if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
+    paintAnswerCandidate(target.candidateId, target.value ?? session.value)
   }
 
   function handleAnswerTouchEnd(e: React.TouchEvent<HTMLButtonElement>) {
@@ -1467,6 +1488,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         key={opt.value}
                         type="button"
                         data-answer-candidate-id={c.id}
+                        data-answer-value={opt.value}
                         onPointerDown={(e) => handleAnswerPaintStart(e, c.id, opt.value)}
                         onPointerMove={handleAnswerPaintMove}
                         onPointerUp={handleAnswerPaintEnd}
