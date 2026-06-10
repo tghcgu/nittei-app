@@ -64,12 +64,10 @@ type CalendarPaintSession = {
   pointerId: number
   mode: CalendarPaintMode
   startDate: string
-  lastDate: string
   startX: number
   startY: number
   didPaint: boolean
-  paintedDates: Set<string>
-  workingSelected: Set<string>
+  initialSelected: Set<string>
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
@@ -675,15 +673,17 @@ export default function Home() {
     return element?.closest<HTMLElement>('[data-calendar-date]')?.dataset.calendarDate ?? null
   }
 
-  function paintCalendarDate(dateStr: string) {
+  function applyCalendarPaintRange(dateStr: string) {
     const session = calendarPaintRef.current
-    if (!session || session.paintedDates.has(dateStr)) return
+    if (!session) return
 
-    session.paintedDates.add(dateStr)
     session.didPaint = true
-    if (session.mode === 'add') session.workingSelected.add(dateStr)
-    else session.workingSelected.delete(dateStr)
-    setCalSelected(new Set(session.workingSelected))
+    const next = new Set(session.initialSelected)
+    for (const rangeDate of datesBetweenAnyOrder(session.startDate, dateStr)) {
+      if (session.mode === 'add') next.add(rangeDate)
+      else next.delete(rangeDate)
+    }
+    setCalSelected(next)
   }
 
   function handleCalendarPaintStart(e: React.PointerEvent<HTMLButtonElement>, dateStr: string) {
@@ -693,12 +693,10 @@ export default function Home() {
       pointerId: e.pointerId,
       mode: calSelected.has(dateStr) ? 'remove' : 'add',
       startDate: dateStr,
-      lastDate: dateStr,
       startX: e.clientX,
       startY: e.clientY,
       didPaint: false,
-      paintedDates: new Set(),
-      workingSelected: new Set(calSelected),
+      initialSelected: new Set(calSelected),
     }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
@@ -714,11 +712,7 @@ export default function Home() {
     if (!dateStr) return
 
     e.preventDefault()
-    if (!session.didPaint) paintCalendarDate(session.startDate)
-    for (const pathDate of datesBetweenAnyOrder(session.lastDate, dateStr)) {
-      paintCalendarDate(pathDate)
-    }
-    session.lastDate = dateStr
+    applyCalendarPaintRange(dateStr)
   }
 
   function handleCalendarPaintEnd(e: React.PointerEvent<HTMLButtonElement>) {
