@@ -58,9 +58,23 @@ type BusyPeriod = {
   isAllDay: boolean
 }
 
+type CalendarPaintMode = 'add' | 'remove'
+
+type CalendarPaintSession = {
+  pointerId: number
+  mode: CalendarPaintMode
+  startDate: string
+  startX: number
+  startY: number
+  didPaint: boolean
+  paintedDates: Set<string>
+  workingSelected: Set<string>
+}
+
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
+const CALENDAR_PAINT_MOVE_THRESHOLD = 8
 
 function generateShareId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -269,6 +283,8 @@ export default function Home() {
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calSelected, setCalSelected] = useState<Set<string>>(new Set())
+  const calendarPaintRef = useRef<CalendarPaintSession | null>(null)
+  const suppressNextCalendarClickRef = useRef(false)
 
   // dnd-kit センサー設定（マウス・タッチ・キーボードに対応）
   const sensors = useSensors(
@@ -633,6 +649,66 @@ export default function Home() {
       else next.add(dateStr)
       return next
     })
+  }
+
+  function getCalendarDateAtPoint(clientX: number, clientY: number) {
+    const element = document.elementFromPoint(clientX, clientY) as HTMLElement | null
+    return element?.closest<HTMLElement>('[data-calendar-date]')?.dataset.calendarDate ?? null
+  }
+
+  function paintCalendarDate(dateStr: string) {
+    const session = calendarPaintRef.current
+    if (!session || session.paintedDates.has(dateStr)) return
+
+    session.paintedDates.add(dateStr)
+    session.didPaint = true
+    if (session.mode === 'add') session.workingSelected.add(dateStr)
+    else session.workingSelected.delete(dateStr)
+    setCalSelected(new Set(session.workingSelected))
+  }
+
+  function handleCalendarPaintStart(e: React.PointerEvent<HTMLButtonElement>, dateStr: string) {
+    if (e.button !== 0) return
+
+    calendarPaintRef.current = {
+      pointerId: e.pointerId,
+      mode: calSelected.has(dateStr) ? 'remove' : 'add',
+      startDate: dateStr,
+      startX: e.clientX,
+      startY: e.clientY,
+      didPaint: false,
+      paintedDates: new Set(),
+      workingSelected: new Set(calSelected),
+    }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function handleCalendarPaintMove(e: React.PointerEvent<HTMLButtonElement>) {
+    const session = calendarPaintRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+
+    const distance = Math.hypot(e.clientX - session.startX, e.clientY - session.startY)
+    if (!session.didPaint && distance < CALENDAR_PAINT_MOVE_THRESHOLD) return
+
+    const dateStr = getCalendarDateAtPoint(e.clientX, e.clientY)
+    if (!dateStr) return
+
+    e.preventDefault()
+    if (!session.didPaint) paintCalendarDate(session.startDate)
+    paintCalendarDate(dateStr)
+  }
+
+  function handleCalendarPaintEnd(e: React.PointerEvent<HTMLButtonElement>) {
+    const session = calendarPaintRef.current
+    if (!session || session.pointerId !== e.pointerId) return
+
+    calendarPaintRef.current = null
+    if (!session.didPaint) return
+
+    suppressNextCalendarClickRef.current = true
+    window.setTimeout(() => {
+      suppressNextCalendarClickRef.current = false
+    }, 160)
   }
 
   function handleAddFromCalendar() {
@@ -1166,8 +1242,19 @@ export default function Home() {
                   <button
                     key={dateStr}
                     type="button"
-                    onClick={() => toggleCalDate(dateStr)}
-                    className={`relative mx-auto flex h-9 w-9 items-center justify-center rounded-full text-sm transition-colors ${
+                    data-calendar-date={dateStr}
+                    onPointerDown={(e) => handleCalendarPaintStart(e, dateStr)}
+                    onPointerMove={handleCalendarPaintMove}
+                    onPointerUp={handleCalendarPaintEnd}
+                    onPointerCancel={handleCalendarPaintEnd}
+                    onClick={() => {
+                      if (suppressNextCalendarClickRef.current) {
+                        suppressNextCalendarClickRef.current = false
+                        return
+                      }
+                      toggleCalDate(dateStr)
+                    }}
+                    className={`relative mx-auto flex h-9 w-9 touch-none select-none items-center justify-center rounded-full text-sm transition-colors ${
                       isSelected
                         ? 'bg-rose-700 font-bold text-white'
                         : dow === 0
