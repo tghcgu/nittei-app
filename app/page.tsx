@@ -749,7 +749,17 @@ export default function Home() {
       const date = new Date(dateStr + 'T00:00:00')
       return date.getDay() === weekdayIndex
     })
-    toggleCalendarDates(dates)
+    if (dates.length === 0) return
+
+    setCalSelected((prev) => {
+      const next = new Set(prev)
+      const hasSelectedDate = dates.some((dateStr) => next.has(dateStr))
+      for (const dateStr of dates) {
+        if (hasSelectedDate) next.delete(dateStr)
+        else next.add(dateStr)
+      }
+      return next
+    })
   }
 
   // ---- フォーム送信 ----
@@ -1257,8 +1267,7 @@ export default function Home() {
                   const date = new Date(dateStr + 'T00:00:00')
                   return date.getDay() === i
                 })
-                const isWeekdaySelected =
-                  weekdayDates.length > 0 && weekdayDates.every((dateStr) => calSelected.has(dateStr))
+                const isWeekdaySelected = weekdayDates.some((dateStr) => calSelected.has(dateStr))
 
                 return (
                   <button
