@@ -64,6 +64,7 @@ type CalendarPaintSession = {
   pointerId: number
   mode: CalendarPaintMode
   startDate: string
+  lastDate: string
   startX: number
   startY: number
   didPaint: boolean
@@ -99,6 +100,10 @@ function datesBetween(start: string, end: string): string[] {
     cur.setDate(cur.getDate() + 1)
   }
   return result
+}
+
+function datesBetweenAnyOrder(a: string, b: string): string[] {
+  return a <= b ? datesBetween(a, b) : datesBetween(b, a)
 }
 
 function getCalendarGrid(year: number, month: number): (Date | null)[] {
@@ -674,6 +679,7 @@ export default function Home() {
       pointerId: e.pointerId,
       mode: calSelected.has(dateStr) ? 'remove' : 'add',
       startDate: dateStr,
+      lastDate: dateStr,
       startX: e.clientX,
       startY: e.clientY,
       didPaint: false,
@@ -695,7 +701,10 @@ export default function Home() {
 
     e.preventDefault()
     if (!session.didPaint) paintCalendarDate(session.startDate)
-    paintCalendarDate(dateStr)
+    for (const pathDate of datesBetweenAnyOrder(session.lastDate, dateStr)) {
+      paintCalendarDate(pathDate)
+    }
+    session.lastDate = dateStr
   }
 
   function handleCalendarPaintEnd(e: React.PointerEvent<HTMLButtonElement>) {
