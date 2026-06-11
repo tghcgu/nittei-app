@@ -195,7 +195,8 @@ function isClockMinuteInRange(minute: number, rangeStart: number, rangeEnd: numb
 
   return [0, 24 * 60].some((offset) => {
     const shiftedMinute = minute + offset
-    return shiftedMinute >= rangeStart && shiftedMinute <= adjustedEnd
+    // 終端は含めない：範囲の終わりちょうどに始まる候補は「重なりなし」
+    return shiftedMinute >= rangeStart && shiftedMinute < adjustedEnd
   })
 }
 
@@ -214,7 +215,8 @@ function clockRangesOverlap(candidate: ClockRange, rangeStart: number, rangeEnd:
   return [-24 * 60, 0, 24 * 60].some((offset) => {
     const candidateStart = adjustedCandidate.start + offset
     const candidateEnd = adjustedCandidate.end + offset
-    return candidateStart <= adjustedRange.end && candidateEnd >= adjustedRange.start
+    // 端点で接しているだけ（共有時間0分）は重なりとみなさない
+    return candidateStart < adjustedRange.end && candidateEnd > adjustedRange.start
   })
 }
 
@@ -249,7 +251,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // 共通メモ：常時表示、回答全体で1つ（responses.note に保存）
   const [sharedNote, setSharedNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [submitSuccess, setSubmitSuccess] = useState<'created' | 'updated' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
@@ -274,12 +276,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
 
-  function handleCopyUrl() {
+  async function handleCopyUrl() {
     const url = `${window.location.origin}/e/${shareId}`
-    navigator.clipboard.writeText(url).then(() => {
+    try {
+      if (!navigator.clipboard) throw new Error('clipboard unavailable')
+      await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    })
+    } catch {
+      // 非HTTPSやWebViewなどクリップボードが使えない環境では手動コピー用に提示する
+      window.prompt('このURLをコピーしてください', url)
+    }
   }
 
   function jumpToElement(id: string, topPadding = 32) {
@@ -300,11 +307,23 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
+  // 最新ステートを参照するための ref。.ics 解析のように await を挟んだ後に
+  // スナップショットを取る処理が、await 前の古いクロージャ値で
+  // 解析中の手入力を上書きしないようにする。
+  const answersRef = useRef(answers)
+  const detailNotesRef = useRef(detailNotes)
+  const lastSetAllAnswersRef = useRef(lastSetAllAnswers)
+  useEffect(() => {
+    answersRef.current = answers
+    detailNotesRef.current = detailNotes
+    lastSetAllAnswersRef.current = lastSetAllAnswers
+  }, [answers, detailNotes, lastSetAllAnswers])
+
   function getAnswerSnapshot(): AnswerHistorySnapshot {
     return {
-      answers: { ...answers },
-      detailNotes: { ...detailNotes },
-      lastSetAllAnswers: cloneLastSetAllAnswers(lastSetAllAnswers),
+      answers: { ...answersRef.current },
+      detailNotes: { ...detailNotesRef.current },
+      lastSetAllAnswers: cloneLastSetAllAnswers(lastSetAllAnswersRef.current),
     }
   }
 
@@ -442,7 +461,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setEditingResponseId(r.id)
     setLastSetAllAnswers(null)
     resetAnswerHistory()
-    setSubmitSuccess(false)
+    setSubmitSuccess(null)
     setError(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -562,14 +581,27 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     e.target.value = ''
     if (!file) return
 
+    if (candidates.length === 0) {
+      setIcsStatus('error')
+      setIcsMessage('候補日がないため自動入力できません。')
+      return
+    }
+
     setIcsStatus('loading')
     setIcsMessage('')
 
     try {
       const ICAL = (await import('ical.js')).default
       const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
-      const rangeStart = ICAL.Time.fromDateTimeString(sortedDates[0].date + 'T00:00:00')
-      const rangeEnd = ICAL.Time.fromDateTimeString(sortedDates[sortedDates.length - 1].date + 'T23:59:59')
+      // 範囲境界はタイムゾーン情報なしの時刻として比較され（UTC扱い）、実際の境界と
+      // 最大±14時間ずれるため、前後1日広げて定期予定の取りこぼしを防ぐ。
+      // 厳密な重なり判定は後段の busyPeriods チェックが行う。
+      const rangeStartDay = new Date(sortedDates[0].date + 'T00:00:00')
+      rangeStartDay.setDate(rangeStartDay.getDate() - 1)
+      const rangeEndDay = new Date(sortedDates[sortedDates.length - 1].date + 'T00:00:00')
+      rangeEndDay.setDate(rangeEndDay.getDate() + 1)
+      const rangeStart = ICAL.Time.fromDateTimeString(toDateStr(rangeStartDay) + 'T00:00:00')
+      const rangeEnd = ICAL.Time.fromDateTimeString(toDateStr(rangeEndDay) + 'T23:59:59')
 
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 
@@ -1059,13 +1091,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setDetailNotes({})
       setEditingAnswerIds({})
       setSharedNote('')
+      // editingResponseId はこの後クリアするので、新規か更新かを先に確定させる
+      setSubmitSuccess(editingResponseId ? 'updated' : 'created')
       setEditingResponseId(null)
       setLastSetAllAnswers(null)
       resetAnswerHistory()
-      setSubmitSuccess(true)
 
       await loadResponses()
-      setTimeout(() => setSubmitSuccess(false), 3000)
+      setTimeout(() => setSubmitSuccess(null), 3000)
     } catch (err) {
       console.error(err)
       setError('送信中にエラーが発生しました。もう一度試してください。')
@@ -1569,7 +1602,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             )}
             {submitSuccess && (
               <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                {editingResponseId ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
+                {submitSuccess === 'updated' ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
               </p>
             )}
 

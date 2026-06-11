@@ -379,15 +379,24 @@ export default function Home() {
     setDefaultEndTime(nextTime.end)
   }
 
-  function commitCandidateChange(nextOrUpdater: Candidate[] | ((items: Candidate[]) => Candidate[])) {
-    const nextCandidates =
-      typeof nextOrUpdater === 'function' ? nextOrUpdater(candidates) : nextOrUpdater
+  // 最新の候補リストを参照するための ref。.ics 解析のように await を挟んだ後に
+  // commitCandidateChange を呼ぶ経路で、解析中に行われた編集が
+  // await 前の古いクロージャ値で巻き戻されるのを防ぐ。
+  const candidatesRef = useRef(candidates)
+  useEffect(() => {
+    candidatesRef.current = candidates
+  }, [candidates])
 
-    if (areCandidatesEqual(candidates, nextCandidates)) return
+  function commitCandidateChange(nextOrUpdater: Candidate[] | ((items: Candidate[]) => Candidate[])) {
+    const currentCandidates = candidatesRef.current
+    const nextCandidates =
+      typeof nextOrUpdater === 'function' ? nextOrUpdater(currentCandidates) : nextOrUpdater
+
+    if (areCandidatesEqual(currentCandidates, nextCandidates)) return
 
     setCandidatePast((past) => [
       ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-      cloneCandidates(candidates),
+      cloneCandidates(currentCandidates),
     ])
     setCandidateFuture([])
     setCandidates(cloneCandidates(nextCandidates))
@@ -399,7 +408,7 @@ export default function Home() {
     const previous = candidatePast[candidatePast.length - 1]
     setCandidatePast((past) => past.slice(0, -1))
     setCandidateFuture((future) => [
-      cloneCandidates(candidates),
+      cloneCandidates(candidatesRef.current),
       ...future.slice(0, MAX_CANDIDATE_HISTORY - 1),
     ])
     restoreCandidateSnapshot(previous)
@@ -411,7 +420,7 @@ export default function Home() {
     const next = candidateFuture[0]
     setCandidatePast((past) => [
       ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-      cloneCandidates(candidates),
+      cloneCandidates(candidatesRef.current),
     ])
     setCandidateFuture((future) => future.slice(1))
     restoreCandidateSnapshot(next)
@@ -495,8 +504,11 @@ export default function Home() {
   function updateCandidate(id: string, field: 'date' | 'timeLabel', value: string) {
     if (field === 'timeLabel') {
       const nextTime = parseTimeLabel(value)
-      setDefaultStartTime(nextTime.start)
-      setDefaultEndTime(nextTime.end)
+      // 行の時間をクリアしたときに、時間帯デフォルトまで空にしない
+      if (nextTime.start) {
+        setDefaultStartTime(nextTime.start)
+        setDefaultEndTime(nextTime.end)
+      }
     }
 
     commitCandidateChange((prev) =>
@@ -582,8 +594,15 @@ export default function Home() {
 
       const ICAL = (await import('ical.js')).default
       const sorted = [...datedCandidates].sort((a, b) => a.date.localeCompare(b.date))
-      const rangeStart = ICAL.Time.fromDateTimeString(sorted[0].date + 'T00:00:00')
-      const rangeEnd = ICAL.Time.fromDateTimeString(sorted[sorted.length - 1].date + 'T23:59:59')
+      // 範囲境界はタイムゾーン情報なしの時刻として比較され（UTC扱い）、実際の境界と
+      // 最大±14時間ずれるため、前後1日広げて定期予定の取りこぼしを防ぐ。
+      // 厳密な重なり判定は後段の busyPeriods チェックが行う。
+      const rangeStartDay = new Date(sorted[0].date + 'T00:00:00')
+      rangeStartDay.setDate(rangeStartDay.getDate() - 1)
+      const rangeEndDay = new Date(sorted[sorted.length - 1].date + 'T00:00:00')
+      rangeEndDay.setDate(rangeEndDay.getDate() + 1)
+      const rangeStart = ICAL.Time.fromDateTimeString(toDateStr(rangeStartDay) + 'T00:00:00')
+      const rangeEnd = ICAL.Time.fromDateTimeString(toDateStr(rangeEndDay) + 'T23:59:59')
 
       const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
 

@@ -17,12 +17,21 @@ function getServerSnapshot(): Theme {
 }
 
 function subscribe(onStoreChange: () => void) {
+  // 別タブでの切り替えは localStorage にしか反映されないため、
+  // 自タブの DOM に適用してから再描画を通知する
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key && event.key !== STORAGE_KEY) return;
+    document.documentElement.dataset.theme =
+      event.newValue === "dark" ? "dark" : "light";
+    onStoreChange();
+  };
+
   window.addEventListener(THEME_CHANGE_EVENT, onStoreChange);
-  window.addEventListener("storage", onStoreChange);
+  window.addEventListener("storage", handleStorage);
 
   return () => {
     window.removeEventListener(THEME_CHANGE_EVENT, onStoreChange);
-    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener("storage", handleStorage);
   };
 }
 
