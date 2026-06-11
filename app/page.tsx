@@ -267,6 +267,8 @@ export default function Home() {
   const [editShareId, setEditShareId] = useState<string | null>(null)
   const [editEventId, setEditEventId] = useState<string | null>(null)
   const [originalCandidateIds, setOriginalCandidateIds] = useState<Set<string>>(new Set())
+  // 編集ロード時点の各候補日の日付（dbId → date）。日付変更の確認に使う
+  const [originalCandidateDates, setOriginalCandidateDates] = useState<Record<string, string>>({})
   const [isLoadingEdit, setIsLoadingEdit] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -340,6 +342,9 @@ export default function Home() {
         setCandidatePast([])
         setCandidateFuture([])
         setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
+        setOriginalCandidateDates(
+          Object.fromEntries(drafts.map((candidate) => [candidate.dbId!, candidate.date]))
+        )
         setSelectedCandidateIds(new Set())
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
         setDefaultStartTime(draftTime.start || DEFAULT_CLOCK_TIME)
@@ -811,6 +816,35 @@ export default function Home() {
             const ok = window.confirm(
               `削除しようとしている候補日には、${removedAnswerCount}件の回答が含まれています。\n` +
                 'この候補日を削除すると、その日に対する回答もすべて削除されます。続けますか？'
+            )
+            if (!ok) {
+              setIsSubmitting(false)
+              return
+            }
+          }
+        }
+
+        // 日付を変更した候補日に付いている回答は、そのまま新しい日付の回答として
+        // 表示され続ける。誤操作で集計が変わらないよう、書き込み前に確認する。
+        const dateChangedCandidateIds = existingCandidates
+          .filter((candidate) => {
+            const originalDate = originalCandidateDates[candidate.dbId]
+            return originalDate !== undefined && originalDate !== candidate.date
+          })
+          .map((candidate) => candidate.dbId)
+
+        if (dateChangedCandidateIds.length > 0) {
+          const { count: movedAnswerCount, error: movedCountError } = await supabase
+            .from('answers')
+            .select('id', { count: 'exact', head: true })
+            .in('candidate_id', dateChangedCandidateIds)
+
+          if (movedCountError) throw movedCountError
+
+          if (movedAnswerCount && movedAnswerCount > 0) {
+            const ok = window.confirm(
+              `日付を変更した候補日には、${movedAnswerCount}件の回答が付いています。\n` +
+                '日付を変更すると、これらの回答は新しい日付への回答として引き継がれます。続けますか？'
             )
             if (!ok) {
               setIsSubmitting(false)
