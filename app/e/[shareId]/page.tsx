@@ -45,6 +45,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       absolute: title,
     },
     description,
+    // イベントページには回答者名が載るため検索エンジンに載せない
+    // （LINE/Slack等のURLプレビューには影響しない）
+    robots: {
+      index: false,
+      follow: true,
+    },
     alternates: {
       canonical: url,
     },
