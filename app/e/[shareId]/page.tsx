@@ -12,12 +12,15 @@ type Props = {
 const eventSelect = 'id, share_id, name, description, created_at'
 
 const getEventByShareId = cache(async (shareId: string) => {
-  const { data } = await supabase
+  // 「該当なし」（→404）とDB障害（→エラー）を区別する。
+  // maybeSingle は0件のとき error にせず data: null を返す。
+  const { data, error } = await supabase
     .from('events')
     .select(eventSelect)
     .eq('share_id', shareId)
-    .single()
+    .maybeSingle()
 
+  if (error) throw error
   return data
 })
 
@@ -71,11 +74,13 @@ export default async function Page({
 
   if (!event) notFound()
 
-  const { data: candidates } = await supabase
+  const { data: candidates, error: candidatesError } = await supabase
     .from('candidates')
     .select('id, event_id, date, time_label, sort_order')
     .eq('event_id', event.id)
     .order('sort_order')
+
+  if (candidatesError) throw candidatesError
 
   return (
     <ResponsePage
