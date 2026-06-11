@@ -921,27 +921,46 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     )
   }
 
-  function handleAnswerTouchMove(e: React.TouchEvent<HTMLButtonElement>) {
-    const session = answerPaintRef.current
-    if (!session || session.pointerType !== 'touch') return
+  // タッチのドラッグペイントは touchmove で preventDefault してスクロールを止める必要があるが、
+  // React の onTouchMove は passive なので preventDefault が効かない。そのため touchmove を
+  // 非 passive で直接登録する。長押しが成立するまで（isReady=false）は preventDefault せず、
+  // ブラウザのスクロールに任せる（マークの上を起点にしたスワイプでもスクロールできる）。
+  useEffect(() => {
+    function handleTouchMove(e: TouchEvent) {
+      const session = answerPaintRef.current
+      if (!session || session.pointerType !== 'touch') return
 
-    const touch = getTouchById(e.touches, session.pointerId)
-    if (!touch) return
+      let touch: Touch | null = null
+      for (let i = 0; i < e.touches.length; i += 1) {
+        const candidate = e.touches.item(i)
+        if (candidate?.identifier === session.pointerId) {
+          touch = candidate
+          break
+        }
+      }
+      if (!touch) return
 
-    const distance = Math.hypot(touch.clientX - session.startX, touch.clientY - session.startY)
-    if (!session.isReady) {
-      if (distance > ANSWER_PAINT_MOVE_THRESHOLD) cancelAnswerPaint(session.pointerId)
-      return
+      const distance = Math.hypot(touch.clientX - session.startX, touch.clientY - session.startY)
+      if (!session.isReady) {
+        // 長押し前に動いたらスクロール操作とみなしてペイントを中止し、スクロールはブラウザに任せる
+        if (distance > ANSWER_PAINT_MOVE_THRESHOLD) cancelAnswerPaint(session.pointerId)
+        return
+      }
+
+      const target = getAnswerPaintTargetAtPoint(touch.clientX, touch.clientY)
+      if (!target) return
+      if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
+
+      // 長押し成立後はスクロールを止めてペイント
+      e.preventDefault()
+      if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
+      paintAnswerCandidate(target.candidateId, target.value ?? session.value)
     }
 
-    const target = getAnswerPaintTargetAtPoint(touch.clientX, touch.clientY)
-    if (!target) return
-    if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
-
-    e.preventDefault()
-    if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
-    paintAnswerCandidate(target.candidateId, target.value ?? session.value)
-  }
+    document.addEventListener('touchmove', handleTouchMove, { passive: false })
+    return () => document.removeEventListener('touchmove', handleTouchMove)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleAnswerTouchEnd(e: React.TouchEvent<HTMLButtonElement>) {
     const session = answerPaintRef.current
@@ -1494,7 +1513,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         onPointerUp={handleAnswerPaintEnd}
                         onPointerCancel={handleAnswerPaintEnd}
                         onTouchStart={(e) => handleAnswerTouchStart(e, c.id, opt.value)}
-                        onTouchMove={handleAnswerTouchMove}
                         onTouchEnd={handleAnswerTouchEnd}
                         onTouchCancel={handleAnswerTouchEnd}
                         onClick={() => {
@@ -1504,7 +1522,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           }
                           handleAnswerChange(c.id, opt.value)
                         }}
-                        className={`h-8 w-8 touch-none select-none rounded-full border-2 text-sm transition-all ${
+                        className={`h-8 w-8 select-none rounded-full border-2 text-sm transition-all ${
                           answers[c.id] === opt.value ? opt.active : opt.idle
                         }`}
                       >
