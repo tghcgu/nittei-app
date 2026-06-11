@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
+import { describeCalendarFileError, describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
 
 // ---- 型定義 ----
@@ -634,9 +634,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         busyPeriods,
         `${describeCalendarFileRead(calendarFiles)} 内容を確認してから送信してください。`
       )
-    } catch {
+    } catch (err) {
       setIcsStatus('error')
-      setIcsMessage('読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。')
+      setIcsMessage(
+        describeCalendarFileError(err) ??
+          '読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。'
+      )
     }
   }
 

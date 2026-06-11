@@ -20,7 +20,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
+import { describeCalendarFileError, describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
 
 type Candidate = {
   id: string
@@ -636,9 +636,12 @@ export default function Home() {
       }
 
       removeBusyCandidates(busyPeriods, datedCandidates, describeCalendarFileRead(calendarFiles))
-    } catch {
+    } catch (err) {
       setIcsStatus('error')
-      setIcsMessage('読み取りに失敗しました。.ics または .zip ファイルか確認してください。')
+      setIcsMessage(
+        describeCalendarFileError(err) ??
+          '読み取りに失敗しました。.ics または .zip ファイルか確認してください。'
+      )
     }
   }
 

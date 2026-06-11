@@ -63,6 +63,20 @@ export async function readCalendarFileTexts(file: File): Promise<CalendarFileRea
   }
 }
 
+// readCalendarFileTexts が投げる既知のエラーをユーザー向けメッセージに変換する。
+// 未知のエラーなら null（呼び出し側が汎用メッセージを出す）。
+export function describeCalendarFileError(error: unknown): string | null {
+  if (!(error instanceof Error)) return null
+
+  if (error.message === 'NO_ICS_IN_ZIP') {
+    return 'zip内に .ics ファイルが見つかりませんでした。カレンダーをエクスポートしたzipか確認してください。'
+  }
+  if (error.message === 'ONLY_BIRTHDAY_ICS_IN_ZIP') {
+    return 'zip内にあったのは誕生日カレンダーのみでした。予定の入ったカレンダーを書き出してください。'
+  }
+  return null
+}
+
 export function describeCalendarFileRead(result: CalendarFileReadResult) {
   if (!result.isZip) return '.ics を解析しました。'
 
