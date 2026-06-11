@@ -598,14 +598,12 @@ export default function Home() {
           if (event.isRecurring()) {
             const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
             let count = 0
-            let next = expand.next()
-            while (next && count < MAX_RECURRING_OCCURRENCES) {
+            for (let next = expand.next(); next && count < MAX_RECURRING_OCCURRENCES; next = expand.next()) {
               count++
               const detail = event.getOccurrenceDetails(next)
               if (detail.startDate.compare(rangeEnd) > 0) break
               if (detail.endDate.compare(rangeStart) <= 0) continue
               busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-              next = expand.next()
             }
           } else {
             busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
@@ -771,13 +769,6 @@ export default function Home() {
 
     try {
       if (editEventId && editShareId) {
-        const { error: eventError } = await supabase
-          .from('events')
-          .update({ name: eventName, description: description || null })
-          .eq('id', editEventId)
-
-        if (eventError) throw eventError
-
         const existingCandidates = validCandidates.filter(
           (candidate): candidate is Candidate & { dbId: string } => Boolean(candidate.dbId)
         )
@@ -786,6 +777,35 @@ export default function Home() {
         const removedCandidateIds = [...originalCandidateIds].filter(
           (candidateId) => !keptCandidateIds.has(candidateId)
         )
+
+        // 候補日を削除すると、その日に紐づく回答も cascade で一緒に消える。
+        // 書き込みを始める前に、消える回答があるか確認する（キャンセル時は何も変更しない）。
+        if (removedCandidateIds.length > 0) {
+          const { count: removedAnswerCount, error: answerCountError } = await supabase
+            .from('answers')
+            .select('id', { count: 'exact', head: true })
+            .in('candidate_id', removedCandidateIds)
+
+          if (answerCountError) throw answerCountError
+
+          if (removedAnswerCount && removedAnswerCount > 0) {
+            const ok = window.confirm(
+              `削除しようとしている候補日には、${removedAnswerCount}件の回答が含まれています。\n` +
+                'この候補日を削除すると、その日に対する回答もすべて削除されます。続けますか？'
+            )
+            if (!ok) {
+              setIsSubmitting(false)
+              return
+            }
+          }
+        }
+
+        const { error: eventError } = await supabase
+          .from('events')
+          .update({ name: eventName, description: description || null })
+          .eq('id', editEventId)
+
+        if (eventError) throw eventError
 
         const updateResults = await Promise.all(
           existingCandidates.map((candidate) =>
