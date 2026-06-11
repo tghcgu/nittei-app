@@ -598,14 +598,12 @@ export default function Home() {
           if (event.isRecurring()) {
             const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
             let count = 0
-            let next = expand.next()
-            while (next && count < MAX_RECURRING_OCCURRENCES) {
+            for (let next = expand.next(); next && count < MAX_RECURRING_OCCURRENCES; next = expand.next()) {
               count++
               const detail = event.getOccurrenceDetails(next)
               if (detail.startDate.compare(rangeEnd) > 0) break
               if (detail.endDate.compare(rangeStart) <= 0) continue
               busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-              next = expand.next()
             }
           } else {
             busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
