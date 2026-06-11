@@ -804,7 +804,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       value,
       startX,
       startY,
-      isReady: pointerType === 'mouse' || pointerType === 'touch',
+      // マウスは即ペイント開始。タッチは長押し(ANSWER_PAINT_LONG_PRESS_MS)が経過するまで
+      // 作動させず、スクロール目的のスワイプでペイントが誤発火しないようにする
+      isReady: pointerType === 'mouse',
       didPaint: false,
       activationTimer: null,
       paintedValuesByCandidate: new Map(),
