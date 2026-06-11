@@ -769,13 +769,6 @@ export default function Home() {
 
     try {
       if (editEventId && editShareId) {
-        const { error: eventError } = await supabase
-          .from('events')
-          .update({ name: eventName, description: description || null })
-          .eq('id', editEventId)
-
-        if (eventError) throw eventError
-
         const existingCandidates = validCandidates.filter(
           (candidate): candidate is Candidate & { dbId: string } => Boolean(candidate.dbId)
         )
@@ -784,6 +777,35 @@ export default function Home() {
         const removedCandidateIds = [...originalCandidateIds].filter(
           (candidateId) => !keptCandidateIds.has(candidateId)
         )
+
+        // 候補日を削除すると、その日に紐づく回答も cascade で一緒に消える。
+        // 書き込みを始める前に、消える回答があるか確認する（キャンセル時は何も変更しない）。
+        if (removedCandidateIds.length > 0) {
+          const { count: removedAnswerCount, error: answerCountError } = await supabase
+            .from('answers')
+            .select('id', { count: 'exact', head: true })
+            .in('candidate_id', removedCandidateIds)
+
+          if (answerCountError) throw answerCountError
+
+          if (removedAnswerCount && removedAnswerCount > 0) {
+            const ok = window.confirm(
+              `削除しようとしている候補日には、${removedAnswerCount}件の回答が含まれています。\n` +
+                'この候補日を削除すると、その日に対する回答もすべて削除されます。続けますか？'
+            )
+            if (!ok) {
+              setIsSubmitting(false)
+              return
+            }
+          }
+        }
+
+        const { error: eventError } = await supabase
+          .from('events')
+          .update({ name: eventName, description: description || null })
+          .eq('id', editEventId)
+
+        if (eventError) throw eventError
 
         const updateResults = await Promise.all(
           existingCandidates.map((candidate) =>
