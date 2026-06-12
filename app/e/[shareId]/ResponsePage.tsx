@@ -1507,8 +1507,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </div>
 
             {bulkOpen && (
-              <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-4">
-                <div className="mb-3 flex items-center justify-between">
+              <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-medium text-stone-500">日程範囲と回答を選択して「適用」</p>
                   <button
                     type="button"
@@ -1519,7 +1519,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </button>
                 </div>
                 {/* 日付範囲 */}
-                <div className="mb-3 flex flex-wrap items-center gap-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
                   <input
                     type="date"
                     value={bulkStart}
@@ -1536,8 +1536,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   />
                 </div>
                 {/* 曜日フィルター：選ぶと下の2つの「適用」がその曜日だけに絞られる */}
-                <div className="mb-3 flex flex-wrap items-center gap-1">
-                  <span className="text-xs text-stone-400">曜日：</span>
+                <p className="mb-1 text-xs text-stone-400">曜日で絞る（任意）</p>
+                <div className="mb-2 flex flex-wrap items-center gap-1">
                   {DAYS.map((label, i) => {
                     const hasCandidateOnWeekday = candidates.some(
                       (c) => new Date(c.date + 'T00:00:00').getDay() === i
@@ -1574,7 +1574,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   )}
                 </div>
                 {/* 回答選択 */}
-                <div className="mb-3 flex gap-2">
+                <div className="mb-2 flex gap-2">
                   {ANSWER_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
@@ -1596,11 +1596,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 >
                   適用
                 </button>
-                <div className="mt-4 border-t border-stone-200 pt-3">
-                  <p className="mb-2 text-xs font-medium text-stone-500">
+                <div className="mt-3 border-t border-stone-200 pt-2.5">
+                  <p className="mb-1.5 text-xs font-medium text-stone-500">
                     日付範囲 + 時間帯で一括回答
                   </p>
-                  <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
                     <input
                       type="time"
                       value={bulkTimeStart}
@@ -1615,7 +1615,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                     />
                   </div>
-                  <div className="mb-3 flex items-center gap-2">
+                  <div className="mb-2 flex items-center gap-2">
                     <span className="text-xs text-stone-400">重なる候補を：</span>
                     {ANSWER_OPTIONS.map((opt) => (
                       <button
