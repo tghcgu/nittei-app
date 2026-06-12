@@ -270,6 +270,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkTimeStart, setBulkTimeStart] = useState('')
   const [bulkTimeEnd, setBulkTimeEnd] = useState('')
   const [bulkTimeValue, setBulkTimeValue] = useState<AnswerValue>(ANSWER_OPTIONS[2].value)
+  // 一括回答パネル共通の曜日フィルター（空＝全曜日が対象）
+  const [bulkWeekdays, setBulkWeekdays] = useState<Set<number>>(new Set())
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
   const [lastSetAllAnswers, setLastSetAllAnswers] = useState<LastSetAllAnswers | null>(null)
   const [answerPast, setAnswerPast] = useState<AnswerHistorySnapshot[]>([])
@@ -652,11 +654,25 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
   }
 
+  function toggleBulkWeekday(weekdayIndex: number) {
+    setBulkWeekdays((prev) => {
+      const next = new Set(prev)
+      if (next.has(weekdayIndex)) next.delete(weekdayIndex)
+      else next.add(weekdayIndex)
+      return next
+    })
+  }
+
+  function matchesBulkWeekdays(date: string) {
+    if (bulkWeekdays.size === 0) return true
+    return bulkWeekdays.has(new Date(date + 'T00:00:00').getDay())
+  }
+
   function applyBulkAnswer() {
     if (!bulkStart || !bulkEnd || bulkStart > bulkEnd) return
     const updates: Record<string, AnswerValue> = {}
     for (const c of candidates) {
-      if (c.date >= bulkStart && c.date <= bulkEnd) {
+      if (c.date >= bulkStart && c.date <= bulkEnd && matchesBulkWeekdays(c.date)) {
         updates[c.id] = bulkValue
       }
     }
@@ -693,6 +709,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const updates: Record<string, AnswerValue> = {}
     for (const c of candidates) {
       if (c.date < bulkStart || c.date > bulkEnd) continue
+      if (!matchesBulkWeekdays(c.date)) continue
 
       const candidateRange = parseCandidateClockRange(c.time_label)
       if (candidateRange && clockRangesOverlap(candidateRange, rangeStart, rangeEnd)) {
@@ -1518,6 +1535,44 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                   />
                 </div>
+                {/* 曜日フィルター：選ぶと下の2つの「適用」がその曜日だけに絞られる */}
+                <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs text-stone-400">曜日で絞る（任意）：</span>
+                  {DAYS.map((label, i) => {
+                    const hasCandidateOnWeekday = candidates.some(
+                      (c) => new Date(c.date + 'T00:00:00').getDay() === i
+                    )
+                    const isSelected = bulkWeekdays.has(i)
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => toggleBulkWeekday(i)}
+                        disabled={!hasCandidateOnWeekday}
+                        className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                          isSelected
+                            ? 'border-rose-400 bg-rose-700 font-bold text-white'
+                            : i === 0
+                            ? 'border-stone-200 text-rose-400 hover:border-rose-200 hover:bg-rose-50'
+                            : i === 6
+                            ? 'border-stone-200 text-blue-400 hover:border-blue-200 hover:bg-blue-50'
+                            : 'border-stone-200 text-stone-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                  {bulkWeekdays.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setBulkWeekdays(new Set())}
+                      className="text-xs text-stone-400 underline hover:text-stone-600"
+                    >
+                      解除
+                    </button>
+                  )}
+                </div>
                 {/* 回答選択 */}
                 <div className="mb-3 flex gap-2">
                   {ANSWER_OPTIONS.map((opt) => (
@@ -1592,7 +1647,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       適用
                     </button>
                     <span className="text-xs text-stone-400">
-                      上の日付範囲の中で、少しでも時間が重なる候補を変更します
+                      上の日付範囲・曜日の中で、少しでも時間が重なる候補を変更します
                     </span>
                   </div>
                 </div>
