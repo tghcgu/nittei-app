@@ -1536,8 +1536,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   />
                 </div>
                 {/* 曜日フィルター：選ぶと下の2つの「適用」がその曜日だけに絞られる */}
-                <div className="mb-3 flex flex-wrap items-center gap-1.5">
-                  <span className="text-xs text-stone-400">曜日で絞る（任意）：</span>
+                <div className="mb-3 flex flex-wrap items-center gap-1">
+                  <span className="text-xs text-stone-400">曜日：</span>
                   {DAYS.map((label, i) => {
                     const hasCandidateOnWeekday = candidates.some(
                       (c) => new Date(c.date + 'T00:00:00').getDay() === i
@@ -1549,7 +1549,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         type="button"
                         onClick={() => toggleBulkWeekday(i)}
                         disabled={!hasCandidateOnWeekday}
-                        className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
                           isSelected
                             ? 'border-rose-400 bg-rose-700 font-bold text-white'
                             : i === 0
@@ -1580,7 +1580,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       key={opt.value}
                       type="button"
                       onClick={() => setBulkValue(opt.value)}
-                      className={`h-10 w-10 rounded-full border-2 text-base transition-all ${
+                      className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${
                         bulkValue === opt.value ? opt.active : opt.idle
                       }`}
                     >
@@ -1592,7 +1592,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   type="button"
                   onClick={applyBulkAnswer}
                   disabled={!bulkStart || !bulkEnd || bulkStart > bulkEnd}
-                  className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   適用
                 </button>
@@ -1642,7 +1642,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         !bulkTimeEnd ||
                         bulkTimeStart === bulkTimeEnd
                       }
-                      className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       適用
                     </button>
