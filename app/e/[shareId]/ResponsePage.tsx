@@ -93,6 +93,10 @@ type AnswerPaintSession = {
 const MAX_ANSWER_HISTORY = 50
 const ANSWER_PAINT_LONG_PRESS_MS = 220
 const ANSWER_PAINT_MOVE_THRESHOLD = 8
+// ペイント中に指が画面の上下端からこの距離内に入ったら自動スクロールする
+const ANSWER_PAINT_EDGE_SCROLL_ZONE = 72
+const ANSWER_PAINT_EDGE_SCROLL_MIN_SPEED = 3
+const ANSWER_PAINT_EDGE_SCROLL_MAX_SPEED = 14
 
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
@@ -271,6 +275,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [answerPast, setAnswerPast] = useState<AnswerHistorySnapshot[]>([])
   const [answerFuture, setAnswerFuture] = useState<AnswerHistorySnapshot[]>([])
   const answerPaintRef = useRef<AnswerPaintSession | null>(null)
+  const answerPaintAutoScrollRef = useRef<{ rafId: number | null; x: number; y: number }>({
+    rafId: null,
+    x: 0,
+    y: 0,
+  })
   const suppressNextAnswerClickRef = useRef(false)
 
   // 共有URLコピー
@@ -855,6 +864,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         if (!current || current.pointerId !== session.pointerId) return
         current.isReady = true
         current.activationTimer = null
+        // 長押し成立を指を動かす前に視覚で伝えるため、起点のマークを即ペイントする
+        // （タップと同じトグル挙動なので、そのまま離してもタップと結果が変わらない）
+        paintAnswerCandidate(current.startCandidateId, current.value)
       }, ANSWER_PAINT_LONG_PRESS_MS)
     }
 
@@ -872,11 +884,69 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     e.currentTarget.setPointerCapture(e.pointerId)
   }
 
+  // 画面の上下端からの距離に応じた自動スクロール速度（端に深く入るほど速い）。0なら対象外
+  function answerPaintEdgeScrollVelocity(clientY: number) {
+    const zone = ANSWER_PAINT_EDGE_SCROLL_ZONE
+    const range = ANSWER_PAINT_EDGE_SCROLL_MAX_SPEED - ANSWER_PAINT_EDGE_SCROLL_MIN_SPEED
+
+    const bottomDepth = clientY - (window.innerHeight - zone)
+    if (bottomDepth > 0) {
+      return ANSWER_PAINT_EDGE_SCROLL_MIN_SPEED + range * Math.min(1, bottomDepth / zone)
+    }
+
+    const topDepth = zone - clientY
+    if (topDepth > 0) {
+      return -(ANSWER_PAINT_EDGE_SCROLL_MIN_SPEED + range * Math.min(1, topDepth / zone))
+    }
+
+    return 0
+  }
+
+  function stopAnswerPaintAutoScroll() {
+    const state = answerPaintAutoScrollRef.current
+    if (state.rafId === null) return
+
+    window.cancelAnimationFrame(state.rafId)
+    state.rafId = null
+  }
+
+  // ペイント中、指が画面の上下端に近づいたらページを自動スクロールする。
+  // スクロールで指の下に流れ込んできた行は touchmove が発生しなくても塗る必要が
+  // あるため、rAF ループ内で毎フレーム指の位置の行を塗り直す。
+  function updateAnswerPaintAutoScroll(clientX: number, clientY: number) {
+    const state = answerPaintAutoScrollRef.current
+    state.x = clientX
+    state.y = clientY
+
+    if (answerPaintEdgeScrollVelocity(clientY) === 0) {
+      stopAnswerPaintAutoScroll()
+      return
+    }
+    if (state.rafId !== null) return
+
+    const step = () => {
+      const session = answerPaintRef.current
+      const velocity = session?.isReady ? answerPaintEdgeScrollVelocity(state.y) : 0
+      if (velocity === 0) {
+        state.rafId = null
+        return
+      }
+
+      window.scrollBy(0, velocity)
+      const target = getAnswerPaintTargetAtPoint(state.x, state.y)
+      if (target && session) paintAnswerCandidate(target.candidateId, target.value ?? session.value)
+      state.rafId = window.requestAnimationFrame(step)
+    }
+
+    state.rafId = window.requestAnimationFrame(step)
+  }
+
   function cancelAnswerPaint(pointerId: number) {
     const session = answerPaintRef.current
     if (!session || session.pointerId !== pointerId) return
 
     clearAnswerPaintTimer(session)
+    stopAnswerPaintAutoScroll()
     answerPaintRef.current = null
   }
 
@@ -904,6 +974,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     if (!session || session.pointerId !== pointerId) return
 
     clearAnswerPaintTimer(session)
+    stopAnswerPaintAutoScroll()
     answerPaintRef.current = null
 
     if (!session.didPaint) return
@@ -982,18 +1053,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         return
       }
 
+      // 長押し成立後はこのジェスチャーをペイント専用にするため、毎回 preventDefault する。
+      // 最初の touchmove を素通しするとブラウザがジェスチャーを「スクロール」として確定し、
+      // 以降の preventDefault が無効（cancelable=false）になり指の移動でページが流れてしまう。
+      e.preventDefault()
+      updateAnswerPaintAutoScroll(touch.clientX, touch.clientY)
+
       const target = getAnswerPaintTargetAtPoint(touch.clientX, touch.clientY)
       if (!target) return
-      if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
 
-      // 長押し成立後はスクロールを止めてペイント
-      e.preventDefault()
       if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
       paintAnswerCandidate(target.candidateId, target.value ?? session.value)
     }
 
     document.addEventListener('touchmove', handleTouchMove, { passive: false })
-    return () => document.removeEventListener('touchmove', handleTouchMove)
+    return () => {
+      document.removeEventListener('touchmove', handleTouchMove)
+      stopAnswerPaintAutoScroll()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
