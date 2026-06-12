@@ -855,6 +855,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         if (!current || current.pointerId !== session.pointerId) return
         current.isReady = true
         current.activationTimer = null
+        // 長押し成立を指を動かす前に視覚で伝えるため、起点のマークを即ペイントする
+        // （タップと同じトグル挙動なので、そのまま離してもタップと結果が変わらない）
+        paintAnswerCandidate(current.startCandidateId, current.value)
       }, ANSWER_PAINT_LONG_PRESS_MS)
     }
 
@@ -982,12 +985,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         return
       }
 
+      // 長押し成立後はこのジェスチャーをペイント専用にするため、毎回 preventDefault する。
+      // 最初の touchmove を素通しするとブラウザがジェスチャーを「スクロール」として確定し、
+      // 以降の preventDefault が無効（cancelable=false）になり指の移動でページが流れてしまう。
+      e.preventDefault()
+
       const target = getAnswerPaintTargetAtPoint(touch.clientX, touch.clientY)
       if (!target) return
-      if (!session.didPaint && distance < ANSWER_PAINT_MOVE_THRESHOLD) return
 
-      // 長押し成立後はスクロールを止めてペイント
-      e.preventDefault()
       if (!session.didPaint) paintAnswerCandidate(session.startCandidateId, session.value)
       paintAnswerCandidate(target.candidateId, target.value ?? session.value)
     }
