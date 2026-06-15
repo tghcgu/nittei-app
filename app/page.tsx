@@ -1330,6 +1330,10 @@ export default function Home() {
                 : 'この月は追加できる日がありません'}
             </button>
 
+            <p className="mb-2 text-center text-xs text-stone-400">
+              曜日を押すと一括選択・解除できます
+            </p>
+
             {/* 曜日ヘッダー */}
             <div className="mb-2 grid grid-cols-7 text-center text-xs text-stone-400">
               {WEEKDAYS.map((w, i) => {
