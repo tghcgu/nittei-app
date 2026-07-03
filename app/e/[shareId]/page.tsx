@@ -9,7 +9,7 @@ type Props = {
   params: Promise<{ shareId: string }>
 }
 
-const eventSelect = 'id, share_id, name, description, created_at'
+const eventSelect = 'id, share_id, name, description, created_at, updated_at'
 
 const getEventByShareId = cache(async (shareId: string) => {
   // 「該当なし」（→404）とDB障害（→エラー）を区別する。
