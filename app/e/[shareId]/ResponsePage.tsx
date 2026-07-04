@@ -1828,7 +1828,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </thead>
                 <tbody>
                   {responseRows.map((r) => (
-                    <tr key={r.id} className="border-t border-stone-100">
+                    <tr key={r.id} className="border-t border-stone-100 even:bg-stone-500/10">
                       <td className="py-0 text-left text-stone-700">
                         <div>{r.name}</div>
                         {r.note?.trim() && (
@@ -1893,7 +1893,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </thead>
                 <tbody>
                   {candidates.map((c) => (
-                    <tr key={c.id} className="border-t border-stone-100">
+                    <tr key={c.id} className="border-t border-stone-100 even:bg-stone-500/10">
                       <td className="py-0 text-left whitespace-nowrap">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
