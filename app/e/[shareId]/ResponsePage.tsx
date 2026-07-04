@@ -1661,7 +1661,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               各日程への出欠 <span className="text-rose-700">*</span>
             </div>
             {candidates.map((c) => (
-              <div key={c.id} data-answer-row-id={c.id}>
+              <div key={c.id} data-answer-row-id={c.id} className="rounded-md even:bg-stone-500/10">
                 <div className="flex flex-wrap items-center gap-2 py-0">
                   <div className="w-max min-w-[9rem] shrink-0 whitespace-nowrap">
                     <span className="font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
@@ -1828,7 +1828,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </thead>
                 <tbody>
                   {responseRows.map((r) => (
-                    <tr key={r.id} className="border-t border-stone-100">
+                    <tr key={r.id} className="border-t border-stone-100 even:bg-stone-500/10">
                       <td className="py-0 text-left text-stone-700">
                         <div>{r.name}</div>
                         {r.note?.trim() && (
@@ -1893,7 +1893,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </thead>
                 <tbody>
                   {candidates.map((c) => (
-                    <tr key={c.id} className="border-t border-stone-100">
+                    <tr key={c.id} className="border-t border-stone-100 even:bg-stone-500/10">
                       <td className="py-0 text-left whitespace-nowrap">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
