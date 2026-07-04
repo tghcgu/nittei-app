@@ -1811,11 +1811,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="w-28 pb-3 text-left text-xs font-normal text-stone-400">名前</th>
+                    <th className="w-28 pb-1 text-left text-xs font-normal text-stone-400">名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="pb-3 font-normal text-stone-500 whitespace-nowrap"
+                        className="pb-1 font-normal text-stone-500 whitespace-nowrap"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
@@ -1823,13 +1823,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </th>
                     ))}
-                    <th className="pb-3"></th>
+                    <th className="pb-1"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-100">
-                      <td className="py-2 text-left text-stone-700">
+                      <td className="py-0.5 text-left text-stone-700">
                         <div>{r.name}</div>
                         {r.note && (
                           <div className="text-xs text-stone-400">（{r.note}）</div>
@@ -1840,7 +1840,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={c.id}
-                            className="py-2"
+                            className="py-0.5"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
@@ -1851,7 +1851,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           </td>
                         )
                       })}
-                      <td className="py-2">
+                      <td className="py-0.5">
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
@@ -1873,9 +1873,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="w-full text-center text-sm">
                 <thead>
                   <tr>
-                    <th className="pb-3 text-left text-xs font-normal text-stone-400">候補日</th>
+                    <th className="pb-1 text-left text-xs font-normal text-stone-400">候補日</th>
                     {responseRows.map((r) => (
-                      <th key={r.id} className="pb-3 font-normal text-stone-500">
+                      <th key={r.id} className="pb-1 font-normal text-stone-500">
                         <div>{r.name}</div>
                         {r.note && (
                           <div className="text-xs font-normal text-stone-400">（{r.note}）</div>
@@ -1894,7 +1894,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-100">
-                      <td className="py-2 text-left whitespace-nowrap">
+                      <td className="py-0.5 text-left whitespace-nowrap">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -1905,7 +1905,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="py-2">
+                          <td key={r.id} className="py-0.5">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
