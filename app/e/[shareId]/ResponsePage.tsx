@@ -1815,7 +1815,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="pb-1 font-normal text-stone-500 whitespace-nowrap"
+                        className="border-l border-stone-500/20 pb-1 font-normal text-stone-500 whitespace-nowrap"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
@@ -1823,7 +1823,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                       </th>
                     ))}
-                    <th className="pb-1"></th>
+                    <th className="border-l border-stone-500/20 pb-1"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1840,18 +1840,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={c.id}
-                            className="py-0"
+                            className="border-l border-stone-500/20 py-0"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="text-xs text-stone-400">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-32 break-words text-xs text-stone-400">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
                       })}
-                      <td className="py-0">
+                      <td className="border-l border-stone-500/20 py-0">
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
@@ -1875,7 +1875,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <tr>
                     <th className="pb-1 text-left text-xs font-normal text-stone-400">候補日</th>
                     {responseRows.map((r) => (
-                      <th key={r.id} className="pb-1 font-normal text-stone-500">
+                      <th key={r.id} className="border-l border-stone-500/20 pb-1 font-normal text-stone-500">
                         <div>{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs font-normal text-stone-400">{r.note.trim()}</div>
@@ -1905,12 +1905,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="py-0">
+                          <td key={r.id} className="border-l border-stone-500/20 py-0">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="text-xs text-stone-400">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-32 break-words text-xs text-stone-400">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
