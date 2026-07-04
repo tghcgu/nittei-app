@@ -1831,8 +1831,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <tr key={r.id} className="border-t border-stone-100">
                       <td className="py-0.5 text-left text-stone-700">
                         <div>{r.name}</div>
-                        {r.note && (
-                          <div className="text-xs text-stone-400">（{r.note}）</div>
+                        {r.note?.trim() && (
+                          <div className="text-xs text-stone-400">{r.note.trim()}</div>
                         )}
                       </td>
                       {candidates.map((c) => {
@@ -1845,8 +1845,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
-                            {answer?.value === '-' && answer.note && (
-                              <p className="mt-0.5 text-xs text-stone-400">（{answer.note}）</p>
+                            {answer?.value === '-' && answer.note?.trim() && (
+                              <p className="mt-0.5 text-xs text-stone-400">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
@@ -1877,8 +1877,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {responseRows.map((r) => (
                       <th key={r.id} className="pb-1 font-normal text-stone-500">
                         <div>{r.name}</div>
-                        {r.note && (
-                          <div className="text-xs font-normal text-stone-400">（{r.note}）</div>
+                        {r.note?.trim() && (
+                          <div className="text-xs font-normal text-stone-400">{r.note.trim()}</div>
                         )}
                         <button
                           type="button"
@@ -1909,8 +1909,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
-                            {answer?.value === '-' && answer.note && (
-                              <p className="mt-0.5 text-xs text-stone-400">（{answer.note}）</p>
+                            {answer?.value === '-' && answer.note?.trim() && (
+                              <p className="mt-0.5 text-xs text-stone-400">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
