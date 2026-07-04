@@ -1808,7 +1808,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 横向きテーブル：行=回答者、列=候補日 ── */
             <div className="overflow-x-auto">
-              <table className="w-full text-center text-sm">
+              <table className="w-full text-center text-sm leading-tight">
                 <thead>
                   <tr>
                     <th className="w-28 pb-1 text-left text-xs font-normal text-stone-400">名前</th>
@@ -1829,7 +1829,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-100">
-                      <td className="py-0.5 text-left text-stone-700">
+                      <td className="py-0 text-left text-stone-700">
                         <div>{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs text-stone-400">{r.note.trim()}</div>
@@ -1840,18 +1840,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={c.id}
-                            className="py-0.5"
+                            className="py-0"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mt-0.5 text-xs text-stone-400">{answer.note.trim()}</p>
+                              <p className="text-xs text-stone-400">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
                       })}
-                      <td className="py-0.5">
+                      <td className="py-0">
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
@@ -1870,7 +1870,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 縦向きテーブル：行=候補日、列=回答者 ── */
             <div className="overflow-x-auto">
-              <table className="w-full text-center text-sm">
+              <table className="w-full text-center text-sm leading-tight">
                 <thead>
                   <tr>
                     <th className="pb-1 text-left text-xs font-normal text-stone-400">候補日</th>
@@ -1894,7 +1894,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-100">
-                      <td className="py-0.5 text-left whitespace-nowrap">
+                      <td className="py-0 text-left whitespace-nowrap">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -1905,12 +1905,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="py-0.5">
+                          <td key={r.id} className="py-0">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mt-0.5 text-xs text-stone-400">{answer.note.trim()}</p>
+                              <p className="text-xs text-stone-400">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
