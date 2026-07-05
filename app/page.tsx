@@ -1285,7 +1285,10 @@ export default function Home() {
             ↑ 最上部へ
           </button>
         </div>
-        <p className="mt-2 text-center text-xs text-stone-400">
+        <p className="mt-2 text-center text-[11px] text-stone-400">
+          ※ 最後の更新から1年が経過したイベントは自動的に削除されます
+        </p>
+        <p className="mt-1 text-center text-xs text-stone-400">
           不具合・ご要望はこちら:{' '}
           <span>nittei.app5@gmail.com</span>
         </p>
