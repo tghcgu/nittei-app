@@ -1289,6 +1289,9 @@ export default function Home() {
           不具合・ご要望はこちら:{' '}
           <span>nittei.app5@gmail.com</span>
         </p>
+        <p className="mt-1 text-center text-[11px] text-stone-400">
+          ※ 最後の更新から1年が経過したイベントは自動的に削除されます
+        </p>
 
         {/* 日程組とは（サービス紹介） */}
         <section aria-labelledby="about-nitteigumi" className="mt-8 rounded-2xl bg-white/50 px-6 py-5 backdrop-blur">
