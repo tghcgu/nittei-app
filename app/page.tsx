@@ -1289,6 +1289,22 @@ export default function Home() {
           不具合・ご要望はこちら:{' '}
           <span>nittei.app5@gmail.com</span>
         </p>
+
+        {/* 日程組とは（サービス紹介） */}
+        <section aria-labelledby="about-nitteigumi" className="mt-8 rounded-2xl bg-white/50 px-6 py-5 backdrop-blur">
+          <h2 id="about-nitteigumi" className="font-serif text-lg text-rose-800">
+            日程組とは
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-stone-600">
+            日程組は、無料・ログイン不要で使える日程調整・出欠管理ツールです。イベント名と候補日を入力すると共有用URLが発行され、参加者はそのURLを開くだけで、各候補日に「○」「△」「✕」「-」で出欠を回答できます。飲み会や会議、面談、サークル活動など、複数人の予定合わせに使えます。
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-stone-600">
+            候補日はカレンダーや範囲指定でまとめて登録でき、カレンダーアプリから書き出した.icsファイルを読み込めば、自分の予定と重なる日を避けて候補日を選ぶこともできます。参加者側も.icsを読み込んで、予定がある日をまとめて✕にできます。回答は後から何度でも修正でき、集計表で全員の予定がひと目で分かります。
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-stone-600">
+            アカウント登録は不要です。回答ページは検索エンジンに登録されない設定になっており、最後の更新から1年が経過したイベントはデータごと自動削除されるため、気軽に安心して使えます。
+          </p>
+        </section>
       </div>
 
       {/* カレンダーモーダル */}
