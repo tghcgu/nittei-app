@@ -455,6 +455,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     : null
   const hasResponses = responseRows.length > 0
 
+  // 広い画面(sm以上)でだけ日付ラベルを固定幅にして、○△✕−ボタンの縦の列を揃える。
+  // スマホでは従来どおり中身の幅なりにして、ボタンが折り返されないようにする。
+  const answerRowsHaveTimeLabel = candidates.some((c) => c.time_label)
+  const answerLabelWidthClass = answerRowsHaveTimeLabel ? 'sm:w-[11.5rem]' : ''
+  const answerNoteIndentClass = answerRowsHaveTimeLabel ? 'sm:ml-[12rem]' : 'sm:ml-[9.5rem]'
+
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
     const newAnswers: Record<string, AnswerValue> = {}
@@ -1663,7 +1669,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             {candidates.map((c) => (
               <div key={c.id} data-answer-row-id={c.id} className="rounded-md even:bg-stone-500/10">
                 <div className="flex flex-wrap items-center gap-2 py-0">
-                  <div className="w-max min-w-[9rem] shrink-0 whitespace-nowrap">
+                  <div className={`w-max min-w-[9rem] shrink-0 whitespace-nowrap ${answerLabelWidthClass}`}>
                     <span className="font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
                     {c.time_label && (
                       <span className="ml-1 text-xs text-stone-400 whitespace-nowrap">{c.time_label}</span>
@@ -1701,7 +1707,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </div>
                 {/* 個別メモ：「-」選択時のみ表示 */}
                 {answers[c.id] === '-' && (
-                  <div className="mt-1 sm:ml-[9.5rem]">
+                  <div className={`mt-1 ${answerNoteIndentClass}`}>
                     <input
                       type="text"
                       value={detailNotes[c.id] ?? ''}
