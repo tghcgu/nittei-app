@@ -1656,52 +1656,59 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
 
           {/* 候補日ごとの回答 */}
-          <div className="mb-6 space-y-0.5">
-            <div className="mb-1 text-sm font-medium text-stone-700">
+          {/* ラベル列は「一番長い日付ラベル」の幅に自動で揃う。余計な幅を足さないので
+              スマホでも折り返さず、○△✕−ボタンの縦の列がどの画面幅でも揃う */}
+          <div className="mb-6 grid grid-cols-[minmax(min-content,max-content)_1fr] gap-x-2 gap-y-0.5">
+            <div className="col-span-2 mb-1 text-sm font-medium text-stone-700">
               各日程への出欠 <span className="text-rose-700">*</span>
             </div>
             {candidates.map((c) => (
-              <div key={c.id} data-answer-row-id={c.id} className="rounded-md even:bg-stone-500/10">
-                <div className="flex flex-wrap items-center gap-2 py-0">
-                  <div className="w-max min-w-[9rem] shrink-0 whitespace-nowrap">
-                    <span className="font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
-                    {c.time_label && (
-                      <span className="ml-1 text-xs text-stone-400 whitespace-nowrap">{c.time_label}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-1.5">
-                    {ANSWER_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        data-answer-candidate-id={c.id}
-                        data-answer-value={opt.value}
-                        onPointerDown={(e) => handleAnswerPaintStart(e, c.id, opt.value)}
-                        onPointerMove={handleAnswerPaintMove}
-                        onPointerUp={handleAnswerPaintEnd}
-                        onPointerCancel={handleAnswerPaintEnd}
-                        onTouchStart={(e) => handleAnswerTouchStart(e, c.id, opt.value)}
-                        onTouchEnd={handleAnswerTouchEnd}
-                        onTouchCancel={handleAnswerTouchEnd}
-                        onClick={() => {
-                          if (suppressNextAnswerClickRef.current) {
-                            suppressNextAnswerClickRef.current = false
-                            return
-                          }
-                          handleAnswerChange(c.id, opt.value)
-                        }}
-                        className={`h-8 w-8 select-none rounded-full border-2 text-sm transition-all ${
-                          answers[c.id] === opt.value ? opt.active : opt.idle
-                        }`}
-                      >
-                        {opt.value === '-' ? '−' : opt.value}
-                      </button>
-                    ))}
-                  </div>
+              <div
+                key={c.id}
+                data-answer-row-id={c.id}
+                className="col-span-2 grid grid-cols-subgrid items-center rounded-md even:bg-stone-500/10"
+              >
+                <div>
+                  <span className="font-serif text-sm text-stone-700 whitespace-nowrap">{formatDate(c.date)}</span>
+                  {c.time_label && (
+                    <>
+                      {' '}
+                      <span className="text-xs text-stone-400 whitespace-nowrap">{c.time_label}</span>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-1.5">
+                  {ANSWER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      data-answer-candidate-id={c.id}
+                      data-answer-value={opt.value}
+                      onPointerDown={(e) => handleAnswerPaintStart(e, c.id, opt.value)}
+                      onPointerMove={handleAnswerPaintMove}
+                      onPointerUp={handleAnswerPaintEnd}
+                      onPointerCancel={handleAnswerPaintEnd}
+                      onTouchStart={(e) => handleAnswerTouchStart(e, c.id, opt.value)}
+                      onTouchEnd={handleAnswerTouchEnd}
+                      onTouchCancel={handleAnswerTouchEnd}
+                      onClick={() => {
+                        if (suppressNextAnswerClickRef.current) {
+                          suppressNextAnswerClickRef.current = false
+                          return
+                        }
+                        handleAnswerChange(c.id, opt.value)
+                      }}
+                      className={`h-8 w-8 select-none rounded-full border-2 text-sm transition-all ${
+                        answers[c.id] === opt.value ? opt.active : opt.idle
+                      }`}
+                    >
+                      {opt.value === '-' ? '−' : opt.value}
+                    </button>
+                  ))}
                 </div>
                 {/* 個別メモ：「-」選択時のみ表示 */}
                 {answers[c.id] === '-' && (
-                  <div className="mt-1 sm:ml-[9.5rem]">
+                  <div className="col-span-2 mt-1 sm:col-span-1 sm:col-start-2">
                     <input
                       type="text"
                       value={detailNotes[c.id] ?? ''}
