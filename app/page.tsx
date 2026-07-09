@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
@@ -1291,6 +1292,15 @@ export default function Home() {
         <p className="mt-1 text-center text-xs text-stone-400">
           不具合・ご要望はこちら:{' '}
           <span>nittei.app5@gmail.com</span>
+        </p>
+        <p className="mt-1 text-center text-[11px] text-stone-400">
+          <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
+            利用規約
+          </Link>
+          <span className="mx-2">·</span>
+          <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
+            プライバシーポリシー
+          </Link>
         </p>
       </div>
 
