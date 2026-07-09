@@ -1294,6 +1294,10 @@ export default function Home() {
           <span>nittei.app5@gmail.com</span>
         </p>
         <p className="mt-1 text-center text-[11px] text-stone-400">
+          <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
+            利用規約
+          </Link>
+          <span className="mx-2">·</span>
           <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
             プライバシーポリシー
           </Link>
