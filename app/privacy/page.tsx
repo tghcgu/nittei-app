@@ -58,9 +58,7 @@ export default function PrivacyPage() {
           <h2 className="mt-6 font-serif text-base text-rose-800">4. 保存期間と削除</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>最後の更新から1年が経過したイベントは、候補日・回答を含め自動的に削除されます。</li>
-            <li>
-              個別の削除をご希望の場合は、対象イベントのURLを添えて下記の連絡先までお問い合わせください。
-            </li>
+            <li>回答（名前・出欠・コメント）は、イベントページの回答一覧からいつでも編集・削除できます。</li>
           </ul>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">5. 第三者への提供</h2>
