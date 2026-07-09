@@ -1931,6 +1931,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           )}
         </div>
 
+        <p className="mt-6 text-center text-[11px] text-stone-400">
+          <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
+            プライバシーポリシー
+          </Link>
+        </p>
       </div>
     </div>
   )
