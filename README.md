@@ -2,7 +2,8 @@
 
 候補日を作ってURLを共有するだけで、参加者がログイン不要かつ無料で回答できる日程調整Webアプリです。
 
-公開URL: https://nittei-app-five.vercel.app/
+公開URL: https://nittei-app.gucsic.workers.dev/
+(旧URL https://nittei-app-five.vercel.app/ からは自動転送されます)
 
 ## 概要
 
@@ -47,11 +48,12 @@
 | フレームワーク | Next.js 16(App Router) |
 | スタイリング | Tailwind CSS 4 |
 | データベース | Supabase(PostgreSQL) |
-| ホスティング | Vercel |
-| 定期実行 | Vercel Cron |
+| ホスティング | Cloudflare Workers(OpenNext) |
+| 定期実行 | Cloudflare Cron Triggers |
+| 旧URLの転送 | Vercel |
 | カレンダー解析 | ical.js / fflate(zip展開) |
 | 並び替えUI | dnd-kit |
-| 計測 | Vercel Analytics / Speed Insights |
+| 計測 | Cloudflare Web Analytics |
 
 ## データモデル
 
@@ -72,7 +74,7 @@ Supabase上の4つのテーブルでデータを管理しています。
 
 放置されたイベントが残り続けないよう、**最後の更新から365日が経過したイベントを毎日自動削除**しています。
 
-- Vercel Cronが毎日 19:00 UTC(日本時間 朝4:00)に`/api/cleanup-old-events`を実行します
+- Cloudflare Cron Triggersが毎日 19:00 UTC(日本時間 朝4:00)に`/api/cleanup-old-events`を実行します
 - 「更新」とみなされる操作: イベントの編集、候補日の追加・変更・削除、回答の追加・編集・削除
 - ページを閲覧しただけでは延長されません
 - 更新日時は`events.updated_at`列で管理し、PostgreSQLのトリガー(`supabase/auto-delete-old-events.sql`)が関連テーブルの変更を検知して自動的に書き換えます
@@ -88,7 +90,7 @@ Next.jsのApp Routerを使い、トップページと共有URLごとの回答ペ
 - `app/page.tsx`: イベント作成・編集画面
 - `app/e/[shareId]/page.tsx`: 共有URLごとの回答ページ(サーバー側のデータ取得とメタデータ)
 - `app/e/[shareId]/ResponsePage.tsx`: 回答画面のUIと操作
-- `app/api/cleanup-old-events/route.ts`: 古いイベントの自動削除API(Vercel Cronから呼ばれる)
+- `app/api/cleanup-old-events/route.ts`: 古いイベントの自動削除API(Cron Triggersから呼ばれる)
 - `app/layout.tsx`: サイト全体のメタデータ、Analytics設定
 
 共有URLの`shareId`をもとにSupabaseからイベント情報を取得し、存在しないイベントの場合は404を返すようにしています。「該当なし」とDB障害を区別し、障害時に404を返さないようにしています。
@@ -113,11 +115,15 @@ Supabaseをデータベースとして利用しています。
 
 クライアントからはPublishable Key(公開可能キー)でアクセスし、自動削除APIのみサーバー側でService Role Key(管理者キー)を使用しています。
 
-### Vercel
+### Cloudflare Workers
 
-Vercelにデプロイし、本番URLで実際に利用できる状態にしています。
+OpenNextアダプターでNext.jsをCloudflare Workersにデプロイしています(無料プランで商用利用可・転送量課金なし)。
 
-Vercel AnalyticsとSpeed Insightsも導入し、公開後の利用状況やパフォーマンスを確認できる構成にしています。`vercel.json`でCronジョブを定義し、自動削除を毎日実行しています。
+- `wrangler.jsonc`: Workerの設定とCron Triggers(毎日の自動削除)の定義
+- `custom-worker.mjs`: Next.jsのリクエスト処理に加えて、cronから自動削除APIを呼ぶエントリーポイント
+- デプロイは`npm run deploy`(webpackビルド → OpenNext変換 → アップロード)
+
+旧URL(vercel.app)へのアクセスは、Vercel側に残した転送設定(`vercel.json`)が新URLへパスごと308リダイレクトします。
 
 ## 工夫した点
 
@@ -157,7 +163,7 @@ Vercel AnalyticsとSpeed Insightsも導入し、公開後の利用状況やパ�
 
 ログイン不要で気軽に作れる分、使い終わったイベントはそのまま放置されがちです。
 
-DBにトリガーで「最終更新日時」を記録し、Vercel Cronで1年間動きのないイベントを毎日自動削除することで、運用の手間なくデータを健全に保てるようにしました。
+DBにトリガーで「最終更新日時」を記録し、Cloudflareの定期実行で1年間動きのないイベントを毎日自動削除することで、運用の手間なくデータを健全に保てるようにしました。
 
 ## セットアップ
 
@@ -186,7 +192,7 @@ NEXT_PUBLIC_SUPABASE_URL=      # SupabaseプロジェクトのURL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=  # Publishable Key(公開可能キー)
 ```
 
-本番(Vercel)では、自動削除のために以下も設定します。
+本番(Cloudflare)では、自動削除のために以下をシークレットとして設定します(`npx wrangler secret put 名前`)。
 
 ```env
 SUPABASE_SERVICE_ROLE_KEY=     # Secret Key(サーバー専用・非公開)
@@ -216,10 +222,11 @@ npm run build
 ```text
 app/
   page.tsx                        イベント作成・編集画面
-  layout.tsx                      全体レイアウト・メタデータ・Analytics
+  layout.tsx                      全体レイアウト・メタデータ
   globals.css                     和紙風テーマ・ダークモードのスタイル
   ThemeToggle.tsx                 ライト/ダーク切り替えボタン
   robots.ts / sitemap.ts          検索エンジン向け設定
+  privacy/ / terms/               プライバシーポリシー・利用規約
   e/[shareId]/page.tsx            回答ページ(データ取得・メタデータ)
   e/[shareId]/ResponsePage.tsx    回答ページのUIと操作
   api/cleanup-old-events/route.ts 古いイベントの自動削除API
@@ -231,17 +238,20 @@ lib/
 supabase/
   rls-policies.sql                RLSポリシー
   auto-delete-old-events.sql      自動削除用の列・トリガー定義
-vercel.json                       Vercel Cronの定義
+wrangler.jsonc                    Cloudflare Workerの設定・Cron定義
+custom-worker.mjs                 Workerのエントリーポイント(cron処理つき)
+open-next.config.ts               OpenNextアダプターの設定
+vercel.json                       旧URLから新URLへの転送設定
 ```
 
-## ブランチ運用
+## ブランチ運用とデプロイ
 
 | ブランチ | 役割 |
 | --- | --- |
-| `main` | 本番環境(Vercel本番URL) |
-| `develop` | 開発用。pushするとVercelがプレビューURLを自動発行 |
+| `main` | ソースの正本 |
+| `develop` | 開発用 |
 
-developで実装・プレビュー確認し、問題なければmainへマージして本番反映しています。
+developで実装し、`npm run preview`(ローカルのCloudflare実行環境)で確認後、`npm run deploy`で本番へデプロイしています。
 
 ## 今後の改善案
 

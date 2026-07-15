@@ -35,7 +35,7 @@ export default function PrivacyPage() {
               利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答（○△✕−）とコメント
             </li>
             <li>
-              自動的に収集する情報: アクセス状況の統計（Vercel Analytics / Speed Insights
+              自動的に収集する情報: アクセス状況の統計（Cloudflare Web Analytics
               による閲覧ページ・ブラウザ種別など）。個人を特定する情報は含まれず、Cookieも使用していません。
             </li>
           </ul>
@@ -68,8 +68,8 @@ export default function PrivacyPage() {
 
           <h2 className="mt-6 font-serif text-base text-rose-800">6. 外部サービスの利用</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
-            データの保存に Supabase を、サイトの配信とアクセス解析に Vercel
-            を利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。
+            データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、
+            旧URLからの転送に Vercel を利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。
           </p>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">7. イベントページの公開範囲</h2>
