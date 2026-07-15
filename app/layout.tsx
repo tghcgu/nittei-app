@@ -83,15 +83,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" suppressHydrationWarning>
-      <body>
+    <html lang="ja" data-theme="light" suppressHydrationWarning>
+      <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         {children}
         <ThemeToggle />
+        {process.env.NODE_ENV === "production" && (
+          // Cloudflare Web Analytics(Cookie不使用のアクセス解析)
+          <script
+            type="module"
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "6c4b4109282a4446b40d67c5927786a9"}'
+          />
+        )}
       </body>
     </html>
   );

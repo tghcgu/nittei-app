@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useLayoutEffect, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
 
@@ -44,6 +44,22 @@ function applyTheme(theme: Theme) {
 export function ThemeToggle() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const isDark = theme === "dark";
+
+  useLayoutEffect(() => {
+    let storedTheme: Theme = "light";
+
+    try {
+      storedTheme =
+        localStorage.getItem(STORAGE_KEY) === "dark" ? "dark" : "light";
+    } catch {
+      // localStorage が使えない環境ではライトモードのまま表示する
+    }
+
+    if (document.documentElement.dataset.theme !== storedTheme) {
+      document.documentElement.dataset.theme = storedTheme;
+      window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+    }
+  }, []);
 
   return (
     <button
