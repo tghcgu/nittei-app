@@ -1250,7 +1250,9 @@ export default function Home() {
         </p>
         <p className="mt-1 text-center text-xs text-stone-400">
           不具合・ご要望はこちら:{' '}
-          <span>nittei.app5@gmail.com</span>
+          <Link href="/contact" className="underline underline-offset-2 transition-colors hover:text-rose-700">
+            お問い合わせ
+          </Link>
         </p>
         <p className="mt-1 text-center text-[11px] text-stone-400">
           <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
