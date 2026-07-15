@@ -7,6 +7,10 @@ import handler from './.open-next/worker.js'
 // (cron の自動削除は scheduled ハンドラー経由なのでメンテ中も動き続ける)
 const MAINTENANCE = false
 
+const GOOGLE_SITE_VERIFICATION_PATH = '/googlecc8378481687d5f8.html'
+const GOOGLE_SITE_VERIFICATION_CONTENT =
+  'google-site-verification: googlecc8378481687d5f8.html'
+
 const maintenanceHtml = `<!doctype html>
 <html lang="ja">
 <head>
@@ -37,6 +41,16 @@ const maintenanceHtml = `<!doctype html>
 
 const worker = {
   fetch: (request, env, ctx) => {
+    if (new URL(request.url).pathname === GOOGLE_SITE_VERIFICATION_PATH) {
+      return new Response(GOOGLE_SITE_VERIFICATION_CONTENT, {
+        status: 200,
+        headers: {
+          'content-type': 'text/html; charset=utf-8',
+          'cache-control': 'public, max-age=3600',
+        },
+      })
+    }
+
     if (MAINTENANCE) {
       return new Response(maintenanceHtml, {
         status: 503,
