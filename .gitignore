@@ -38,6 +38,7 @@ yarn-error.log*
 
 # cloudflare (OpenNext)
 /.open-next/
+/.wrangler/
 .dev.vars*
 worker-configuration.d.ts
 
