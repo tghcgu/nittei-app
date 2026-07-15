@@ -12,13 +12,13 @@
 
 ユーザーは細かいUI調整や不具合修正を短く依頼することが多いです。
 専門用語はかみ砕いて説明し、変更後は「何が変わったか」を簡単に伝えてください。
-ユーザーは本番URLで確認することが多いので、必要なら lint / typecheck / build を通してから main に push し、Vercel の反映まで確認してください。
+ユーザーは本番URLで確認することが多いので、必要なら lint / typecheck / build を通してから、ユーザーの指示で `npm run deploy` を実行して Cloudflare へ反映してください(git push では本番は変わりません)。
 
 プロジェクト:
 - 名前: 日程組
-- 本番URL: https://nittei-app-five.vercel.app/
+- 本番URL: https://nittei-app.gucsic.workers.dev/ (旧URL nittei-app-five.vercel.app からは自動転送)
 - GitHub: https://github.com/tghcgu/nittei-app
-- 主な技術: Next.js 16 / React 19 / TypeScript / Supabase / Vercel
+- 主な技術: Next.js 16 / React 19 / TypeScript / Supabase / Cloudflare Workers(OpenNext)
 - 作業場所: C:\Users\tkt01\Desktop\nittei-app
 
 重要:
@@ -34,10 +34,12 @@
 - npm.cmd run build
 - git status -sb
 
-最近の実運用:
-- 小さい修正は main に直接 commit / push して本番反映している。
-- ただし、大きい機能や不安な変更では develop やプレビューで確認してから main に入れる。
-- push 後は Vercel / GitHub のデプロイ成功を確認する。
+最近の実運用(2026-07-09 に Vercel から Cloudflare へ移行):
+- develop で実装し、lint / typecheck / build を通す。
+- ローカル確認は npm run preview (Cloudflare 実行環境 workerd、http://localhost:8787)。
+- 本番反映はユーザーの指示で npm run deploy (ローカルから Cloudflare へ直接)。
+- main へのマージはソース同期のため、ユーザーの指示で行う。
+- Cloudflare 用ビルドは webpack (Turbopack 成果物は OpenNext 非対応。スクリプトに組み込み済み)。
 
 アプリの主なファイル:
 - app/page.tsx: イベント作成・編集画面
@@ -63,8 +65,8 @@
 - まず短く結論。
 - 難しい言葉は使ったら説明する。
 - 「安全にやる」と言われたら、UIやDB構造を大きく変えず、確認コマンドを通す。
-- 変更後は「lint OK / typecheck OK / build OK / Vercel OK」を簡潔に伝える。
-- URLを求められたら https://nittei-app-five.vercel.app/ を出す。
+- 変更後は「lint OK / typecheck OK / build OK / デプロイ OK」を簡潔に伝える。
+- URLを求められたら https://nittei-app.gucsic.workers.dev/ を出す。
 ```
 
 ## 新しいPCで必要なもの
@@ -102,5 +104,6 @@ npm run dev
 ## 注意
 
 - `.env.local` の実際の値は、このファイルにもチャットにも貼らない。
-- `node_modules`、`.next`、`.vercel` はコピー不要。
-- Supabase のデータと Vercel の本番サイトはクラウド側にあるので、PCを変えても残ります。
+- `node_modules`、`.next`、`.open-next`、`.wrangler`、`.vercel` はコピー不要。
+- Supabase のデータと Cloudflare の本番サイトはクラウド側にあるので、PCを変えても残ります。
+- 新しいPCでデプロイするには `npx wrangler login` で Cloudflare に再ログインする。
