@@ -1939,6 +1939,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
             プライバシーポリシー
           </Link>
+          <span className="mx-2">·</span>
+          <Link href="/contact" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
+            お問い合わせ
+          </Link>
         </p>
       </div>
     </div>

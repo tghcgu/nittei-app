@@ -90,7 +90,16 @@ export default function TermsPage() {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">本規約は日本法に準拠します。</p>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">第9条（お問い合わせ）</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">nittei.app5@gmail.com</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">
+            本サービスに関するお問い合わせは、
+            <Link
+              href="/contact"
+              className="underline underline-offset-2 transition-colors hover:text-rose-700"
+            >
+              お問い合わせページ
+            </Link>
+            からお送りください。
+          </p>
 
           <p className="mt-6 text-xs text-stone-400">制定日: 2026年7月9日</p>
         </div>

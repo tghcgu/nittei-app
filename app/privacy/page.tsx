@@ -32,7 +32,8 @@ export default function PrivacyPage() {
           <h2 className="mt-6 font-serif text-base text-rose-800">1. 収集する情報</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>
-              利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答（○△✕−）とコメント
+              利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答（○△✕−）とコメント、
+              お問い合わせフォームの内容（本文と、任意でいただく返信用メールアドレス）
             </li>
             <li>
               自動的に収集する情報: アクセス状況の統計（Cloudflare Web Analytics
@@ -84,7 +85,16 @@ export default function PrivacyPage() {
           </p>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">9. お問い合わせ</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">nittei.app5@gmail.com</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">
+            本ポリシーに関するお問い合わせは、
+            <Link
+              href="/contact"
+              className="underline underline-offset-2 transition-colors hover:text-rose-700"
+            >
+              お問い合わせページ
+            </Link>
+            からお送りください。
+          </p>
 
           <p className="mt-6 text-xs text-stone-400">制定日: 2026年7月9日</p>
         </div>
