@@ -2,12 +2,12 @@
   "redirects": [
     {
       "source": "/",
-      "destination": "https://nittei-app.gucsic.workers.dev/",
+      "destination": "https://nittei-app.qoj.workers.dev/",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "destination": "https://nittei-app.gucsic.workers.dev/:path*",
+      "destination": "https://nittei-app.qoj.workers.dev/:path*",
       "permanent": true
     }
   ]

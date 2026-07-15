@@ -2,7 +2,7 @@
 
 候補日を作ってURLを共有するだけで、参加者がログイン不要で回答できる日程調整Webアプリです。
 
-公開URL: https://nittei-app.gucsic.workers.dev/
+公開URL: https://nittei-app.qoj.workers.dev/
 (旧URL https://nittei-app-five.vercel.app/ からは自動転送されます)
 
 ## 概要

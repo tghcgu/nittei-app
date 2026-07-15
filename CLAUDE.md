@@ -6,7 +6,7 @@
 
 | 場所 | 役割 |
 |---|---|
-| 本番 | Cloudflare Workers: https://nittei-app.gucsic.workers.dev |
+| 本番 | Cloudflare Workers: https://nittei-app.qoj.workers.dev |
 | 旧URL | https://nittei-app-five.vercel.app は Vercel が新URLへ308転送（vercel.json で設定） |
 | `main` | ソースの正本。**push しても本番は変わらない**（Vercel の転送設定のみ反映される） |
 | `develop` | 開発用。ここで実装・テストを行う |
