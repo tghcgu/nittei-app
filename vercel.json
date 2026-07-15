@@ -1,8 +1,9 @@
 {
-  "crons": [
+  "redirects": [
     {
-      "path": "/api/cleanup-old-events",
-      "schedule": "0 19 * * *"
+      "source": "/:path*",
+      "destination": "https://nittei-app.gucsic.workers.dev/:path*",
+      "permanent": true
     }
   ]
 }
