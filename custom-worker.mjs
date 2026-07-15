@@ -5,7 +5,7 @@ import handler from './.open-next/worker.js'
 
 // メンテナンス中は true にして deploy する。解除するときは false に戻して deploy。
 // (cron の自動削除は scheduled ハンドラー経由なのでメンテ中も動き続ける)
-const MAINTENANCE = true
+const MAINTENANCE = false
 
 const maintenanceHtml = `<!doctype html>
 <html lang="ja">

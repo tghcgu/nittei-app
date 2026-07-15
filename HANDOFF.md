@@ -16,7 +16,7 @@
 
 プロジェクト:
 - 名前: 日程組
-- 本番URL: https://nittei-app.gucsic.workers.dev/ (旧URL nittei-app-five.vercel.app からは自動転送)
+- 本番URL: https://nittei-app.qoj.workers.dev/ (旧URL nittei-app-five.vercel.app からは自動転送)
 - GitHub: https://github.com/tghcgu/nittei-app
 - 主な技術: Next.js 16 / React 19 / TypeScript / Supabase / Cloudflare Workers(OpenNext)
 - 作業場所: C:\Users\tkt01\Desktop\nittei-app
@@ -66,7 +66,7 @@
 - 難しい言葉は使ったら説明する。
 - 「安全にやる」と言われたら、UIやDB構造を大きく変えず、確認コマンドを通す。
 - 変更後は「lint OK / typecheck OK / build OK / デプロイ OK」を簡潔に伝える。
-- URLを求められたら https://nittei-app.gucsic.workers.dev/ を出す。
+- URLを求められたら https://nittei-app.qoj.workers.dev/ を出す。
 ```
 
 ## 新しいPCで必要なもの
