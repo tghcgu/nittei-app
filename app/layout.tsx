@@ -92,6 +92,14 @@ export default function RootLayout({
         />
         {children}
         <ThemeToggle />
+        {process.env.NODE_ENV === "production" && (
+          // Cloudflare Web Analytics(Cookie不使用のアクセス解析)
+          <script
+            type="module"
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon='{"token": "6c4b4109282a4446b40d67c5927786a9"}'
+          />
+        )}
       </body>
     </html>
   );
