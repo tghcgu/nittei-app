@@ -3,12 +3,12 @@
     {
       "source": "/",
       "destination": "https://nittei-app.qoj.workers.dev/",
-      "permanent": true
+      "statusCode": 301
     },
     {
       "source": "/:path*",
       "destination": "https://nittei-app.qoj.workers.dev/:path*",
-      "permanent": true
+      "statusCode": 301
     }
   ]
 }
