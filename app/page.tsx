@@ -1141,12 +1141,8 @@ export default function Home() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => { setRangeOpen((v) => !v); setCalOpen(false) }}
-                className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                  rangeOpen
-                    ? 'border-rose-400 bg-rose-50 text-rose-800'
-                    : 'border-stone-200 text-stone-500 hover:border-rose-200 hover:text-rose-700'
-                }`}
+                onClick={() => { setRangeOpen(true); setCalOpen(false) }}
+                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
               >
                 📅 範囲で追加
               </button>
@@ -1155,7 +1151,7 @@ export default function Home() {
                 onClick={() => { openCalendar(); setRangeOpen(false) }}
                 className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
               >
-                🗓 カレンダーから選ぶ
+                🗓 カレンダーから選ぶ（おすすめ）
               </button>
               <button
                 type="button"
@@ -1221,43 +1217,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* 範囲ミニフォーム */}
-            {rangeOpen && (
-              <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-4">
-                <p className="mb-3 text-xs font-medium text-stone-500">開始日〜終了日を選択</p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    type="date"
-                    value={rangeStart}
-                    onChange={(e) => setRangeStart(e.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                  />
-                  <span className="text-stone-400">〜</span>
-                  <input
-                    type="date"
-                    value={rangeEnd}
-                    min={rangeStart}
-                    onChange={(e) => setRangeEnd(e.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddRange}
-                    disabled={!rangeStart || !rangeEnd || rangeStart > rangeEnd}
-                    className="rounded-full bg-rose-800 px-4 py-2 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    追加
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRangeOpen(false)}
-                    className="text-sm text-stone-400 hover:text-stone-600"
-                  >
-                    キャンセル
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* エラーメッセージ */}
@@ -1303,6 +1262,56 @@ export default function Home() {
           </Link>
         </p>
       </div>
+
+      {/* 範囲追加モーダル */}
+      {rangeOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setRangeOpen(false) }}
+        >
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-6 shadow-2xl">
+            <p className="mb-1 text-center font-serif text-lg text-stone-700">範囲で追加</p>
+            <p className="mb-5 text-center text-xs text-stone-400">
+              開始日〜終了日を選ぶと、その間の日程をまとめて追加できます
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              />
+              <span className="text-stone-400">〜</span>
+              <input
+                type="date"
+                value={rangeEnd}
+                min={rangeStart}
+                onChange={(e) => setRangeEnd(e.target.value)}
+                className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              />
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleAddRange}
+                disabled={!rangeStart || !rangeEnd || rangeStart > rangeEnd}
+                className="flex-1 rounded-full bg-rose-800 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {rangeStart && rangeEnd && rangeStart <= rangeEnd
+                  ? `${datesBetween(rangeStart, rangeEnd).length}日を追加`
+                  : '日付を選んでください'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRangeOpen(false)}
+                className="rounded-full border border-stone-200 px-4 py-2.5 text-sm text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-700"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* カレンダーモーダル */}
       {calOpen && (
