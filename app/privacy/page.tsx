@@ -32,8 +32,7 @@ export default function PrivacyPage() {
           <h2 className="mt-6 font-serif text-base text-rose-800">1. 収集する情報</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>
-              利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答（○△✕−）とコメント、
-              お問い合わせフォームの内容（本文と、任意でいただく返信用メールアドレス）
+              利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答（○△✕−）とコメント
             </li>
             <li>
               自動的に収集する情報: アクセス状況の統計（Cloudflare Web Analytics
