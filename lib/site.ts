@@ -1,14 +1,17 @@
 export const siteName = '日程組'
 
-export const siteTitle = '日程組 - 簡単日程調整・出欠管理ツール'
+export const siteShortName = '日組'
+
+export const siteTitle = `日程組（略して ${siteShortName}）- 簡単日程調整・出欠管理ツール`
 
 export const siteDescription =
-  '日程組は、ログイン不要で使える日程調整・出欠管理ツールです。URL共有、〇△✕−とコメント、候補日の一括入力、.ics読み込みに対応。'
+  `日程組、略して「${siteShortName}」は、ログイン不要で使える日程調整・出欠管理ツールです。URL共有、〇△✕−とコメント、候補日の一括入力、.ics読み込みに対応。`
 
 export const siteUrl = 'https://nittei-app.qoj.workers.dev'
 
 export const siteKeywords = [
   '日程組',
+  siteShortName,
   '日程調整',
   'スケジュール調整',
   '出欠管理',

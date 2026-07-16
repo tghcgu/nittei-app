@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { siteShortName } from '@/lib/site'
 import { describeCalendarFileError, describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
 
@@ -1212,9 +1213,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="relative mb-2 flex min-h-8 items-center justify-center">
           <Link
             href="/"
-            className="group inline-flex items-baseline gap-0.5 border-b border-transparent pb-0.5 font-serif text-2xl text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
+            aria-label="日程組で新しいイベントを作成"
+            className="group inline-flex items-baseline gap-1.5 border-b border-transparent pb-0.5 font-serif text-2xl text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
           >
             <span>日程組</span>
+            <span className="font-sans text-xs font-normal text-stone-400 transition-colors group-hover:text-stone-600">
+              略して{siteShortName}
+            </span>
             <span className="text-sm text-stone-500 transition-colors group-hover:text-stone-700">で作成</span>
           </Link>
           <Link

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { siteShortName } from '@/lib/site'
 import {
   DndContext,
   closestCenter,
@@ -972,7 +973,10 @@ export default function Home() {
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
         <div className="mb-2 text-center">
-          <h1 className="font-serif text-3xl text-rose-800">日程組</h1>
+          <h1 className="inline-flex items-baseline gap-1.5 font-serif text-3xl text-rose-800">
+            <span>日程組</span>
+            <span className="font-sans text-xs font-normal text-stone-400">略して {siteShortName}</span>
+          </h1>
           <p className="text-sm text-stone-500">
             {isLoadingEdit
               ? '日程を読み込んでいます...'

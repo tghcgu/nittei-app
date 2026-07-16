@@ -3,6 +3,7 @@ import {
   siteDescription,
   siteKeywords,
   siteName,
+  siteShortName,
   siteTitle,
   siteUrl,
 } from "@/lib/site";
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
     default: siteTitle,
-    template: `%s | ${siteName}`,
+    template: `%s | ${siteName}（略して ${siteShortName}）`,
   },
   applicationName: siteName,
   description: siteDescription,
@@ -54,7 +55,7 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
   name: siteName,
-  alternateName: siteTitle,
+  alternateName: siteShortName,
   description: siteDescription,
   url: siteUrl,
   applicationCategory: "BusinessApplication",
