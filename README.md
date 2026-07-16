@@ -263,4 +263,4 @@ developで実装し、`npm run preview`(ローカルのCloudflare実行環境)�
 
 ## お問い合わせ
 
-サイト内のお問い合わせフォームからお送りください: https://nittei-app.qoj.workers.dev/contact
+knihud@gmail.com（サイト内の https://nittei-app.qoj.workers.dev/contact にも記載）

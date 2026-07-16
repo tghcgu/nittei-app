@@ -1013,7 +1013,7 @@ export default function Home() {
               required
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
-              placeholder="例：4月の飲み会"
+              placeholder="例：みんなでご飯"
               className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
