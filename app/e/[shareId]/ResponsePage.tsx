@@ -1216,13 +1216,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             aria-label="日程組で新しいイベントを作成"
             className="group inline-flex items-baseline gap-1.5 border-b border-transparent pb-0.5 font-serif text-2xl text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
           >
-            <span className="inline-flex items-baseline gap-0.5">
-              <span>日程組</span>
-              <span className="text-sm text-stone-500 transition-colors group-hover:text-stone-700">で作成</span>
-            </span>
+            <span>日程組</span>
             <span className="font-sans text-xs font-normal text-stone-400 transition-colors group-hover:text-stone-600">
-              略して {siteShortName}
+              略して{siteShortName}
             </span>
+            <span className="text-sm text-stone-500 transition-colors group-hover:text-stone-700">で作成</span>
           </Link>
           <Link
             href={`/?edit=${shareId}`}
