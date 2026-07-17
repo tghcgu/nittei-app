@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -73,6 +73,7 @@ type CalendarPaintSession = {
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
+const emptySubscribe = () => () => {}
 const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
 const CALENDAR_PAINT_MOVE_THRESHOLD = 8
@@ -284,12 +285,17 @@ export default function Home() {
   const [rangeStart, setRangeStart] = useState('')
   const [rangeEnd, setRangeEnd] = useState('')
 
-  // カレンダーモーダル
+  // カレンダー（常時表示。日付を選んで「追加」ボタンで候補日にする）
   const now = new Date()
-  const [calOpen, setCalOpen] = useState(false)
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calSelected, setCalSelected] = useState<Set<string>>(new Set())
+  // 「今日」に依存する表示はビルド時のHTMLとズレるため、マウント後に描画する
+  const calendarMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  )
   const calendarPaintRef = useRef<CalendarPaintSession | null>(null)
   const suppressNextCalendarClickRef = useRef(false)
 
@@ -657,11 +663,6 @@ export default function Home() {
   }
 
   // ---- カレンダー ----
-  function openCalendar() {
-    setCalSelected(new Set())
-    setCalOpen(true)
-  }
-
   function prevMonth() {
     if (calMonth === 0) { setCalYear((y) => y - 1); setCalMonth(11) }
     else setCalMonth((m) => m - 1)
@@ -757,7 +758,7 @@ export default function Home() {
 
   function handleAddFromCalendar() {
     addDatesFromList([...calSelected].sort())
-    setCalOpen(false)
+    setCalSelected(new Set())
   }
 
   function handleSelectCurrentMonthFromToday() {
@@ -1110,52 +1111,146 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 候補日リスト（ドラッグ&ドロップ対応） */}
-            {candidates.length > 0 ? (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={candidates.map((c) => c.id)}
-                  strategy={verticalListSortingStrategy}
+            {/* カレンダー（日付を押してすぐ追加・解除） */}
+            <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5">
+              {!calendarMounted && <div className="h-80" aria-hidden="true" />}
+              {calendarMounted && (
+              <div className="mx-auto max-w-sm">
+                {/* 月ナビ */}
+                <div className="mb-1 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={prevMonth}
+                    className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                  >
+                    ←
+                  </button>
+                  <span className="font-serif text-lg text-stone-700">
+                    {calYear}年{calMonth + 1}月
+                  </span>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                  >
+                    →
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSelectCurrentMonthFromToday}
+                  disabled={addableMonthDates.length === 0}
+                  className="mb-1.5 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-1.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-white disabled:text-stone-300 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
                 >
-                  <div className="mb-4 space-y-2">
-                    {candidates.map((c) => (
-                      <SortableCandidate
-                        key={c.id}
-                        c={c}
-                        selected={selectedCandidateIds.has(c.id)}
-                        onToggleSelected={toggleCandidateSelection}
-                        onUpdate={updateCandidate}
-                        onRemove={removeCandidate}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            ) : (
-              <p className="mb-4 rounded-xl border border-dashed border-stone-200 bg-white/50 px-4 py-3 text-sm text-stone-400">
-                候補日はまだありません
-              </p>
-            )}
+                  {addableMonthDates.length > 0
+                    ? `この月の今日以降を選択（${addableMonthDates.length}日）`
+                    : 'この月は追加できる日がありません'}
+                </button>
+
+                <p className="mb-1 text-center text-xs text-stone-400">
+                  日付を選んで、下の「追加」ボタンで確定（ドラッグや曜日ボタンでまとめて選択）
+                </p>
+
+                {/* 曜日ヘッダー */}
+                <div className="mb-0.5 grid grid-cols-7 text-center text-xs text-stone-400">
+                  {WEEKDAYS.map((w, i) => {
+                    const weekdayDates = calendarMonthDates.filter((dateStr) => {
+                      const date = new Date(dateStr + 'T00:00:00')
+                      return date.getDay() === i
+                    })
+                    const isWeekdaySelected = weekdayDates.some((dateStr) => calSelected.has(dateStr))
+
+                    return (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => handleToggleWeekday(i)}
+                        disabled={weekdayDates.length === 0}
+                        className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                          isWeekdaySelected
+                            ? 'bg-rose-700 font-bold text-white'
+                            : i === 0
+                            ? 'text-rose-400 hover:bg-rose-50'
+                            : i === 6
+                            ? 'text-blue-400 hover:bg-blue-50'
+                            : 'text-stone-400 hover:bg-stone-100'
+                        }`}
+                      >
+                        {w}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* 日付グリッド */}
+                <div className="grid grid-cols-7">
+                  {calGrid.map((d, i) => {
+                    if (!d) return <div key={i} />
+                    const dateStr = toDateStr(d)
+                    const addedCount = candidateCountByDate[dateStr] ?? 0
+                    const isSelected = calSelected.has(dateStr)
+                    const dow = d.getDay()
+                    return (
+                      <button
+                        key={dateStr}
+                        type="button"
+                        data-calendar-date={dateStr}
+                        onPointerDown={(e) => handleCalendarPaintStart(e, dateStr)}
+                        onPointerMove={handleCalendarPaintMove}
+                        onPointerUp={handleCalendarPaintEnd}
+                        onPointerCancel={handleCalendarPaintEnd}
+                        onClick={() => {
+                          if (suppressNextCalendarClickRef.current) {
+                            suppressNextCalendarClickRef.current = false
+                            return
+                          }
+                          toggleCalDate(dateStr)
+                        }}
+                        className={`relative mx-auto flex h-9 w-9 touch-none select-none items-center justify-center rounded-full text-sm transition-colors ${
+                          isSelected
+                            ? 'bg-rose-700 font-bold text-white'
+                            : dow === 0
+                            ? 'text-rose-400 hover:bg-rose-50'
+                            : dow === 6
+                            ? 'text-blue-400 hover:bg-blue-50'
+                            : 'text-stone-700 hover:bg-stone-100'
+                        }`}
+                      >
+                        {d.getDate()}
+                        {addedCount > 0 && (
+                          <span className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none ${
+                            isSelected ? 'bg-white text-rose-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {addedCount}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* 追加ボタン */}
+                <button
+                  type="button"
+                  onClick={handleAddFromCalendar}
+                  disabled={calSelected.size === 0}
+                  className="mt-2 w-full rounded-full bg-rose-800 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {calSelected.size > 0 ? `${calSelected.size}日を追加` : '日付を選んでください'}
+                </button>
+              </div>
+              )}
+            </div>
 
             {/* 追加ボタン群 */}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => { setRangeOpen(true); setCalOpen(false) }}
+                onClick={() => setRangeOpen(true)}
                 className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
               >
                 📅 範囲で追加
-              </button>
-              <button
-                type="button"
-                onClick={() => { openCalendar(); setRangeOpen(false) }}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
-              >
-                🗓 カレンダーから選ぶ（おすすめ）
               </button>
               <button
                 type="button"
@@ -1221,6 +1316,36 @@ export default function Home() {
               </div>
             )}
 
+            {/* 候補日リスト（ドラッグ&ドロップ対応） */}
+            {candidates.length > 0 ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={candidates.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="mt-3 space-y-2">
+                    {candidates.map((c) => (
+                      <SortableCandidate
+                        key={c.id}
+                        c={c}
+                        selected={selectedCandidateIds.has(c.id)}
+                        onToggleSelected={toggleCandidateSelection}
+                        onUpdate={updateCandidate}
+                        onRemove={removeCandidate}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <p className="mt-3 rounded-xl border border-dashed border-stone-200 bg-white/50 px-4 py-3 text-sm text-stone-400">
+                候補日はまだありません
+              </p>
+            )}
           </div>
 
           {/* エラーメッセージ */}
@@ -1319,148 +1444,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* カレンダーモーダル */}
-      {calOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) setCalOpen(false) }}
-        >
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-6 shadow-2xl">
-            {/* 月ナビ */}
-            <div className="mb-5 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={prevMonth}
-                className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
-              >
-                ←
-              </button>
-              <span className="font-serif text-lg text-stone-700">
-                {calYear}年{calMonth + 1}月
-              </span>
-              <button
-                type="button"
-                onClick={nextMonth}
-                className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
-              >
-                →
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleSelectCurrentMonthFromToday}
-              disabled={addableMonthDates.length === 0}
-              className="mb-4 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-white disabled:text-stone-300 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
-            >
-              {addableMonthDates.length > 0
-                ? `この月の今日以降を選択（${addableMonthDates.length}日）`
-                : 'この月は追加できる日がありません'}
-            </button>
-
-            <p className="mb-2 text-center text-xs text-stone-400">
-              曜日を押すと一括選択・解除できます
-            </p>
-
-            {/* 曜日ヘッダー */}
-            <div className="mb-2 grid grid-cols-7 text-center text-xs text-stone-400">
-              {WEEKDAYS.map((w, i) => {
-                const weekdayDates = calendarMonthDates.filter((dateStr) => {
-                  const date = new Date(dateStr + 'T00:00:00')
-                  return date.getDay() === i
-                })
-                const isWeekdaySelected = weekdayDates.some((dateStr) => calSelected.has(dateStr))
-
-                return (
-                  <button
-                    key={w}
-                    type="button"
-                    onClick={() => handleToggleWeekday(i)}
-                    disabled={weekdayDates.length === 0}
-                    className={`mx-auto flex h-7 w-7 items-center justify-center rounded-full text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
-                      isWeekdaySelected
-                        ? 'bg-rose-700 font-bold text-white'
-                        : i === 0
-                        ? 'text-rose-400 hover:bg-rose-50'
-                        : i === 6
-                        ? 'text-blue-400 hover:bg-blue-50'
-                        : 'text-stone-400 hover:bg-stone-100'
-                    }`}
-                  >
-                    {w}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* 日付グリッド */}
-            <div className="grid grid-cols-7 gap-y-1">
-              {calGrid.map((d, i) => {
-                if (!d) return <div key={i} />
-                const dateStr = toDateStr(d)
-                const addedCount = candidateCountByDate[dateStr] ?? 0
-                const isSelected = calSelected.has(dateStr)
-                const dow = d.getDay()
-                return (
-                  <button
-                    key={dateStr}
-                    type="button"
-                    data-calendar-date={dateStr}
-                    onPointerDown={(e) => handleCalendarPaintStart(e, dateStr)}
-                    onPointerMove={handleCalendarPaintMove}
-                    onPointerUp={handleCalendarPaintEnd}
-                    onPointerCancel={handleCalendarPaintEnd}
-                    onClick={() => {
-                      if (suppressNextCalendarClickRef.current) {
-                        suppressNextCalendarClickRef.current = false
-                        return
-                      }
-                      toggleCalDate(dateStr)
-                    }}
-                    className={`relative mx-auto flex h-9 w-9 touch-none select-none items-center justify-center rounded-full text-sm transition-colors ${
-                      isSelected
-                        ? 'bg-rose-700 font-bold text-white'
-                        : dow === 0
-                        ? 'text-rose-400 hover:bg-rose-50'
-                        : dow === 6
-                        ? 'text-blue-400 hover:bg-blue-50'
-                        : 'text-stone-700 hover:bg-stone-100'
-                    }`}
-                  >
-                    {d.getDate()}
-                    {addedCount > 0 && (
-                      <span className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none ${
-                        isSelected ? 'bg-white text-rose-700' : 'bg-rose-100 text-rose-700'
-                      }`}>
-                        {addedCount}
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* フッター */}
-            <div className="mt-5 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleAddFromCalendar}
-                disabled={calSelected.size === 0}
-                className="flex-1 rounded-full bg-rose-800 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {calSelected.size > 0 ? `${calSelected.size}日を追加` : '日付を選んでください'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setCalOpen(false)}
-                className="rounded-full border border-stone-200 px-4 py-2.5 text-sm text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-700"
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
