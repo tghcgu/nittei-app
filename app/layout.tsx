@@ -51,6 +51,15 @@ export const metadata: Metadata = {
   },
 };
 
+// Google検索の「サイト名」表示にはWebSite型が使われる（ないと workers.dev の持ち主名が出る）
+const webSiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteName,
+  alternateName: [siteShortName, siteTitle],
+  url: siteUrl,
+};
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -89,6 +98,10 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
