@@ -6,7 +6,7 @@
       "statusCode": 301
     },
     {
-      "source": "/:path((?!robots\\.txt$).*)",
+      "source": "/:path((?!robots\\.txt$|favicon\\.ico$|icon\\.png$).*)",
       "destination": "https://nittei-app.qoj.workers.dev/:path*",
       "statusCode": 301
     }
