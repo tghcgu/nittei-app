@@ -33,8 +33,22 @@ type Candidate = {
 
 const MAX_CANDIDATE_HISTORY = 50
 
+// 戻す/進むの1コマ。候補日リストとカレンダーの選択状態をセットで記録する
+type CandidateHistoryEntry = {
+  candidates: Candidate[]
+  calSelected: Set<string>
+}
+
 function cloneCandidates(items: Candidate[]) {
   return items.map((item) => ({ ...item }))
+}
+
+function areDateSetsEqual(a: Set<string>, b: Set<string>) {
+  if (a.size !== b.size) return false
+  for (const value of a) {
+    if (!b.has(value)) return false
+  }
+  return true
 }
 
 function areCandidatesEqual(a: Candidate[], b: Candidate[]) {
@@ -263,8 +277,8 @@ export default function Home() {
   const [defaultStartTime, setDefaultStartTime] = useState(DEFAULT_CLOCK_TIME)
   const [defaultEndTime, setDefaultEndTime] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [candidatePast, setCandidatePast] = useState<Candidate[][]>([])
-  const [candidateFuture, setCandidateFuture] = useState<Candidate[][]>([])
+  const [candidatePast, setCandidatePast] = useState<CandidateHistoryEntry[]>([])
+  const [candidateFuture, setCandidateFuture] = useState<CandidateHistoryEntry[]>([])
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set())
   const [nextId, setNextId] = useState(1)
   const [editShareId, setEditShareId] = useState<string | null>(null)
@@ -290,6 +304,17 @@ export default function Home() {
   const [calYear, setCalYear] = useState(now.getFullYear())
   const [calMonth, setCalMonth] = useState(now.getMonth())
   const [calSelected, setCalSelected] = useState<Set<string>>(new Set())
+  // 履歴記録用に最新の選択状態を参照する ref（candidatesRef と同じ役割）
+  const calSelectedRef = useRef(calSelected)
+  useEffect(() => {
+    calSelectedRef.current = calSelected
+  }, [calSelected])
+
+  function replaceCalSelected(nextSelected: Set<string>) {
+    const selection = new Set(nextSelected)
+    calSelectedRef.current = selection
+    setCalSelected(selection)
+  }
   // 「今日」に依存する表示はビルド時のHTMLとズレるため、マウント後に描画する
   const calendarMounted = useSyncExternalStore(
     emptySubscribe,
@@ -380,10 +405,11 @@ export default function Home() {
     })
   }
 
-  function restoreCandidateSnapshot(snapshot: Candidate[]) {
-    const nextCandidates = cloneCandidates(snapshot)
+  function restoreCandidateSnapshot(snapshot: CandidateHistoryEntry) {
+    const nextCandidates = cloneCandidates(snapshot.candidates)
     setCandidates(nextCandidates)
     syncSelectedCandidates(nextCandidates)
+    replaceCalSelected(snapshot.calSelected)
 
     const nextTime = parseTimeLabel(
       nextCandidates.find((candidate) => candidate.timeLabel)?.timeLabel ?? ''
@@ -400,6 +426,14 @@ export default function Home() {
     candidatesRef.current = candidates
   }, [candidates])
 
+  // 現時点の状態を履歴1コマ分として写し取る
+  function currentHistoryEntry(): CandidateHistoryEntry {
+    return {
+      candidates: cloneCandidates(candidatesRef.current),
+      calSelected: new Set(calSelectedRef.current),
+    }
+  }
+
   function commitCandidateChange(nextOrUpdater: Candidate[] | ((items: Candidate[]) => Candidate[])) {
     const currentCandidates = candidatesRef.current
     const nextCandidates =
@@ -409,10 +443,22 @@ export default function Home() {
 
     setCandidatePast((past) => [
       ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-      cloneCandidates(currentCandidates),
+      currentHistoryEntry(),
     ])
     setCandidateFuture([])
     setCandidates(cloneCandidates(nextCandidates))
+  }
+
+  // カレンダーの選択変更も同じ履歴に積む（戻す/進むで選択もやり直せる）
+  function commitCalSelectedChange(nextSelected: Set<string>) {
+    if (areDateSetsEqual(calSelectedRef.current, nextSelected)) return
+
+    setCandidatePast((past) => [
+      ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
+      currentHistoryEntry(),
+    ])
+    setCandidateFuture([])
+    replaceCalSelected(nextSelected)
   }
 
   function undoCandidateChange() {
@@ -421,7 +467,7 @@ export default function Home() {
     const previous = candidatePast[candidatePast.length - 1]
     setCandidatePast((past) => past.slice(0, -1))
     setCandidateFuture((future) => [
-      cloneCandidates(candidatesRef.current),
+      currentHistoryEntry(),
       ...future.slice(0, MAX_CANDIDATE_HISTORY - 1),
     ])
     restoreCandidateSnapshot(previous)
@@ -433,7 +479,7 @@ export default function Home() {
     const next = candidateFuture[0]
     setCandidatePast((past) => [
       ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-      cloneCandidates(candidatesRef.current),
+      currentHistoryEntry(),
     ])
     setCandidateFuture((future) => future.slice(1))
     restoreCandidateSnapshot(next)
@@ -674,26 +720,22 @@ export default function Home() {
   }
 
   function toggleCalDate(dateStr: string) {
-    setCalSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(dateStr)) next.delete(dateStr)
-      else next.add(dateStr)
-      return next
-    })
+    const next = new Set(calSelectedRef.current)
+    if (next.has(dateStr)) next.delete(dateStr)
+    else next.add(dateStr)
+    commitCalSelectedChange(next)
   }
 
   function toggleCalendarDates(dateStrs: string[]) {
     if (dateStrs.length === 0) return
 
-    setCalSelected((prev) => {
-      const next = new Set(prev)
-      const shouldRemove = dateStrs.every((dateStr) => next.has(dateStr))
-      for (const dateStr of dateStrs) {
-        if (shouldRemove) next.delete(dateStr)
-        else next.add(dateStr)
-      }
-      return next
-    })
+    const next = new Set(calSelectedRef.current)
+    const shouldRemove = dateStrs.every((dateStr) => next.has(dateStr))
+    for (const dateStr of dateStrs) {
+      if (shouldRemove) next.delete(dateStr)
+      else next.add(dateStr)
+    }
+    commitCalSelectedChange(next)
   }
 
   function getCalendarDateAtPoint(clientX: number, clientY: number) {
@@ -711,7 +753,7 @@ export default function Home() {
       if (session.mode === 'add') next.add(rangeDate)
       else next.delete(rangeDate)
     }
-    setCalSelected(next)
+    replaceCalSelected(next)
   }
 
   function handleCalendarPaintStart(e: React.PointerEvent<HTMLButtonElement>, dateStr: string) {
@@ -719,12 +761,12 @@ export default function Home() {
 
     calendarPaintRef.current = {
       pointerId: e.pointerId,
-      mode: calSelected.has(dateStr) ? 'remove' : 'add',
+      mode: calSelectedRef.current.has(dateStr) ? 'remove' : 'add',
       startDate: dateStr,
       startX: e.clientX,
       startY: e.clientY,
       didPaint: false,
-      initialSelected: new Set(calSelected),
+      initialSelected: new Set(calSelectedRef.current),
     }
     e.currentTarget.setPointerCapture(e.pointerId)
   }
@@ -750,6 +792,19 @@ export default function Home() {
     calendarPaintRef.current = null
     if (!session.didPaint) return
 
+    // ドラッグ中は直接描画していたので、1ドラッグ分をまとめて履歴1コマにする
+    // （「前の状態」= ドラッグ開始時に控えた initialSelected）
+    if (!areDateSetsEqual(session.initialSelected, calSelectedRef.current)) {
+      setCandidatePast((past) => [
+        ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
+        {
+          candidates: cloneCandidates(candidatesRef.current),
+          calSelected: new Set(session.initialSelected),
+        },
+      ])
+      setCandidateFuture([])
+    }
+
     suppressNextCalendarClickRef.current = true
     window.setTimeout(() => {
       suppressNextCalendarClickRef.current = false
@@ -757,8 +812,8 @@ export default function Home() {
   }
 
   function handleAddFromCalendar() {
-    addDatesFromList([...calSelected].sort())
-    setCalSelected(new Set())
+    addDatesFromList([...calSelectedRef.current].sort())
+    replaceCalSelected(new Set())
   }
 
   function handleSelectCurrentMonthFromToday() {
@@ -773,15 +828,13 @@ export default function Home() {
     })
     if (dates.length === 0) return
 
-    setCalSelected((prev) => {
-      const next = new Set(prev)
-      const hasSelectedDate = dates.some((dateStr) => next.has(dateStr))
-      for (const dateStr of dates) {
-        if (hasSelectedDate) next.delete(dateStr)
-        else next.add(dateStr)
-      }
-      return next
-    })
+    const next = new Set(calSelectedRef.current)
+    const hasSelectedDate = dates.some((dateStr) => next.has(dateStr))
+    for (const dateStr of dates) {
+      if (hasSelectedDate) next.delete(dateStr)
+      else next.add(dateStr)
+    }
+    commitCalSelectedChange(next)
   }
 
   // ---- フォーム送信 ----
@@ -1111,7 +1164,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* カレンダー（日付を押してすぐ追加・解除） */}
+            {/* カレンダー（日付を選択してから候補日に追加） */}
             <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5">
               {!calendarMounted && <div className="h-80" aria-hidden="true" />}
               {calendarMounted && (
