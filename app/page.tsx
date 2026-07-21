@@ -260,6 +260,15 @@ function SortableCandidate({
       </div>
       <button
         type="button"
+        onClick={() => onUpdate(c.id, 'timeLabel', '')}
+        disabled={!c.timeLabel}
+        title="この候補の時間指定を解除"
+        className="hidden shrink-0 rounded-full border border-stone-300 px-2.5 py-1.5 text-xs text-stone-500 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40 sm:inline-flex"
+      >
+        時刻なし
+      </button>
+      <button
+        type="button"
         onClick={() => onRemove(c.id)}
         className="shrink-0 text-sm text-stone-300 hover:text-rose-400 sm:text-base"
       >
@@ -1123,6 +1132,18 @@ export default function Home() {
                   className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300"
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setDefaultStartTime('')
+                  setDefaultEndTime('')
+                }}
+                disabled={!defaultStartTime && !defaultEndTime}
+                title="開始・終了時刻を空にする"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                時刻なし
+              </button>
               <button
                 type="button"
                 onClick={applyTimeToAll}
