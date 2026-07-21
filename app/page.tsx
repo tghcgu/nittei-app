@@ -315,14 +315,31 @@ export default function Home() {
   const [calSelected, setCalSelected] = useState<Set<string>>(new Set())
   // 履歴記録用に最新の選択状態を参照する ref（candidatesRef と同じ役割）
   const calSelectedRef = useRef(calSelected)
-  useEffect(() => {
-    calSelectedRef.current = calSelected
-  }, [calSelected])
+  const candidatesRef = useRef(candidates)
+  const candidatePastRef = useRef(candidatePast)
+  const candidateFutureRef = useRef(candidateFuture)
 
   function replaceCalSelected(nextSelected: Set<string>) {
     const selection = new Set(nextSelected)
     calSelectedRef.current = selection
     setCalSelected(selection)
+  }
+
+  function replaceCandidatePast(nextPast: CandidateHistoryEntry[]) {
+    candidatePastRef.current = nextPast
+    setCandidatePast(nextPast)
+  }
+
+  function replaceCandidateFuture(nextFuture: CandidateHistoryEntry[]) {
+    candidateFutureRef.current = nextFuture
+    setCandidateFuture(nextFuture)
+  }
+
+  function pushCandidatePast(entry: CandidateHistoryEntry) {
+    replaceCandidatePast([
+      ...candidatePastRef.current.slice(-(MAX_CANDIDATE_HISTORY - 1)),
+      entry,
+    ])
   }
   // 「今日」に依存する表示はビルド時のHTMLとズレるため、マウント後に描画する
   const calendarMounted = useSyncExternalStore(
@@ -380,9 +397,10 @@ export default function Home() {
         setEditEventId(event.id)
         setEventName(event.name)
         setDescription(event.description ?? '')
+        candidatesRef.current = drafts
         setCandidates(drafts)
-        setCandidatePast([])
-        setCandidateFuture([])
+        replaceCandidatePast([])
+        replaceCandidateFuture([])
         setOriginalCandidateIds(new Set(drafts.map((candidate) => candidate.dbId!)))
         setOriginalCandidateDates(
           Object.fromEntries(drafts.map((candidate) => [candidate.dbId!, candidate.date]))
@@ -416,6 +434,7 @@ export default function Home() {
 
   function restoreCandidateSnapshot(snapshot: CandidateHistoryEntry) {
     const nextCandidates = cloneCandidates(snapshot.candidates)
+    candidatesRef.current = nextCandidates
     setCandidates(nextCandidates)
     syncSelectedCandidates(nextCandidates)
     replaceCalSelected(snapshot.calSelected)
@@ -426,14 +445,6 @@ export default function Home() {
     setDefaultStartTime(nextTime.start || DEFAULT_CLOCK_TIME)
     setDefaultEndTime(nextTime.end)
   }
-
-  // 最新の候補リストを参照するための ref。.ics 解析のように await を挟んだ後に
-  // commitCandidateChange を呼ぶ経路で、解析中に行われた編集が
-  // await 前の古いクロージャ値で巻き戻されるのを防ぐ。
-  const candidatesRef = useRef(candidates)
-  useEffect(() => {
-    candidatesRef.current = candidates
-  }, [candidates])
 
   // 現時点の状態を履歴1コマ分として写し取る
   function currentHistoryEntry(): CandidateHistoryEntry {
@@ -450,47 +461,42 @@ export default function Home() {
 
     if (areCandidatesEqual(currentCandidates, nextCandidates)) return
 
-    setCandidatePast((past) => [
-      ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-      currentHistoryEntry(),
-    ])
-    setCandidateFuture([])
-    setCandidates(cloneCandidates(nextCandidates))
+    pushCandidatePast(currentHistoryEntry())
+    replaceCandidateFuture([])
+    const candidatesSnapshot = cloneCandidates(nextCandidates)
+    candidatesRef.current = candidatesSnapshot
+    setCandidates(candidatesSnapshot)
   }
 
   // カレンダーの選択変更も同じ履歴に積む（戻す/進むで選択もやり直せる）
   function commitCalSelectedChange(nextSelected: Set<string>) {
     if (areDateSetsEqual(calSelectedRef.current, nextSelected)) return
 
-    setCandidatePast((past) => [
-      ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-      currentHistoryEntry(),
-    ])
-    setCandidateFuture([])
+    pushCandidatePast(currentHistoryEntry())
+    replaceCandidateFuture([])
     replaceCalSelected(nextSelected)
   }
 
   function undoCandidateChange() {
-    if (candidatePast.length === 0) return
+    const past = candidatePastRef.current
+    if (past.length === 0) return
 
-    const previous = candidatePast[candidatePast.length - 1]
-    setCandidatePast((past) => past.slice(0, -1))
-    setCandidateFuture((future) => [
+    const previous = past[past.length - 1]
+    replaceCandidatePast(past.slice(0, -1))
+    replaceCandidateFuture([
       currentHistoryEntry(),
-      ...future.slice(0, MAX_CANDIDATE_HISTORY - 1),
+      ...candidateFutureRef.current.slice(0, MAX_CANDIDATE_HISTORY - 1),
     ])
     restoreCandidateSnapshot(previous)
   }
 
   function redoCandidateChange() {
-    if (candidateFuture.length === 0) return
+    const future = candidateFutureRef.current
+    if (future.length === 0) return
 
-    const next = candidateFuture[0]
-    setCandidatePast((past) => [
-      ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-      currentHistoryEntry(),
-    ])
-    setCandidateFuture((future) => future.slice(1))
+    const next = future[0]
+    pushCandidatePast(currentHistoryEntry())
+    replaceCandidateFuture(future.slice(1))
     restoreCandidateSnapshot(next)
   }
 
@@ -804,14 +810,11 @@ export default function Home() {
     // ドラッグ中は直接描画していたので、1ドラッグ分をまとめて履歴1コマにする
     // （「前の状態」= ドラッグ開始時に控えた initialSelected）
     if (!areDateSetsEqual(session.initialSelected, calSelectedRef.current)) {
-      setCandidatePast((past) => [
-        ...past.slice(-(MAX_CANDIDATE_HISTORY - 1)),
-        {
-          candidates: cloneCandidates(candidatesRef.current),
-          calSelected: new Set(session.initialSelected),
-        },
-      ])
-      setCandidateFuture([])
+      pushCandidatePast({
+        candidates: cloneCandidates(candidatesRef.current),
+        calSelected: new Set(session.initialSelected),
+      })
+      replaceCandidateFuture([])
     }
 
     suppressNextCalendarClickRef.current = true
