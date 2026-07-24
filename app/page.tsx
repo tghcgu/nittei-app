@@ -91,12 +91,25 @@ const emptySubscribe = () => () => {}
 const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
 const CALENDAR_PAINT_MOVE_THRESHOLD = 8
+const SHARE_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
+const SHARE_ID_LENGTH = 8
+const SHARE_ID_MAX_ATTEMPTS = 5
+const SHARE_ID_RANDOM_LIMIT = 256 - (256 % SHARE_ID_ALPHABET.length)
 
 function generateShareId(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  return Array.from({ length: 6 }, () =>
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join('')
+  const result: string[] = []
+  const randomValues = new Uint8Array(SHARE_ID_LENGTH)
+
+  while (result.length < SHARE_ID_LENGTH) {
+    crypto.getRandomValues(randomValues)
+    for (const value of randomValues) {
+      if (value >= SHARE_ID_RANDOM_LIMIT) continue
+      result.push(SHARE_ID_ALPHABET[value % SHARE_ID_ALPHABET.length])
+      if (result.length === SHARE_ID_LENGTH) break
+    }
+  }
+
+  return result.join('')
 }
 
 function toDateStr(d: Date): string {
@@ -974,15 +987,29 @@ export default function Home() {
         return
       }
 
-      const shareId = generateShareId()
+      let shareId = ''
+      let event: { id: string } | null = null
 
-      const { data: event, error: eventError } = await supabase
-        .from('events')
-        .insert({ share_id: shareId, name: eventName, description: description || null })
-        .select()
-        .single()
+      for (let attempt = 0; attempt < SHARE_ID_MAX_ATTEMPTS; attempt += 1) {
+        shareId = generateShareId()
 
-      if (eventError) throw eventError
+        const { data, error: eventError } = await supabase
+          .from('events')
+          .insert({ share_id: shareId, name: eventName, description: description || null })
+          .select('id')
+          .single()
+
+        if (!eventError) {
+          event = data
+          break
+        }
+
+        if (eventError.code !== '23505') throw eventError
+      }
+
+      if (!event) {
+        throw new Error('共有URLの生成に失敗しました。')
+      }
 
       const candidateRows = validCandidates.map((c, i) => ({
         event_id: event.id,
