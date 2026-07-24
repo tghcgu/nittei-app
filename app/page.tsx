@@ -273,15 +273,6 @@ function SortableCandidate({
       </div>
       <button
         type="button"
-        onClick={() => onUpdate(c.id, 'timeLabel', '')}
-        disabled={!c.timeLabel}
-        title="この候補の時間指定を解除"
-        className="hidden shrink-0 rounded-full border border-stone-300 px-2.5 py-1.5 text-xs text-stone-500 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40 sm:inline-flex"
-      >
-        時刻なし
-      </button>
-      <button
-        type="button"
         onClick={() => onRemove(c.id)}
         className="shrink-0 text-sm text-stone-300 hover:text-rose-400 sm:text-base"
       >
