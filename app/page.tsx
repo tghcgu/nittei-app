@@ -33,10 +33,12 @@ type Candidate = {
 
 const MAX_CANDIDATE_HISTORY = 50
 
-// 戻す/進むの1コマ。候補日リストとカレンダーの選択状態をセットで記録する
+// 戻す/進むの1コマ。候補日リスト・カレンダーの選択・時間帯をセットで記録する
 type CandidateHistoryEntry = {
   candidates: Candidate[]
   calSelected: Set<string>
+  defaultStartTime: string
+  defaultEndTime: string
 }
 
 function cloneCandidates(items: Candidate[]) {
@@ -322,11 +324,20 @@ export default function Home() {
   const candidatesRef = useRef(candidates)
   const candidatePastRef = useRef(candidatePast)
   const candidateFutureRef = useRef(candidateFuture)
+  const defaultTimeRef = useRef({ start: defaultStartTime, end: defaultEndTime })
+  // 時刻入力は1文字ごとに変化するため、フォーカス中の1回の編集をまとめて履歴1コマにする
+  const timeEditBaselineRef = useRef<CandidateHistoryEntry | null>(null)
 
   function replaceCalSelected(nextSelected: Set<string>) {
     const selection = new Set(nextSelected)
     calSelectedRef.current = selection
     setCalSelected(selection)
+  }
+
+  function replaceDefaultTime(start: string, end: string) {
+    defaultTimeRef.current = { start, end }
+    setDefaultStartTime(start)
+    setDefaultEndTime(end)
   }
 
   function replaceCandidatePast(nextPast: CandidateHistoryEntry[]) {
@@ -411,8 +422,7 @@ export default function Home() {
         )
         setSelectedCandidateIds(new Set())
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
-        setDefaultStartTime(draftTime.start || DEFAULT_CLOCK_TIME)
-        setDefaultEndTime(draftTime.end)
+        replaceDefaultTime(draftTime.start || DEFAULT_CLOCK_TIME, draftTime.end)
       } catch (err) {
         console.error(err)
         if (!cancelled) setError('編集する日程を読み込めませんでした。')
@@ -442,12 +452,9 @@ export default function Home() {
     setCandidates(nextCandidates)
     syncSelectedCandidates(nextCandidates)
     replaceCalSelected(snapshot.calSelected)
-
-    const nextTime = parseTimeLabel(
-      nextCandidates.find((candidate) => candidate.timeLabel)?.timeLabel ?? ''
-    )
-    setDefaultStartTime(nextTime.start || DEFAULT_CLOCK_TIME)
-    setDefaultEndTime(nextTime.end)
+    // 復元中は編集中の時刻入力の控えを捨てる（古い値で履歴を積まないため）
+    timeEditBaselineRef.current = null
+    replaceDefaultTime(snapshot.defaultStartTime, snapshot.defaultEndTime)
   }
 
   // 現時点の状態を履歴1コマ分として写し取る
@@ -455,7 +462,39 @@ export default function Home() {
     return {
       candidates: cloneCandidates(candidatesRef.current),
       calSelected: new Set(calSelectedRef.current),
+      defaultStartTime: defaultTimeRef.current.start,
+      defaultEndTime: defaultTimeRef.current.end,
     }
+  }
+
+  // ---- 時間帯（時刻入力・時刻なし）の履歴 ----
+  function beginTimeEdit() {
+    if (!timeEditBaselineRef.current) timeEditBaselineRef.current = currentHistoryEntry()
+  }
+
+  function endTimeEdit() {
+    const baseline = timeEditBaselineRef.current
+    timeEditBaselineRef.current = null
+    if (!baseline) return
+    if (
+      baseline.defaultStartTime === defaultTimeRef.current.start &&
+      baseline.defaultEndTime === defaultTimeRef.current.end
+    ) {
+      return
+    }
+
+    pushCandidatePast(baseline)
+    replaceCandidateFuture([])
+  }
+
+  function clearDefaultTime() {
+    // 入力にフォーカスしたまま押された場合、控えは blur 側が処理するので捨てる
+    timeEditBaselineRef.current = null
+    if (!defaultTimeRef.current.start && !defaultTimeRef.current.end) return
+
+    pushCandidatePast(currentHistoryEntry())
+    replaceCandidateFuture([])
+    replaceDefaultTime('', '')
   }
 
   function commitCandidateChange(nextOrUpdater: Candidate[] | ((items: Candidate[]) => Candidate[])) {
@@ -584,8 +623,7 @@ export default function Home() {
       const nextTime = parseTimeLabel(value)
       // 行の時間をクリアしたときに、時間帯デフォルトまで空にしない
       if (nextTime.start) {
-        setDefaultStartTime(nextTime.start)
-        setDefaultEndTime(nextTime.end)
+        replaceDefaultTime(nextTime.start, nextTime.end)
       }
     }
 
@@ -815,7 +853,7 @@ export default function Home() {
     // （「前の状態」= ドラッグ開始時に控えた initialSelected）
     if (!areDateSetsEqual(session.initialSelected, calSelectedRef.current)) {
       pushCandidatePast({
-        candidates: cloneCandidates(candidatesRef.current),
+        ...currentHistoryEntry(),
         calSelected: new Set(session.initialSelected),
       })
       replaceCandidateFuture([])
@@ -1134,10 +1172,12 @@ export default function Home() {
                   type="time"
                   step={900}
                   value={defaultStartTime}
+                  onFocus={beginTimeEdit}
+                  onBlur={endTimeEdit}
                   onChange={(e) => {
                     const start = e.target.value
-                    setDefaultStartTime(start)
-                    if (!start) setDefaultEndTime('')
+                    beginTimeEdit()
+                    replaceDefaultTime(start, start ? defaultTimeRef.current.end : '')
                   }}
                   aria-label="開始時間"
                   className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
@@ -1147,7 +1187,12 @@ export default function Home() {
                   type="time"
                   step={900}
                   value={defaultEndTime}
-                  onChange={(e) => setDefaultEndTime(e.target.value)}
+                  onFocus={beginTimeEdit}
+                  onBlur={endTimeEdit}
+                  onChange={(e) => {
+                    beginTimeEdit()
+                    replaceDefaultTime(defaultTimeRef.current.start, e.target.value)
+                  }}
                   disabled={!defaultStartTime}
                   aria-label="終了時間（任意）"
                   className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300"
@@ -1155,10 +1200,7 @@ export default function Home() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setDefaultStartTime('')
-                  setDefaultEndTime('')
-                }}
+                onClick={clearDefaultTime}
                 disabled={!defaultStartTime && !defaultEndTime}
                 title="開始・終了時刻を空にする"
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
