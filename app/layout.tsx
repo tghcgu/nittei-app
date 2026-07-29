@@ -17,6 +17,11 @@ export const metadata: Metadata = {
     template: `%s | ${siteName}（略して ${siteShortName}）`,
   },
   applicationName: siteName,
+  appleWebApp: {
+    capable: true,
+    title: siteName,
+    statusBarStyle: "black-translucent",
+  },
   description: siteDescription,
   keywords: siteKeywords,
   alternates: {
