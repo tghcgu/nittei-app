@@ -52,11 +52,12 @@ export const metadata: Metadata = {
 };
 
 // Google検索の「サイト名」表示にはWebSite型が使われる（ないと workers.dev の持ち主名が出る）
+// alternateName（別名）は略称のみにする。タイトル全文は別名ではないため
 const webSiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: siteName,
-  alternateName: [siteShortName, siteTitle],
+  alternateName: siteShortName,
   url: siteUrl,
 };
 
