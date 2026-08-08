@@ -1442,11 +1442,11 @@ export default function Home() {
                   </ol>
                 </div>
                 <div>
-                  <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
+                  <a href="https://outlook.live.com/calendar/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Outlook カレンダーを開く <span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
-                    <li>設定 → 共有カレンダー → 書き出し</li>
+                    <li>開いた「共有カレンダー」の設定で書き出し（公開）を選ぶ</li>
                     <li>その .ics をアップロード</li>
                   </ol>
                 </div>
