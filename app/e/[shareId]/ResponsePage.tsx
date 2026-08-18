@@ -1664,8 +1664,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           {/* ラベル列は「一番長い日付ラベル」の幅に自動で揃う。余計な幅を足さないので
               スマホでも折り返さず、○△✕−ボタンの縦の列がどの画面幅でも揃う */}
           <div className="mb-6 grid grid-cols-[minmax(min-content,max-content)_1fr] gap-x-2 gap-y-0.5">
-            <div className="col-span-2 mb-1 text-sm font-medium text-stone-700">
-              各日程への出欠 <span className="text-rose-700">*</span>
+            <div className="col-span-2 mb-1">
+              <div className="text-sm font-medium text-stone-700">
+                各日程への出欠 <span className="text-rose-700">*</span>
+              </div>
+              <p className="mt-0.5 text-[10px] leading-tight text-stone-400">
+                長押し・ドラッグでまとめて入力できます
+              </p>
             </div>
             {candidates.map((c) => (
               <div
