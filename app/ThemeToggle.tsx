@@ -72,7 +72,7 @@ export function ThemeToggle() {
       aria-label={isDark ? "ライトモードに切り替える" : "ダークモードに切り替える"}
       title={isDark ? "ライトモード" : "ダークモード"}
     >
-      {isDark ? "白" : "黒"}
+      <span aria-hidden="true">{isDark ? "☀" : "☾"}</span>
     </button>
   );
 }

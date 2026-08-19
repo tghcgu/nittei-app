@@ -28,13 +28,13 @@ html[data-theme="dark"] body {
 }
 
 .theme-toggle {
-  position: fixed;
-  right: 0.875rem;
-  bottom: 0.875rem;
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
   z-index: 60;
   display: inline-flex;
-  height: 2.6rem;
-  width: 2.6rem;
+  height: 2.25rem;
+  width: 2.25rem;
   align-items: center;
   justify-content: center;
   border: 1px solid rgba(120, 113, 108, 0.3);
@@ -42,7 +42,7 @@ html[data-theme="dark"] body {
   background: rgba(255, 255, 255, 0.88);
   box-shadow: 0 10px 30px rgba(68, 64, 60, 0.18);
   color: #57534e;
-  font-size: 0.75rem;
+  font-size: 1.15rem;
   font-weight: 700;
   transition:
     background-color 160ms ease,
@@ -60,11 +60,11 @@ html[data-theme="dark"] body {
 
 @media (max-width: 640px) {
   .theme-toggle {
-    right: 0.65rem;
-    bottom: 0.65rem;
-    height: 2.05rem;
-    width: 2.05rem;
-    font-size: 0.68rem;
+    top: 0.5rem;
+    left: 0.5rem;
+    height: 1.9rem;
+    width: 1.9rem;
+    font-size: 1rem;
     box-shadow: 0 8px 22px rgba(68, 64, 60, 0.16);
   }
 }
