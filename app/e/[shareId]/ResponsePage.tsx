@@ -1769,7 +1769,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         </form>
 
         {/* 集計テーブル */}
-        <div id="responses-section" className="scroll-mt-4 rounded-2xl bg-white/70 px-6 py-6 shadow-sm backdrop-blur">
+        <div
+          id="responses-section"
+          className="scroll-mt-4 rounded-2xl bg-white/70 px-6 py-6 shadow-sm backdrop-blur lg:relative lg:left-1/2 lg:w-[calc(100vw-2rem)] lg:max-w-6xl lg:-translate-x-1/2"
+        >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
             <div className="flex flex-wrap items-center gap-2">

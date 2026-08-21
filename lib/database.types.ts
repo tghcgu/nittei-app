@@ -111,7 +111,5 @@ export type Database = {
 // 便利な型エイリアス
 export type Event = Database['public']['Tables']['events']['Row']
 export type Candidate = Database['public']['Tables']['candidates']['Row']
-export type Response = Database['public']['Tables']['responses']['Row']
-
 export type Answer = Database['public']['Tables']['answers']['Row']
 export type AnswerValue = '○' | '△' | '✕' | '-'
