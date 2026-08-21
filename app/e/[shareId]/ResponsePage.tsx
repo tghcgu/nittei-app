@@ -1262,7 +1262,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <form
           id="answer-form"
           onSubmit={handleSubmit}
-          className="mb-8 scroll-mt-4 rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur"
+          className="mb-8 scroll-mt-4 rounded-2xl bg-white/70 px-2 py-3 shadow-sm backdrop-blur lg:px-6"
         >
           <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
