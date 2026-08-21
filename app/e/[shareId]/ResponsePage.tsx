@@ -671,13 +671,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   function applyBulkAnswer() {
     if (!bulkStart || !bulkEnd || bulkStart > bulkEnd) return
-    const updates: Record<string, AnswerValue> = {}
-    for (const c of candidates) {
-      if (c.date >= bulkStart && c.date <= bulkEnd && matchesBulkWeekdays(c.date)) {
+    const targets = candidates.filter(
+      (c) => c.date >= bulkStart && c.date <= bulkEnd && matchesBulkWeekdays(c.date)
+    )
+    commitAnswerChange((current) => {
+      const updates: Record<string, AnswerValue> = {}
+      for (const c of targets) {
+        // 「入力済の行は変更しない」がONなら、まだ回答していない候補日だけ書き換える
+        if (keepExistingAnswers && current.answers[c.id] !== undefined) continue
         updates[c.id] = bulkValue
       }
-    }
-    commitAnswerChange((current) => {
+
       const nextDetailNotes = { ...current.detailNotes }
       // 「-」以外なら個別メモをクリア
       if (bulkValue !== '-') {
@@ -707,24 +711,27 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       return
     }
 
-    const updates: Record<string, AnswerValue> = {}
-    for (const c of candidates) {
-      if (c.date < bulkStart || c.date > bulkEnd) continue
-      if (!matchesBulkWeekdays(c.date)) continue
+    const targets = candidates.filter((c) => {
+      if (c.date < bulkStart || c.date > bulkEnd) return false
+      if (!matchesBulkWeekdays(c.date)) return false
 
       const candidateRange = parseCandidateClockRange(c.time_label)
-      if (candidateRange && clockRangesOverlap(candidateRange, rangeStart, rangeEnd)) {
-        updates[c.id] = bulkTimeValue
-      }
-    }
+      return Boolean(candidateRange && clockRangesOverlap(candidateRange, rangeStart, rangeEnd))
+    })
 
-    const updatedIds = Object.keys(updates)
-    if (updatedIds.length === 0) return
+    if (targets.length === 0) return
 
     commitAnswerChange((current) => {
+      const updates: Record<string, AnswerValue> = {}
+      for (const c of targets) {
+        // 「入力済の行は変更しない」がONなら、まだ回答していない候補日だけ書き換える
+        if (keepExistingAnswers && current.answers[c.id] !== undefined) continue
+        updates[c.id] = bulkTimeValue
+      }
+
       const nextDetailNotes = { ...current.detailNotes }
       if (bulkTimeValue !== '-') {
-        for (const id of updatedIds) delete nextDetailNotes[id]
+        for (const id of Object.keys(updates)) delete nextDetailNotes[id]
       }
 
       return {
@@ -1262,7 +1269,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <form
           id="answer-form"
           onSubmit={handleSubmit}
-          className="mb-8 scroll-mt-4 rounded-2xl bg-white/70 px-2 py-3 shadow-sm backdrop-blur lg:px-6"
+          className="mb-8 scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-3 shadow-sm backdrop-blur lg:mx-0 lg:px-6"
         >
           <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
@@ -1678,7 +1685,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 data-answer-row-id={c.id}
                 className="col-span-2 grid grid-cols-subgrid items-center rounded-md even:bg-stone-500/10"
               >
-                <div>
+                <div className="whitespace-nowrap">
                   <span className="font-serif text-sm text-stone-700 whitespace-nowrap">{formatDate(c.date)}</span>
                   {c.time_label && (
                     <>
@@ -1687,7 +1694,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </>
                   )}
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex items-center gap-1.5">
                   {ANSWER_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
@@ -1708,28 +1715,26 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         }
                         handleAnswerChange(c.id, opt.value)
                       }}
-                      className={`h-8 w-8 select-none rounded-full border-2 text-sm transition-all ${
+                      className={`h-8 w-8 shrink-0 select-none rounded-full border-2 text-sm transition-all ${
                         answers[c.id] === opt.value ? opt.active : opt.idle
                       }`}
                     >
                       {opt.value === '-' ? '−' : opt.value}
                     </button>
                   ))}
-                </div>
-                {/* 個別メモ：「-」選択時のみ表示 */}
-                {answers[c.id] === '-' && (
-                  <div className="col-span-2 mt-1 sm:col-span-1 sm:col-start-2">
+                  {/* 個別メモ：「-」選択時のみ、ボタンの右に並べる（改行しない） */}
+                  {answers[c.id] === '-' && (
                     <input
                       type="text"
                       value={detailNotes[c.id] ?? ''}
                       onChange={(e) =>
                         setDetailNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
                       }
-                      placeholder="この日の状況を記入（任意）"
-                      className="w-full rounded-lg border border-blue-100 bg-blue-50/50 px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      placeholder="メモ（任意）"
+                      className="w-0 min-w-0 flex-1 rounded-lg border border-blue-100 bg-blue-50/50 px-1.5 py-1 text-xs text-stone-700 placeholder-stone-300 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ))}
           </div>
