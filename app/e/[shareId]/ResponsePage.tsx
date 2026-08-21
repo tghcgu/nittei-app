@@ -108,7 +108,7 @@ function toDateStr(d: Date): string {
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00')
-  return `${d.getMonth() + 1}/${d.getDate()}（${DAYS[d.getDay()]}）`
+  return `${d.getMonth() + 1}/${d.getDate()}(${DAYS[d.getDay()]})`
 }
 
 function answerColor(v: AnswerValue | undefined) {
@@ -1828,7 +1828,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 横向きテーブル：行=回答者、列=候補日 ── */
             <div className="relative isolate overflow-x-auto">
-              <table className="response-results-table w-full text-center text-sm leading-tight">
+              <table className="response-results-table w-auto text-center text-sm leading-tight">
                 <thead>
                   <tr>
                     <th className="response-sticky-cell sticky left-0 z-20 w-28 min-w-28 max-w-28 pb-1 pr-3 text-left text-xs font-normal text-stone-400">名前</th>
@@ -1890,12 +1890,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 縦向きテーブル：行=候補日、列=回答者 ── */
             <div className="relative isolate overflow-x-auto">
-              <table className="response-results-table w-full text-center text-sm leading-tight">
+              <table className="response-results-table w-auto text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className="response-sticky-cell sticky left-0 z-20 w-40 min-w-40 max-w-40 pb-1 pr-3 text-left text-xs font-normal text-stone-400">候補日</th>
+                    <th className="response-sticky-cell sticky left-0 z-20 pb-1 pr-0.5 text-left text-xs font-normal text-stone-400">候補日</th>
                     {responseRows.map((r) => (
-                      <th key={r.id} className="min-w-24 max-w-40 border-l border-stone-500/20 px-2 pb-1 font-normal text-stone-500">
+                      <th key={r.id} className="min-w-10 max-w-40 border-l border-stone-500/20 px-0 pb-1 font-normal text-stone-500">
                         <div>{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs font-normal text-stone-400">{r.note.trim()}</div>
@@ -1914,7 +1914,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-100 even:bg-stone-500/10">
-                      <td className="response-sticky-cell sticky left-0 z-10 w-40 min-w-40 max-w-40 py-0 pr-3 text-left whitespace-nowrap">
+                      <td className="response-sticky-cell sticky left-0 z-10 py-0 pr-0.5 text-left whitespace-nowrap">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -1925,7 +1925,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="min-w-24 border-l border-stone-500/20 px-2 py-0">
+                          <td key={r.id} className="min-w-10 border-l border-stone-500/20 px-0 py-0">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
