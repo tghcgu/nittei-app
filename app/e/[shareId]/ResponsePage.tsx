@@ -1895,7 +1895,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <tr>
                     <th className="response-sticky-cell sticky left-0 z-20 pb-1 pr-0.5 text-left text-xs font-normal text-stone-400">候補日</th>
                     {responseRows.map((r) => (
-                      <th key={r.id} className="min-w-10 max-w-40 border-l border-stone-500/20 px-0 pb-1 font-normal text-stone-500">
+                      <th key={r.id} className="max-w-40 border-l border-stone-500/20 px-0 pb-1 font-normal text-stone-500">
                         <div>{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs font-normal text-stone-400">{r.note.trim()}</div>
@@ -1925,7 +1925,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="min-w-10 border-l border-stone-500/20 px-0 py-0">
+                          <td key={r.id} className="border-l border-stone-500/20 px-0 py-0">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
