@@ -11,6 +11,21 @@ body {
   font-family: var(--font-sans), sans-serif;
 }
 
+.response-sticky-cell {
+  background-color: #fbfaf8;
+  background-clip: padding-box;
+  box-shadow: 7px 0 8px -8px rgba(68, 64, 60, 0.65);
+}
+
+.response-results-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+tbody tr:nth-child(even) > .response-sticky-cell {
+  background-color: #f1efec;
+}
+
 html[data-theme="dark"] {
   color-scheme: dark;
   --dark-rose-text: #f0a6ba;
@@ -25,6 +40,15 @@ html[data-theme="dark"] {
 html[data-theme="dark"] body {
   background: #000;
   color: #e7e5e4;
+}
+
+html[data-theme="dark"] .response-sticky-cell {
+  background-color: #080808;
+  box-shadow: 7px 0 8px -8px rgba(231, 229, 228, 0.5);
+}
+
+html[data-theme="dark"] tbody tr:nth-child(even) > .response-sticky-cell {
+  background-color: #151413;
 }
 
 .theme-toggle {
