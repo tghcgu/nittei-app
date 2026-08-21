@@ -1771,7 +1771,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* 集計テーブル */}
         <div
           id="responses-section"
-          className="scroll-mt-4 rounded-2xl bg-white/70 px-6 py-6 shadow-sm backdrop-blur lg:relative lg:left-1/2 lg:w-[calc(100vw-2rem)] lg:max-w-6xl lg:-translate-x-1/2"
+          className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:relative lg:left-1/2 lg:mx-0 lg:w-[calc(100vw-2rem)] lg:max-w-6xl lg:-translate-x-1/2 lg:px-6"
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
@@ -1896,7 +1896,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <th className="response-sticky-cell sticky left-0 z-20 pb-1 pr-0.5 text-left text-xs font-normal text-stone-400">候補日</th>
                     {responseRows.map((r) => (
                       <th key={r.id} className="max-w-40 border-l border-stone-500/20 px-0 pb-1 font-normal text-stone-500">
-                        <div>{r.name}</div>
+                        <div className="whitespace-nowrap">{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs font-normal text-stone-400">{r.note.trim()}</div>
                         )}
