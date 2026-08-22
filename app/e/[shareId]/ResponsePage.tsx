@@ -1146,10 +1146,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       }))
 
       if (editingResponseId) {
-        // 共通メモを更新
+        // 名前と共通メモを更新
         const { error: updateErr } = await supabase
           .from('responses')
-          .update({ note: sharedNote || null })
+          .update({ name, note: sharedNote || null })
           .eq('id', editingResponseId)
 
         if (updateErr) throw updateErr
@@ -1308,7 +1308,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={!!editingResponseId}
               placeholder="例：山田"
               className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-600"
             />
