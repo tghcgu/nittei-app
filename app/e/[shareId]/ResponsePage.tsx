@@ -27,22 +27,22 @@ type Props = {
 const ANSWER_OPTIONS = [
   {
     value: '○' as AnswerValue,
-    idle: 'border-stone-200 text-stone-300 hover:border-emerald-300 hover:text-emerald-400',
+    idle: 'border-stone-300 text-stone-500 hover:border-emerald-300 hover:text-emerald-400',
     active: 'border-emerald-500 bg-emerald-50 text-emerald-700 font-bold',
   },
   {
     value: '△' as AnswerValue,
-    idle: 'border-stone-200 text-stone-300 hover:border-amber-300 hover:text-amber-500',
+    idle: 'border-stone-300 text-stone-500 hover:border-amber-300 hover:text-amber-500',
     active: 'border-amber-400 bg-amber-50 text-amber-700 font-bold',
   },
   {
     value: '✕' as AnswerValue,
-    idle: 'border-stone-200 text-stone-300 hover:border-stone-400 hover:text-stone-500',
-    active: 'border-stone-400 bg-stone-100 text-stone-600 font-bold',
+    idle: 'border-stone-300 text-stone-500 hover:border-stone-400 hover:text-stone-600',
+    active: 'border-stone-400 bg-stone-100 text-stone-700 font-bold',
   },
   {
     value: '-' as AnswerValue,
-    idle: 'border-stone-200 text-stone-300 hover:border-blue-300 hover:text-blue-400',
+    idle: 'border-stone-300 text-stone-500 hover:border-blue-300 hover:text-blue-400',
     active: 'border-blue-300 bg-blue-50 text-blue-600 font-bold',
   },
 ]
@@ -112,11 +112,11 @@ function formatDate(dateStr: string) {
 }
 
 function answerColor(v: AnswerValue | undefined) {
-  if (v === '○') return 'text-emerald-600 font-bold'
-  if (v === '△') return 'text-amber-600'
-  if (v === '✕') return 'text-stone-400'
-  if (v === '-') return 'text-blue-500'
-  return 'text-stone-300'
+  if (v === '○') return 'text-emerald-700 font-bold'
+  if (v === '△') return 'text-amber-700 font-bold'
+  if (v === '✕') return 'text-stone-600'
+  if (v === '-') return 'text-blue-600'
+  return 'text-stone-500'
 }
 
 function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
@@ -1224,14 +1224,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             className="group inline-flex items-baseline gap-1.5 border-b border-transparent pb-0.5 font-serif text-2xl text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
           >
             <span>日程組</span>
-            <span className="font-sans text-xs font-normal text-stone-400 transition-colors group-hover:text-stone-600">
+            <span className="font-sans text-xs font-normal text-stone-600 transition-colors group-hover:text-stone-700">
               略して{siteShortName}
             </span>
-            <span className="text-sm text-stone-500 transition-colors group-hover:text-stone-700">で作成</span>
+            <span className="text-sm text-stone-600 transition-colors group-hover:text-stone-700">で作成</span>
           </Link>
           <Link
             href={`/?edit=${shareId}`}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-stone-400 transition-colors hover:text-rose-700"
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-stone-600 transition-colors hover:text-rose-700"
           >
             日程を編集
           </Link>
@@ -1241,13 +1241,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="mb-1">
           <h1 className="font-serif text-3xl text-rose-800">{event.name}</h1>
           {event.description && (
-            <p className="mt-1 whitespace-pre-wrap break-words text-stone-600">{event.description}</p>
+            <p className="mt-1 whitespace-pre-wrap break-words text-stone-700">{event.description}</p>
           )}
           <div id="answer-actions" className="mt-0.5 flex scroll-mt-4 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleCopyUrl}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
             >
               {copied ? (
                 <>✓ コピーしました</>
@@ -1258,7 +1258,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <button
               type="button"
               onClick={scrollToResponses}
-              className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
+              className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
             >
               ↓ みんなの回答へ
             </button>
@@ -1282,7 +1282,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     type="button"
                     onClick={() => handleDeleteResponse(editingResponse)}
                     disabled={deletingResponseId === editingResponse.id}
-                    className="text-sm text-stone-400 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="text-sm text-stone-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {deletingResponseId === editingResponse.id ? '削除中...' : '削除'}
                   </button>
@@ -1290,7 +1290,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  className="text-sm text-stone-400 transition-colors hover:text-rose-700"
+                  className="text-sm text-stone-600 transition-colors hover:text-rose-700"
                 >
                   キャンセル
                 </button>
@@ -1310,7 +1310,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               onChange={(e) => setName(e.target.value)}
               disabled={!!editingResponseId}
               placeholder="例：山田"
-              className="w-full max-w-xs rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-400"
+              className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-600"
             />
           </div>
 
@@ -1328,7 +1328,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 type="button"
                 onClick={() => icsInputRef.current?.click()}
                 disabled={icsStatus === 'loading'}
-                className="flex items-center gap-2 rounded-full border border-stone-200 px-4 py-2 text-sm text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {icsStatus === 'loading' ? (
                   <>
@@ -1348,14 +1348,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 type="button"
                 onClick={() => setIcsOptionsOpen((v) => !v)}
                 aria-expanded={icsOptionsOpen}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-500 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
               >
                 設定 {icsOptionsOpen ? '▲' : '▼'}
               </button>
             </div>
             {icsOptionsOpen && (
-              <div className="mt-2 rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-2.5">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-none text-stone-500">
+              <div className="mt-2 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2.5">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-none text-stone-600">
                   <div className="flex items-center gap-1.5">
                     <span className="shrink-0">予定あり：</span>
                     <div className="flex gap-0.5">
@@ -1393,7 +1393,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </div>
                   </div>
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-stone-400">
+                <p className="mt-2 text-xs leading-relaxed text-stone-600">
                   Googleカレンダーから書き出した .ics / .zip ファイルをアップロードできます。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
                 </p>
               </div>
@@ -1401,17 +1401,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <button
               type="button"
               onClick={() => setIcsGuideOpen((v) => !v)}
-              className="mt-1 text-xs text-stone-400 underline hover:text-rose-700"
+              className="mt-1 text-xs text-stone-600 underline hover:text-rose-700"
             >
               書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
             </button>
             {icsGuideOpen && (
-              <div className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-600">
+              <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
                 <div>
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Google カレンダーを開く <span aria-hidden="true">↗</span>
                   </a>
-                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
                     <li>開いたページで「エクスポート」をクリック</li>
                     <li>ZIP がダウンロードされる</li>
                     <li>その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）</li>
@@ -1421,7 +1421,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Apple カレンダー（iCloud）を開く <span aria-hidden="true">↗</span>
                   </a>
-                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
                     <li>PC ブラウザで開く</li>
                     <li>カレンダー名の横の共有マークから書き出し</li>
                     <li>その .ics をアップロード</li>
@@ -1431,7 +1431,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Outlook カレンダーを開く <span aria-hidden="true">↗</span>
                   </a>
-                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
                     <li>設定 → 共有カレンダー → 書き出し</li>
                     <li>その .ics をアップロード</li>
                   </ol>
@@ -1459,13 +1459,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                   bulkOpen
                     ? 'border-rose-400 bg-rose-50 text-rose-800'
-                    : 'border-stone-200 text-stone-500 hover:border-rose-200 hover:text-rose-700'
+                    : 'border-stone-300 text-stone-600 hover:border-rose-200 hover:text-rose-700'
                 }`}
               >
                 📋 範囲で一括回答
               </button>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-stone-400">全部これに揃える：</span>
+                <span className="text-xs text-stone-600">全部これに揃える：</span>
                 {ANSWER_OPTIONS.map((opt) => {
                   const isActive = keepExistingAnswers
                     ? lastSetAllAnswers?.value === opt.value &&
@@ -1486,7 +1486,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     )
                   })}
               </div>
-              <label className="flex items-center gap-1.5 text-xs text-stone-400">
+              <label className="flex items-center gap-1.5 text-xs text-stone-600">
                 <input
                   type="checkbox"
                   checked={keepExistingAnswers}
@@ -1503,7 +1503,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   type="button"
                   onClick={undoAnswerChange}
                   disabled={answerPast.length === 0}
-                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   ↶ 戻す
                 </button>
@@ -1511,7 +1511,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   type="button"
                   onClick={redoAnswerChange}
                   disabled={answerFuture.length === 0}
-                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   ↷ 進む
                 </button>
@@ -1519,13 +1519,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </div>
 
             {bulkOpen && (
-              <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <div className="mt-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-medium text-stone-500">日程範囲と回答を選択して「適用」</p>
+                  <p className="text-xs font-medium text-stone-600">日程範囲と回答を選択して「適用」</p>
                   <button
                     type="button"
                     onClick={() => setBulkOpen(false)}
-                    className="text-xs text-stone-400 hover:text-stone-600"
+                    className="text-xs text-stone-600 hover:text-stone-700"
                   >
                     閉じる
                   </button>
@@ -1536,19 +1536,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     type="date"
                     value={bulkStart}
                     onChange={(e) => setBulkStart(e.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                    className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                   />
-                  <span className="text-stone-400">〜</span>
+                  <span className="text-stone-600">〜</span>
                   <input
                     type="date"
                     value={bulkEnd}
                     min={bulkStart}
                     onChange={(e) => setBulkEnd(e.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                    className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                   />
                 </div>
                 {/* 曜日フィルター：選ぶと下の2つの「適用」がその曜日だけに絞られる */}
-                <p className="mb-1 text-xs text-stone-400">曜日で絞る（任意）</p>
+                <p className="mb-1 text-xs text-stone-600">曜日で絞る（任意）</p>
                 <div className="mb-2 flex flex-wrap items-center gap-1">
                   {DAYS.map((label, i) => {
                     const hasCandidateOnWeekday = candidates.some(
@@ -1565,10 +1565,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           isSelected
                             ? 'border-rose-400 bg-rose-700 font-bold text-white'
                             : i === 0
-                            ? 'border-stone-200 text-rose-400 hover:border-rose-200 hover:bg-rose-50'
+                            ? 'border-stone-300 text-rose-400 hover:border-rose-200 hover:bg-rose-50'
                             : i === 6
-                            ? 'border-stone-200 text-blue-400 hover:border-blue-200 hover:bg-blue-50'
-                            : 'border-stone-200 text-stone-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700'
+                            ? 'border-stone-300 text-blue-400 hover:border-blue-200 hover:bg-blue-50'
+                            : 'border-stone-300 text-stone-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700'
                         }`}
                       >
                         {label}
@@ -1579,7 +1579,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <button
                       type="button"
                       onClick={() => setBulkWeekdays(new Set())}
-                      className="text-xs text-stone-400 underline hover:text-stone-600"
+                      className="text-xs text-stone-600 underline hover:text-stone-700"
                     >
                       解除
                     </button>
@@ -1604,12 +1604,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   type="button"
                   onClick={applyBulkAnswer}
                   disabled={!bulkStart || !bulkEnd || bulkStart > bulkEnd}
-                  className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   適用
                 </button>
-                <div className="mt-3 border-t border-stone-200 pt-2.5">
-                  <p className="mb-1.5 text-xs font-medium text-stone-500">
+                <div className="mt-3 border-t border-stone-300 pt-2.5">
+                  <p className="mb-1.5 text-xs font-medium text-stone-600">
                     日付範囲 + 時間帯で一括回答
                   </p>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -1617,18 +1617,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       type="time"
                       value={bulkTimeStart}
                       onChange={(e) => setBulkTimeStart(e.target.value)}
-                      className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                     />
-                    <span className="text-stone-400">〜</span>
+                    <span className="text-stone-600">〜</span>
                     <input
                       type="time"
                       value={bulkTimeEnd}
                       onChange={(e) => setBulkTimeEnd(e.target.value)}
-                      className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                      className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                     />
                   </div>
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="text-xs text-stone-400">重なる候補を：</span>
+                    <span className="text-xs text-stone-600">重なる候補を：</span>
                     {ANSWER_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
@@ -1654,11 +1654,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         !bulkTimeEnd ||
                         bulkTimeStart === bulkTimeEnd
                       }
-                      className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
                     >
                       適用
                     </button>
-                    <span className="text-xs text-stone-400">
+                    <span className="text-xs text-stone-600">
                       上の日付範囲・曜日の中で、少しでも時間が重なる候補を変更します
                     </span>
                   </div>
@@ -1675,7 +1675,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <div className="text-sm font-medium text-stone-700">
                 各日程への出欠 <span className="text-rose-700">*</span>
               </div>
-              <p className="mt-0.5 text-[10px] leading-tight text-stone-400">
+              <p className="mt-0.5 text-[10px] leading-tight text-stone-600">
                 長押し・ドラッグでまとめて入力できます
               </p>
             </div>
@@ -1690,7 +1690,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   {c.time_label && (
                     <>
                       {' '}
-                      <span className="text-xs text-stone-400 whitespace-nowrap">{c.time_label}</span>
+                      <span className="text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
                     </>
                   )}
                 </div>
@@ -1731,7 +1731,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         setDetailNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
                       }
                       placeholder="メモ（任意）"
-                      className="w-0 min-w-0 flex-1 rounded-lg border border-blue-100 bg-blue-50/50 px-1.5 py-1 text-xs text-stone-700 placeholder-stone-300 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      className="w-0 min-w-0 flex-1 rounded-lg border border-blue-100 bg-blue-50/50 px-1.5 py-1 text-xs text-stone-700 placeholder-stone-500 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     />
                   )}
                 </div>
@@ -1746,7 +1746,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               value={sharedNote}
               onChange={(e) => setSharedNote(e.target.value)}
               placeholder="全体へのメモ（任意）"
-              className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
@@ -1784,12 +1784,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <button
                 type="button"
                 onClick={scrollToAnswerForm}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-xs text-stone-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
               >
                 ↑ 回答へ
               </button>
               {hasResponses && (
-                <div className="flex overflow-hidden rounded-full border border-stone-200">
+                <div className="flex overflow-hidden rounded-full border border-stone-300">
                   <button
                     type="button"
                     onClick={() => setTableLayout('h')}
@@ -1797,7 +1797,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     className={`px-3 py-1.5 text-xs transition-colors ${
                       tableLayout === 'h'
                         ? 'bg-rose-800 text-white'
-                        : 'text-stone-400 hover:bg-stone-50'
+                        : 'text-stone-600 hover:bg-stone-50'
                     }`}
                   >
                     ╠═╣ 横
@@ -1806,10 +1806,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     type="button"
                     onClick={() => setTableLayout('v')}
                     title="縦向き表示"
-                    className={`border-l border-stone-200 px-3 py-1.5 text-xs transition-colors ${
+                    className={`border-l border-stone-300 px-3 py-1.5 text-xs transition-colors ${
                       tableLayout === 'v'
                         ? 'bg-rose-800 text-white'
-                        : 'text-stone-400 hover:bg-stone-50'
+                        : 'text-stone-600 hover:bg-stone-50'
                     }`}
                   >
                     縦 ╦
@@ -1826,9 +1826,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           )}
 
           {isLoadingResponses && !hasResponses ? (
-            <p className="text-sm text-stone-400">回答一覧を読み込み中...</p>
+            <p className="text-sm text-stone-600">回答一覧を読み込み中...</p>
           ) : !hasResponses ? (
-            <p className="text-sm text-stone-400">まだ回答がありません。</p>
+            <p className="text-sm text-stone-600">まだ回答がありません。</p>
           ) : tableLayout === 'h' ? (
 
             /* ── 横向きテーブル：行=回答者、列=候補日 ── */
@@ -1836,28 +1836,28 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-auto text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className="response-sticky-cell sticky left-0 z-20 w-28 min-w-28 max-w-28 pb-1 pr-3 text-left text-xs font-normal text-stone-400">名前</th>
+                    <th className="response-sticky-cell sticky left-0 z-20 w-28 min-w-28 max-w-28 pb-1 pr-3 text-left text-xs font-normal text-stone-600">名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="min-w-24 border-l border-stone-500/20 px-2 pb-1 font-normal text-stone-500 whitespace-nowrap"
+                        className="min-w-24 border-l border-stone-500/50 px-2 pb-1 font-normal text-stone-600 whitespace-nowrap"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
-                          <div className="text-xs text-stone-400 whitespace-nowrap">{c.time_label}</div>
+                          <div className="text-xs text-stone-600 whitespace-nowrap">{c.time_label}</div>
                         )}
                       </th>
                     ))}
-                    <th className="border-l border-stone-500/20 pb-1"></th>
+                    <th className="border-l border-stone-500/50 pb-1"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {responseRows.map((r) => (
-                    <tr key={r.id} className="border-t border-stone-100 even:bg-stone-500/10">
+                    <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/10">
                       <td className="response-sticky-cell sticky left-0 z-10 w-28 min-w-28 max-w-28 py-0 pr-3 text-left text-stone-700">
                         <div>{r.name}</div>
                         {r.note?.trim() && (
-                          <div className="text-xs text-stone-400">{r.note.trim()}</div>
+                          <div className="text-xs text-stone-600">{r.note.trim()}</div>
                         )}
                       </td>
                       {candidates.map((c) => {
@@ -1865,22 +1865,22 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={c.id}
-                            className="min-w-24 border-l border-stone-500/20 px-2 py-0"
+                            className="min-w-24 border-l border-stone-500/50 px-2 py-0"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mx-auto max-w-32 break-words text-xs text-stone-400">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-32 break-words text-xs text-stone-600">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
                       })}
-                      <td className="border-l border-stone-500/20 py-0">
+                      <td className="border-l border-stone-500/50 py-0">
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
-                          className="text-xs text-stone-300 transition-colors hover:text-rose-700"
+                          className="text-xs text-stone-500 transition-colors hover:text-rose-700"
                         >
                           編集
                         </button>
@@ -1898,17 +1898,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-auto text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className="response-sticky-cell sticky left-0 z-20 pb-1 pr-0.5 text-left text-xs font-normal text-stone-400">候補日</th>
+                    <th className="response-sticky-cell sticky left-0 z-20 pb-1 pr-0.5 text-left text-xs font-normal text-stone-600">候補日</th>
                     {responseRows.map((r) => (
-                      <th key={r.id} className="max-w-40 border-l border-stone-500/20 px-0 pb-1 font-normal text-stone-500">
+                      <th key={r.id} className="max-w-40 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
                         <div className="break-keep break-words">{r.name}</div>
                         {r.note?.trim() && (
-                          <div className="text-xs font-normal text-stone-400">{r.note.trim()}</div>
+                          <div className="text-xs font-normal text-stone-600">{r.note.trim()}</div>
                         )}
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
-                          className="text-xs font-normal text-stone-300 transition-colors hover:text-rose-700"
+                          className="text-xs font-normal text-stone-500 transition-colors hover:text-rose-700"
                         >
                           編集
                         </button>
@@ -1918,24 +1918,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </thead>
                 <tbody>
                   {candidates.map((c) => (
-                    <tr key={c.id} className="border-t border-stone-100 even:bg-stone-500/10">
+                    <tr key={c.id} className="border-t border-stone-300 even:bg-stone-500/10">
                       <td className="response-sticky-cell sticky left-0 z-10 py-0 pr-0.5 text-left whitespace-nowrap">
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
                         {c.time_label && (
-                          <span className="ml-1 text-xs text-stone-400 whitespace-nowrap">{c.time_label}</span>
+                          <span className="ml-1 text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
                         )}
                       </td>
                       {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
-                          <td key={r.id} className="border-l border-stone-500/20 px-0 py-0">
+                          <td key={r.id} className="border-l border-stone-500/50 px-0 py-0">
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mx-auto max-w-32 break-words text-xs text-stone-400">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-32 break-words text-xs text-stone-600">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
@@ -1949,7 +1949,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           )}
         </div>
 
-        <p className="mt-6 text-center text-[11px] text-stone-400">
+        <p className="mt-6 text-center text-[11px] text-stone-600">
           <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
             利用規約
           </Link>
