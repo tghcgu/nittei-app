@@ -160,7 +160,7 @@ html[data-theme="dark"] .bg-red-50 {
 html[data-theme="dark"] .border-stone-100,
 html[data-theme="dark"] .border-stone-200,
 html[data-theme="dark"] .border-stone-300 {
-  border-color: #292524 !important;
+  border-color: #45403c !important;
 }
 
 html[data-theme="dark"] .border-rose-200,
@@ -227,7 +227,7 @@ html[data-theme="dark"] .text-blue-400 {
 html[data-theme="dark"] input:not([type="checkbox"]),
 html[data-theme="dark"] textarea,
 html[data-theme="dark"] select {
-  border-color: #292524 !important;
+  border-color: #45403c !important;
   background-color: #050505 !important;
   color: #e7e5e4 !important;
 }

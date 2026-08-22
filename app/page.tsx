@@ -231,7 +231,7 @@ function SortableCandidate({
       <span
         {...attributes}
         {...listeners}
-        className="shrink-0 cursor-grab touch-none select-none text-sm text-stone-300 hover:text-stone-500 active:cursor-grabbing sm:text-base"
+        className="shrink-0 cursor-grab touch-none select-none text-sm text-stone-500 hover:text-stone-600 active:cursor-grabbing sm:text-base"
         title="ドラッグで並び替え"
       >
         ⠿
@@ -248,7 +248,7 @@ function SortableCandidate({
         required
         value={c.date}
         onChange={(e) => onUpdate(c.id, 'date', e.target.value)}
-        className="w-[7.2rem] min-w-0 max-w-[7.2rem] rounded-lg border border-stone-200 bg-white px-1.5 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 sm:min-w-36 sm:max-w-none sm:flex-1 sm:px-3 sm:text-base"
+        className="w-[7.2rem] min-w-0 max-w-[7.2rem] rounded-lg border border-stone-300 bg-white px-1.5 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 sm:min-w-36 sm:max-w-none sm:flex-1 sm:px-3 sm:text-base"
       />
       <div className="flex shrink-0 justify-self-end items-center gap-0.5 sm:gap-1">
         <input
@@ -260,9 +260,9 @@ function SortableCandidate({
             onUpdate(c.id, 'timeLabel', toTimeLabel(start, start ? toEndClockValue(c.timeLabel) : ''))
           }}
           aria-label="開始時間"
-          className="w-[4.45rem] rounded-lg border border-stone-200 bg-white px-1 py-2 text-[13px] text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 sm:w-28 sm:px-3 sm:text-base"
+          className="w-[4.45rem] rounded-lg border border-stone-300 bg-white px-1 py-2 text-[13px] text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 sm:w-28 sm:px-3 sm:text-base"
         />
-        <span className="text-sm text-stone-400">〜</span>
+        <span className="text-sm text-stone-600">〜</span>
         <input
           type="time"
           step={900}
@@ -270,13 +270,13 @@ function SortableCandidate({
           onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(toStartClockValue(c.timeLabel), e.target.value))}
           disabled={!toStartClockValue(c.timeLabel)}
           aria-label="終了時間（任意）"
-          className="w-[4.45rem] rounded-lg border border-stone-200 bg-white px-1 py-2 text-[13px] text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300 sm:w-28 sm:px-3 sm:text-base"
+          className="w-[4.45rem] rounded-lg border border-stone-300 bg-white px-1 py-2 text-[13px] text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 sm:w-28 sm:px-3 sm:text-base"
         />
       </div>
       <button
         type="button"
         onClick={() => onRemove(c.id)}
-        className="shrink-0 text-sm text-stone-300 hover:text-rose-400 sm:text-base"
+        className="shrink-0 text-sm text-stone-500 hover:text-rose-400 sm:text-base"
       >
         ✕
       </button>
@@ -1097,9 +1097,9 @@ export default function Home() {
         <div className="mb-2 text-center">
           <h1 className="inline-flex items-baseline gap-1.5 font-serif text-3xl text-rose-800">
             <span>日程組</span>
-            <span className="font-sans text-xs font-normal text-stone-400">略して {siteShortName}</span>
+            <span className="font-sans text-xs font-normal text-stone-600">略して {siteShortName}</span>
           </h1>
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-stone-600">
             {isLoadingEdit
               ? '日程を読み込んでいます...'
               : isEditMode
@@ -1109,7 +1109,7 @@ export default function Home() {
           <button
             type="button"
             onClick={scrollToPageBottom}
-            className="mt-1 rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+            className="mt-1 rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
           >
             ↓ 最下部へ
           </button>
@@ -1140,7 +1140,7 @@ export default function Home() {
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               placeholder="例：みんなでご飯"
-              className="w-full rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
@@ -1154,7 +1154,7 @@ export default function Home() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="場所や詳細など"
               rows={3}
-              className="block w-full resize-none rounded-lg border border-stone-200 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-300 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              className="block w-full resize rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
@@ -1165,8 +1165,8 @@ export default function Home() {
             </label>
 
             {/* 時間帯バー */}
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
-              <span className="shrink-0 text-sm text-stone-500">時間帯：</span>
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3">
+              <span className="shrink-0 text-sm text-stone-600">時間帯：</span>
               <div className="flex items-center gap-1">
                 <input
                   type="time"
@@ -1180,9 +1180,9 @@ export default function Home() {
                     replaceDefaultTime(start, start ? defaultTimeRef.current.end : '')
                   }}
                   aria-label="開始時間"
-                  className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                  className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                 />
-                <span className="text-sm text-stone-400">〜</span>
+                <span className="text-sm text-stone-600">〜</span>
                 <input
                   type="time"
                   step={900}
@@ -1195,7 +1195,7 @@ export default function Home() {
                   }}
                   disabled={!defaultStartTime}
                   aria-label="終了時間（任意）"
-                  className="w-28 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-300"
+                  className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
               </div>
               <button
@@ -1203,7 +1203,7 @@ export default function Home() {
                 onClick={clearDefaultTime}
                 disabled={!defaultStartTime && !defaultEndTime}
                 title="開始・終了時刻を空にする"
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 時刻なし
               </button>
@@ -1211,7 +1211,7 @@ export default function Home() {
                 type="button"
                 onClick={applyTimeToAll}
                 disabled={candidates.length === 0}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 全部これに揃える
               </button>
@@ -1219,12 +1219,12 @@ export default function Home() {
                 type="button"
                 onClick={applyTimeToSelected}
                 disabled={selectedCandidateIds.size === 0}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 選択した日程に適用
               </button>
               {selectedCandidateIds.size > 0 && (
-                <span className="text-xs text-stone-400">
+                <span className="text-xs text-stone-600">
                   {selectedCandidateIds.size}件選択中
                 </span>
               )}
@@ -1233,7 +1233,7 @@ export default function Home() {
                   type="button"
                   onClick={undoCandidateChange}
                   disabled={!canUndoCandidates}
-                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   ↶ 戻す
                 </button>
@@ -1241,7 +1241,7 @@ export default function Home() {
                   type="button"
                   onClick={redoCandidateChange}
                   disabled={!canRedoCandidates}
-                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   ↷ 進む
                 </button>
@@ -1249,7 +1249,7 @@ export default function Home() {
             </div>
 
             {/* カレンダー（日付を選択してから候補日に追加） */}
-            <div className="mb-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-2.5">
+            <div className="mb-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2.5">
               {!calendarMounted && <div className="h-80" aria-hidden="true" />}
               {calendarMounted && (
               <div className="mx-auto max-w-sm">
@@ -1258,7 +1258,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={prevMonth}
-                    className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                    className="rounded-full p-1.5 text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-700"
                   >
                     ←
                   </button>
@@ -1268,7 +1268,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={nextMonth}
-                    className="rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                    className="rounded-full p-1.5 text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-700"
                   >
                     →
                   </button>
@@ -1278,19 +1278,19 @@ export default function Home() {
                   type="button"
                   onClick={handleSelectCurrentMonthFromToday}
                   disabled={addableMonthDates.length === 0}
-                  className="mb-1.5 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-1.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-200 disabled:bg-white disabled:text-stone-300 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
+                  className="mb-1.5 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-1.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-300 disabled:bg-white disabled:text-stone-500 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
                 >
                   {addableMonthDates.length > 0
                     ? `この月の今日以降を選択（${addableMonthDates.length}日）`
                     : 'この月は追加できる日がありません'}
                 </button>
 
-                <p className="mb-1 text-center text-xs text-stone-400">
+                <p className="mb-1 text-center text-xs text-stone-600">
                   日付を選んで、下の「追加」ボタンで確定（ドラッグや曜日ボタンでまとめて選択）
                 </p>
 
                 {/* 曜日ヘッダー */}
-                <div className="mb-0.5 grid grid-cols-7 text-center text-xs text-stone-400">
+                <div className="mb-0.5 grid grid-cols-7 text-center text-xs text-stone-600">
                   {WEEKDAYS.map((w, i) => {
                     const weekdayDates = calendarMonthDates.filter((dateStr) => {
                       const date = new Date(dateStr + 'T00:00:00')
@@ -1311,7 +1311,7 @@ export default function Home() {
                             ? 'text-rose-400 hover:bg-rose-50'
                             : i === 6
                             ? 'text-blue-400 hover:bg-blue-50'
-                            : 'text-stone-400 hover:bg-stone-100'
+                            : 'text-stone-600 hover:bg-stone-100'
                         }`}
                       >
                         {w}
@@ -1385,7 +1385,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setRangeOpen(true)}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition-colors hover:border-rose-200 hover:text-rose-700"
               >
                 📅 範囲で追加
               </button>
@@ -1393,7 +1393,7 @@ export default function Home() {
                 type="button"
                 onClick={sortByDate}
                 disabled={candidates.length < 2}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ↕ 日付順に並べ替え
               </button>
@@ -1402,30 +1402,30 @@ export default function Home() {
                 type="button"
                 onClick={() => icsInputRef.current?.click()}
                 disabled={icsStatus === 'loading'}
-                className="rounded-full border border-stone-200 px-3 py-1.5 text-sm text-stone-500 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {icsStatus === 'loading' ? '解析中...' : '📂 .ics / zip で空き日程を絞り込む'}
               </button>
             </div>
             {icsMessage && (
-              <p className={`mt-2 text-xs ${icsStatus === 'error' ? 'text-red-500' : 'text-stone-400'}`}>
+              <p className={`mt-2 text-xs ${icsStatus === 'error' ? 'text-red-500' : 'text-stone-600'}`}>
                 {icsMessage}
               </p>
             )}
             <button
               type="button"
               onClick={() => setIcsGuideOpen((v) => !v)}
-              className="mt-1 text-xs text-stone-400 underline hover:text-rose-700"
+              className="mt-1 text-xs text-stone-600 underline hover:text-rose-700"
             >
               書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
             </button>
             {icsGuideOpen && (
-              <div className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-600">
+              <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
                 <div>
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Google カレンダーを開く <span aria-hidden="true">↗</span>
                   </a>
-                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
                     <li>開いたページで「エクスポート」をクリック</li>
                     <li>ZIP がダウンロードされる</li>
                     <li>その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）</li>
@@ -1435,7 +1435,7 @@ export default function Home() {
                   <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Apple カレンダー（iCloud）を開く <span aria-hidden="true">↗</span>
                   </a>
-                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
                     <li>PC ブラウザで開く</li>
                     <li>カレンダー名の横の共有マークから書き出し</li>
                     <li>その .ics をアップロード</li>
@@ -1445,7 +1445,7 @@ export default function Home() {
                   <a href="https://outlook.live.com/calendar/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Outlook カレンダーを開く <span aria-hidden="true">↗</span>
                   </a>
-                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-500">
+                  <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
                     <li>開いた「共有カレンダー」の設定で書き出し（公開）を選ぶ</li>
                     <li>その .ics をアップロード</li>
                   </ol>
@@ -1479,7 +1479,7 @@ export default function Home() {
                 </SortableContext>
               </DndContext>
             ) : (
-              <p className="mt-3 rounded-xl border border-dashed border-stone-200 bg-white/50 px-4 py-3 text-sm text-stone-400">
+              <p className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-3 text-sm text-stone-600">
                 候補日はまだありません
               </p>
             )}
@@ -1506,21 +1506,21 @@ export default function Home() {
           <button
             type="button"
             onClick={scrollToPageTop}
-            className="rounded-full border border-stone-200 px-3 py-1 text-xs text-stone-400 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+            className="rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
           >
             ↑ 最上部へ
           </button>
         </div>
-        <p className="mt-2 text-center text-[11px] text-stone-400">
+        <p className="mt-2 text-center text-[11px] text-stone-600">
           ※ 最後の更新から1年が経過したイベントは自動的に削除されます
         </p>
-        <p className="mt-1 text-center text-xs text-stone-400">
+        <p className="mt-1 text-center text-xs text-stone-600">
           不具合・ご要望はこちら:{' '}
           <Link href="/contact" className="underline underline-offset-2 transition-colors hover:text-rose-700">
             お問い合わせ
           </Link>
         </p>
-        <p className="mt-1 text-center text-[11px] text-stone-400">
+        <p className="mt-1 text-center text-[11px] text-stone-600">
           <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
             利用規約
           </Link>
@@ -1539,7 +1539,7 @@ export default function Home() {
         >
           <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-6 shadow-2xl">
             <p className="mb-1 text-center font-serif text-lg text-stone-700">範囲で追加</p>
-            <p className="mb-5 text-center text-xs text-stone-400">
+            <p className="mb-5 text-center text-xs text-stone-600">
               開始日〜終了日を選ぶと、その間の日程をまとめて追加できます
             </p>
             <div className="flex items-center gap-2">
@@ -1547,15 +1547,15 @@ export default function Home() {
                 type="date"
                 value={rangeStart}
                 onChange={(e) => setRangeStart(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
               />
-              <span className="text-stone-400">〜</span>
+              <span className="text-stone-600">〜</span>
               <input
                 type="date"
                 value={rangeEnd}
                 min={rangeStart}
                 onChange={(e) => setRangeEnd(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
               />
             </div>
             <div className="mt-5 flex items-center gap-3">
@@ -1572,7 +1572,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={() => setRangeOpen(false)}
-                className="rounded-full border border-stone-200 px-4 py-2.5 text-sm text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-700"
+                className="rounded-full border border-stone-300 px-4 py-2.5 text-sm text-stone-600 transition-colors hover:border-stone-300 hover:text-stone-700"
               >
                 閉じる
               </button>
