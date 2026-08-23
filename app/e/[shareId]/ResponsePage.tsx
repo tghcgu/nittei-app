@@ -259,6 +259,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [submitSuccess, setSubmitSuccess] = useState<'created' | 'updated' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
+  const [showPeerAnswers, setShowPeerAnswers] = useState(true)
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
   const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
   const [deletingResponseId, setDeletingResponseId] = useState<string | null>(null)
@@ -455,6 +456,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
   const hasResponses = responseRows.length > 0
+  const peerResponses = useMemo(
+    () => responseRows.filter((response) => response.id !== editingResponseId),
+    [responseRows, editingResponseId]
+  )
+  const hasVisiblePeerAnswers = showPeerAnswers && peerResponses.length > 0
+  const answerScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    answerScrollRef.current?.scrollTo({ left: 0, behavior: 'auto' })
+  }, [showPeerAnswers, editingResponseId])
 
   function handleEdit(r: ResponseWithAnswers) {
     setName(r.name)
@@ -1214,31 +1225,31 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   return (
     <div className="min-h-screen px-4 py-4">
-      <div className="mx-auto max-w-2xl">
+      <div className="w-full">
 
         {/* サイトヘッダー */}
-        <div className="relative mb-2 flex min-h-8 items-center justify-center">
+        <div className="mb-2 grid min-h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2">
+          <Link
+            href={`/?edit=${shareId}`}
+            className="col-start-3 row-start-1 justify-self-end whitespace-nowrap text-xs text-stone-600 transition-colors hover:text-rose-700 sm:ml-8 sm:justify-self-start sm:text-sm"
+          >
+            日程を編集
+          </Link>
           <Link
             href="/"
             aria-label="日程組で新しいイベントを作成"
-            className="group inline-flex items-baseline gap-1.5 border-b border-transparent pb-0.5 font-serif text-2xl text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900"
+            className="group col-start-2 row-start-1 inline-flex items-baseline justify-self-center gap-1 whitespace-nowrap border-b border-transparent pb-0.5 font-serif text-xl text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900 sm:gap-1.5 sm:text-2xl"
           >
             <span>日程組</span>
-            <span className="font-sans text-xs font-normal text-stone-600 transition-colors group-hover:text-stone-700">
+            <span className="font-sans text-[10px] font-normal text-stone-600 transition-colors group-hover:text-stone-700 sm:text-xs">
               略して{siteShortName}
             </span>
-            <span className="text-sm text-stone-600 transition-colors group-hover:text-stone-700">で作成</span>
-          </Link>
-          <Link
-            href={`/?edit=${shareId}`}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-stone-600 transition-colors hover:text-rose-700"
-          >
-            日程を編集
+            <span className="text-xs text-stone-600 transition-colors group-hover:text-stone-700 sm:text-sm">で作成</span>
           </Link>
         </div>
 
         {/* イベントヘッダー */}
-        <div className="mb-1">
+        <div className="mb-1 max-w-2xl">
           <h1 className="font-serif text-3xl text-rose-800">{event.name}</h1>
           {event.description && (
             <p className="mt-1 whitespace-pre-wrap break-words text-stone-700">{event.description}</p>
@@ -1269,7 +1280,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <form
           id="answer-form"
           onSubmit={handleSubmit}
-          className="mb-8 scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-3 shadow-sm backdrop-blur lg:mx-0 lg:px-6"
+          className={`mb-8 scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-3 shadow-sm backdrop-blur lg:mx-0 lg:px-6 ${
+            hasVisiblePeerAnswers
+              ? 'lg:w-fit lg:max-w-full'
+              : 'lg:max-w-2xl'
+          }`}
         >
           <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
@@ -1497,24 +1512,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 />
                 入力済の行は変更しない
               </label>
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  onClick={undoAnswerChange}
-                  disabled={answerPast.length === 0}
-                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  ↶ 戻す
-                </button>
-                <button
-                  type="button"
-                  onClick={redoAnswerChange}
-                  disabled={answerFuture.length === 0}
-                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  ↷ 進む
-                </button>
-              </div>
+            </div>
+            <div className="mt-1 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={undoAnswerChange}
+                disabled={answerPast.length === 0}
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                ↶ 戻す
+              </button>
+              <button
+                type="button"
+                onClick={redoAnswerChange}
+                disabled={answerFuture.length === 0}
+                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                ↷ 進む
+              </button>
             </div>
 
             {bulkOpen && (
@@ -1666,76 +1681,152 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             )}
           </div>
 
-          {/* 候補日ごとの回答 */}
-          {/* ラベル列は「一番長い日付ラベル」の幅に自動で揃う。余計な幅を足さないので
-              スマホでも折り返さず、○△✕−ボタンの縦の列がどの画面幅でも揃う */}
-          <div className="mb-6 grid grid-cols-[minmax(min-content,max-content)_1fr] gap-x-2 gap-y-0.5">
-            <div className="col-span-2 mb-1">
+          {/* 候補日ごとの回答。見出しと切替は横スクロールさせず、回答列だけを動かす。 */}
+          <div className="mb-1">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <div className="text-sm font-medium text-stone-700">
                 各日程への出欠 <span className="text-rose-700">*</span>
               </div>
-              <p className="mt-0.5 text-[10px] leading-tight text-stone-600">
-                長押し・ドラッグでまとめて入力できます
-              </p>
+              {peerResponses.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowPeerAnswers((value) => !value)}
+                  className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                    hasVisiblePeerAnswers
+                      ? 'border-rose-400 bg-rose-50 text-rose-800'
+                      : 'border-stone-300 text-stone-600 hover:border-rose-200 hover:text-rose-700'
+                  }`}
+                >
+                  {hasVisiblePeerAnswers
+                    ? '✓ 他の人の回答を横に表示'
+                    : '他の人の回答を横に表示'}
+                </button>
+              )}
             </div>
-            {candidates.map((c) => (
-              <div
-                key={c.id}
-                data-answer-row-id={c.id}
-                className="col-span-2 grid grid-cols-subgrid items-center rounded-md even:bg-stone-500/10"
-              >
-                <div className="whitespace-nowrap">
-                  <span className="font-serif text-sm text-stone-700 whitespace-nowrap">{formatDate(c.date)}</span>
-                  {c.time_label && (
-                    <>
-                      {' '}
-                      <span className="text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
-                    </>
-                  )}
+            <p className="mt-0.5 text-[10px] leading-tight text-stone-600">
+              長押し・ドラッグでまとめて入力できます
+            </p>
+          </div>
+          <div className="mb-6 flex min-w-0 overflow-hidden">
+            {/* 日付と自分の回答は、他の人の回答とは別の固定領域に置く。 */}
+            <div
+              className={`relative z-10 grid shrink-0 gap-y-0.5 ${
+                hasVisiblePeerAnswers
+                  ? 'grid-cols-[max-content_max-content]'
+                  : 'w-full grid-cols-[max-content_minmax(0,1fr)]'
+              }`}
+            >
+              {hasVisiblePeerAnswers && (
+                <div className="col-span-2 grid h-12 grid-cols-subgrid items-end">
+                  <div />
+                  <div className="pr-2 pb-0.5 text-[10px] text-stone-600">あなた</div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  {ANSWER_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      data-answer-candidate-id={c.id}
-                      data-answer-value={opt.value}
-                      onPointerDown={(e) => handleAnswerPaintStart(e, c.id, opt.value)}
-                      onPointerMove={handleAnswerPaintMove}
-                      onPointerUp={handleAnswerPaintEnd}
-                      onPointerCancel={handleAnswerPaintEnd}
-                      onTouchStart={(e) => handleAnswerTouchStart(e, c.id, opt.value)}
-                      onTouchEnd={handleAnswerTouchEnd}
-                      onTouchCancel={handleAnswerTouchEnd}
-                      onClick={() => {
-                        if (suppressNextAnswerClickRef.current) {
-                          suppressNextAnswerClickRef.current = false
-                          return
+              )}
+              {candidates.map((c, index) => (
+                <div
+                  key={c.id}
+                  data-answer-row-id={c.id}
+                  className={`col-span-2 grid h-9 grid-cols-subgrid items-center rounded-l-md ${
+                    index % 2 === 1 ? 'bg-stone-500/15' : ''
+                  }`}
+                >
+                  <div className="whitespace-nowrap pr-2">
+                    <span className="whitespace-nowrap font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
+                    {c.time_label && (
+                      <>
+                        {' '}
+                        <span className="whitespace-nowrap text-xs text-stone-600">{c.time_label}</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 pr-2">
+                    {ANSWER_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        data-answer-candidate-id={c.id}
+                        data-answer-value={opt.value}
+                        onPointerDown={(e) => handleAnswerPaintStart(e, c.id, opt.value)}
+                        onPointerMove={handleAnswerPaintMove}
+                        onPointerUp={handleAnswerPaintEnd}
+                        onPointerCancel={handleAnswerPaintEnd}
+                        onTouchStart={(e) => handleAnswerTouchStart(e, c.id, opt.value)}
+                        onTouchEnd={handleAnswerTouchEnd}
+                        onTouchCancel={handleAnswerTouchEnd}
+                        onClick={() => {
+                          if (suppressNextAnswerClickRef.current) {
+                            suppressNextAnswerClickRef.current = false
+                            return
+                          }
+                          handleAnswerChange(c.id, opt.value)
+                        }}
+                        className={`h-8 w-8 shrink-0 select-none rounded-full border-2 text-sm transition-all ${
+                          answers[c.id] === opt.value ? opt.active : opt.idle
+                        }`}
+                      >
+                        {opt.value === '-' ? '−' : opt.value}
+                      </button>
+                    ))}
+                    {answers[c.id] === '-' && (
+                      <input
+                        type="text"
+                        value={detailNotes[c.id] ?? ''}
+                        onChange={(e) =>
+                          setDetailNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
                         }
-                        handleAnswerChange(c.id, opt.value)
-                      }}
-                      className={`h-8 w-8 shrink-0 select-none rounded-full border-2 text-sm transition-all ${
-                        answers[c.id] === opt.value ? opt.active : opt.idle
+                        placeholder="メモ（任意）"
+                        className={`min-w-0 rounded-lg border border-blue-100 bg-blue-50/50 px-1.5 py-1 text-xs text-stone-700 placeholder-stone-500 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                          hasVisiblePeerAnswers ? 'w-32' : 'w-0 flex-1'
+                        }`}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {hasVisiblePeerAnswers && (
+              <div
+                ref={answerScrollRef}
+                className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain"
+              >
+                <div
+                  className="grid w-max gap-y-0.5"
+                  style={{ gridTemplateColumns: `repeat(${peerResponses.length}, fit-content(6rem))` }}
+                >
+                  <div className="col-span-full grid h-12 grid-cols-subgrid items-end">
+                    {peerResponses.map((response) => (
+                      <div
+                        key={response.id}
+                        className="line-clamp-3 min-w-5 max-w-24 overflow-hidden break-all px-0.5 pb-0.5 text-center text-[11px] leading-tight text-stone-600"
+                        title={response.name}
+                      >
+                        {response.name}
+                      </div>
+                    ))}
+                  </div>
+                  {candidates.map((c, index) => (
+                    <div
+                      key={c.id}
+                      className={`col-span-full grid h-9 grid-cols-subgrid items-center rounded-r-md ${
+                        index % 2 === 1 ? 'bg-stone-500/15' : ''
                       }`}
                     >
-                      {opt.value === '-' ? '−' : opt.value}
-                    </button>
+                      {peerResponses.map((response) => {
+                        const answer = answerByResponseAndCandidate.get(`${response.id}:${c.id}`)
+                        return (
+                          <div key={response.id} className="min-w-5 px-0.5 text-center text-sm leading-tight">
+                            <span className={answerColor(answer?.value)}>
+                              {answer?.value ?? '−'}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
                   ))}
-                  {/* 個別メモ：「-」選択時のみ、ボタンの右に並べる（改行しない） */}
-                  {answers[c.id] === '-' && (
-                    <input
-                      type="text"
-                      value={detailNotes[c.id] ?? ''}
-                      onChange={(e) =>
-                        setDetailNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
-                      }
-                      placeholder="メモ（任意）"
-                      className="w-0 min-w-0 flex-1 rounded-lg border border-blue-100 bg-blue-50/50 px-1.5 py-1 text-xs text-stone-700 placeholder-stone-500 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    />
-                  )}
                 </div>
               </div>
-            ))}
+            )}
           </div>
 
           {/* 共通メモ：常時表示 */}
@@ -1775,7 +1866,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* 集計テーブル */}
         <div
           id="responses-section"
-          className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:relative lg:left-1/2 lg:mx-0 lg:w-fit lg:min-w-[42rem] lg:max-w-[calc(100vw-2rem)] lg:-translate-x-1/2 lg:px-6"
+          className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
@@ -1839,7 +1930,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="min-w-24 border-l border-stone-500/50 px-2 pb-1 font-normal text-stone-600 whitespace-nowrap"
+                        className="border-l border-stone-500/50 px-1.5 pb-1 font-normal text-stone-600 whitespace-nowrap"
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
@@ -1864,7 +1955,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={c.id}
-                            className="min-w-24 border-l border-stone-500/50 px-2 py-0"
+                            className="border-l border-stone-500/50 px-1.5 py-0"
                           >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}

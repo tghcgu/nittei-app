@@ -804,6 +804,13 @@ export default function Home() {
     const session = calendarPaintRef.current
     if (!session) return
 
+    // 別の日までドラッグしたあと開始日に引き返した場合は、
+    // 開始日だけを残さずドラッグ開始前の状態へ完全に戻す。
+    if (dateStr === session.startDate) {
+      if (session.didPaint) replaceCalSelected(session.initialSelected)
+      return
+    }
+
     session.didPaint = true
     const next = new Set(session.initialSelected)
     for (const rangeDate of datesBetweenAnyOrder(session.startDate, dateStr)) {
