@@ -722,7 +722,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         lastSetAllAnswers: null,
       }
     })
-    setBulkOpen(false)
   }
 
   function applyBulkTimeAnswer() {
@@ -768,7 +767,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         lastSetAllAnswers: null,
       }
     })
-    setBulkOpen(false)
   }
 
   function handleSetAllAnswers(value: AnswerValue) {
@@ -1012,6 +1010,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       if (distance > ANSWER_PAINT_MOVE_THRESHOLD) cancelAnswerPaint(e.pointerId)
       return
     }
+
+    // 画面の端に来たら自動スクロール（タッチだけでなくマウスのドラッグでも効かせる）
+    updateAnswerPaintAutoScroll(e.clientX, e.clientY)
 
     const target = getAnswerPaintTargetAtPoint(e.clientX, e.clientY)
     if (!target) return
