@@ -1383,6 +1383,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               >
                 設定 {icsOptionsOpen ? '▲' : '▼'}
               </button>
+              <button
+                type="button"
+                onClick={() => setIcsGuideOpen((v) => !v)}
+                aria-expanded={icsGuideOpen}
+                className="shrink-0 whitespace-nowrap text-[11px] text-stone-600 underline hover:text-rose-700"
+              >
+                書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
+              </button>
             </div>
             {icsOptionsOpen && (
               <div className="mt-2 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2.5">
@@ -1429,13 +1437,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </p>
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => setIcsGuideOpen((v) => !v)}
-              className="mt-1 text-xs text-stone-600 underline hover:text-rose-700"
-            >
-              書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
-            </button>
             {icsGuideOpen && (
               <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
                 <div>
@@ -1885,7 +1886,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           id="responses-section"
           className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
             <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
             <div className="flex flex-wrap items-center gap-2">
               <button
