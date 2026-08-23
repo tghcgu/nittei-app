@@ -259,6 +259,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [submitSuccess, setSubmitSuccess] = useState<'created' | 'updated' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
+  const [showAnswerCounts, setShowAnswerCounts] = useState(true)
   const [showPeerAnswers, setShowPeerAnswers] = useState(true)
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
   const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
@@ -452,6 +453,22 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
     return map
   }, [responseRows])
+  const answerCountsByCandidate = useMemo(() => {
+    const counts = new Map<string, Record<AnswerValue, number>>()
+
+    for (const candidate of candidates) {
+      counts.set(candidate.id, { '○': 0, '△': 0, '✕': 0, '-': 0 })
+    }
+
+    for (const response of responseRows) {
+      for (const answer of response.answers) {
+        const candidateCounts = counts.get(answer.candidate_id)
+        if (candidateCounts) candidateCounts[answer.value] += 1
+      }
+    }
+
+    return counts
+  }, [candidates, responseRows])
   const editingResponse = editingResponseId
     ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
@@ -1879,6 +1896,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 ↑ 回答へ
               </button>
               {hasResponses && (
+                <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">
+                  <input
+                    type="checkbox"
+                    checked={showAnswerCounts}
+                    onChange={(e) => setShowAnswerCounts(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-rose-700"
+                  />
+                  集計
+                </label>
+              )}
+              {hasResponses && (
                 <div className="flex overflow-hidden rounded-full border border-stone-300">
                   <button
                     type="button"
@@ -1942,6 +1970,28 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </tr>
                 </thead>
                 <tbody>
+                  {showAnswerCounts && ANSWER_OPTIONS.map((option) => (
+                    <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/5">
+                      <th className="response-sticky-cell sticky left-0 z-10 w-28 min-w-28 max-w-28 py-0 pr-3 text-left font-normal">
+                        <span className={answerColor(option.value)}>
+                          {option.value === '-' ? '−' : option.value}
+                        </span>
+                      </th>
+                      {candidates.map((candidate) => {
+                        const count = answerCountsByCandidate.get(candidate.id)?.[option.value] ?? 0
+                        return (
+                          <td
+                            key={candidate.id}
+                            title={`${option.value === '-' ? '−' : option.value}：${count}人`}
+                            className="border-l border-stone-500/50 px-1.5 py-0 font-medium text-stone-700"
+                          >
+                            {count || ''}
+                          </td>
+                        )
+                      })}
+                      <td className="border-l border-stone-500/50 py-0"></td>
+                    </tr>
+                  ))}
                   {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/10">
                       <td className="response-sticky-cell sticky left-0 z-10 w-28 min-w-28 max-w-28 py-0 pr-3 text-left text-stone-700">
@@ -1989,6 +2039,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <thead>
                   <tr>
                     <th className="response-sticky-cell sticky left-0 z-20 pb-1 pr-0.5 text-left text-xs font-normal text-stone-600">候補日</th>
+                    {showAnswerCounts && ANSWER_OPTIONS.map((option) => (
+                      <th
+                        key={`count-heading-${option.value}`}
+                        title={`${option.value === '-' ? '−' : option.value}の人数`}
+                        className={`min-w-7 border-l border-stone-500/50 px-1 pb-1 font-normal ${answerColor(option.value)}`}
+                      >
+                        {option.value === '-' ? '−' : option.value}
+                      </th>
+                    ))}
                     {responseRows.map((r) => (
                       <th key={r.id} className="max-w-40 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
                         <div className="break-keep break-words">{r.name}</div>
@@ -2017,6 +2076,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <span className="ml-1 text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
                         )}
                       </td>
+                      {showAnswerCounts && ANSWER_OPTIONS.map((option) => {
+                        const count = answerCountsByCandidate.get(c.id)?.[option.value] ?? 0
+                        return (
+                          <td
+                            key={`count-${option.value}`}
+                            title={`${option.value === '-' ? '−' : option.value}：${count}人`}
+                            className="min-w-7 border-l border-stone-500/50 px-1 py-0 font-medium text-stone-700"
+                          >
+                            {count || ''}
+                          </td>
+                        )
+                      })}
                       {responseRows.map((r) => {
                         const answer = answerByResponseAndCandidate.get(`${r.id}:${c.id}`)
                         return (
