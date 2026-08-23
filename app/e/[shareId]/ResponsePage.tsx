@@ -571,6 +571,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     if (m[3] !== undefined) {
       endDate = new Date(date + 'T00:00:00')
       endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
+      // 21:00〜10:00 や 21:00〜00:59 のように終わりが始まりより前なら翌日とみなす
+      if (endDate.getTime() <= startDate.getTime()) {
+        endDate.setDate(endDate.getDate() + 1)
+      }
     } else {
       endDate = new Date(startDate)
       endDate.setHours(endDate.getHours() + 3)
@@ -1817,10 +1821,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {peerResponses.map((response) => (
                       <div
                         key={response.id}
-                        className="line-clamp-3 min-w-5 max-w-24 overflow-hidden break-all px-0.5 pb-0.5 text-center text-[11px] leading-tight text-stone-600"
-                        title={response.name}
+                        className="flex min-w-5 max-w-24 items-end justify-center self-stretch border-l border-stone-500/50 px-0.5 pb-0.5"
                       >
-                        {response.name}
+                        <div
+                          className="line-clamp-3 overflow-hidden break-all text-center text-[11px] leading-tight text-stone-600"
+                          title={response.name}
+                        >
+                          {response.name}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1834,7 +1842,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       {peerResponses.map((response) => {
                         const answer = answerByResponseAndCandidate.get(`${response.id}:${c.id}`)
                         return (
-                          <div key={response.id} className="min-w-5 px-0.5 text-center text-sm leading-tight">
+                          <div
+                            key={response.id}
+                            className="flex min-w-5 items-center justify-center self-stretch border-l border-stone-500/50 px-0.5 text-sm leading-tight"
+                          >
                             <span className={answerColor(answer?.value)}>
                               {answer?.value ?? '−'}
                             </span>
