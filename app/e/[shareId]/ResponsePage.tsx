@@ -1438,7 +1438,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </div>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-stone-600">
-                  Googleカレンダーから書き出した .ics / .zip ファイルをアップロードできます。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
+                  カレンダーから書き出した .ics / .zip ファイルをアップロードできます。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
                 </p>
               </div>
             )}
@@ -1465,11 +1465,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </ol>
                 </div>
                 <div>
-                  <a href="https://outlook.live.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
+                  <a href="https://outlook.live.com/calendar/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Outlook カレンダーを開く <span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>設定 → 共有カレンダー → 書き出し</li>
+                    <li>開いた「共有カレンダー」の設定で書き出し（公開）を選ぶ</li>
                     <li>その .ics をアップロード</li>
                   </ol>
                 </div>
