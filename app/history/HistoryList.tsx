@@ -52,7 +52,7 @@ export function HistoryList() {
               onClick={() => setEdited(removeHistory(entry.shareId))}
               className="shrink-0 rounded-full border border-stone-300 px-2.5 py-1 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
             >
-              消す
+              履歴から消す
             </button>
           </li>
         ))}
@@ -61,13 +61,13 @@ export function HistoryList() {
       <button
         type="button"
         onClick={() => {
-          if (!window.confirm('この端末の表示履歴をすべて消します。')) return
+          if (!window.confirm('この端末の表示履歴をすべて消します。イベントそのものは消えません。')) return
           clearHistory()
           setEdited([])
         }}
         className="mt-4 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
       >
-        すべて消す
+        履歴をすべて消す
       </button>
     </>
   )
