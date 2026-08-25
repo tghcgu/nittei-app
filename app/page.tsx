@@ -1453,7 +1453,7 @@ export default function Home() {
                     Outlook カレンダーを開く <span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>開いた「共有カレンダー」の設定で書き出し（公開）を選ぶ</li>
+                    <li>Outlook の URL 先で .ics ファイルをダウンロード</li>
                     <li>その .ics をアップロード</li>
                   </ol>
                 </div>
