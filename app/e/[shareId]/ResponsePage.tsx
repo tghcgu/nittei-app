@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useRef, useSyncExternalStore
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
+import { recordHistory } from '@/lib/history'
 import { describeCalendarFileError, describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
 
@@ -463,6 +464,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setIsLoadingResponses(false)
     }
   }, [event.id])
+
+  // 開いたイベントを端末内の「ページ表示履歴」に記録する（サーバーには送らない）
+  useEffect(() => {
+    recordHistory(shareId, event.name)
+  }, [shareId, event.name])
 
   useEffect(() => {
     if (hasLoadedResponsesRef.current) return
@@ -2204,6 +2210,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           <span className="mx-2">·</span>
           <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
             プライバシーポリシー
+          </Link>
+          <span className="mx-2">·</span>
+          <Link href="/history" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
+            ページ表示履歴
           </Link>
           <span className="mx-2">·</span>
           <Link href="/contact" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
