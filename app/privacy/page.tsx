@@ -46,7 +46,18 @@ export default function PrivacyPage() {
             サーバーに送信・保存されることはありません。保存されるのは、その結果として入力された出欠（○や✕）のみです。
           </p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">3. 利用目的</h2>
+          <h2 className="mt-6 font-serif text-base text-rose-800">3. 端末内に保存する情報</h2>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">
+            開いたイベントの一覧（ページ表示履歴）、表示テーマ、その端末で最後に回答した日時を、
+            お使いのブラウザの中だけに保存します。サーバーには送信されません。
+            履歴は「
+            <Link href="/history" className="underline underline-offset-2 transition-colors hover:text-rose-700">
+              ページ表示履歴
+            </Link>
+            」からいつでも削除でき、ブラウザのデータを消しても消えます。
+          </p>
+
+          <h2 className="mt-6 font-serif text-base text-rose-800">4. 利用目的</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>日程調整機能の提供（回答の保存・集計・表示）</li>
             <li>不具合の調査・対応、サービスの改善</li>
@@ -55,35 +66,35 @@ export default function PrivacyPage() {
             上記以外の目的には使用しません。
           </p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">4. 保存期間と削除</h2>
+          <h2 className="mt-6 font-serif text-base text-rose-800">5. 保存期間と削除</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>最後の更新から1年が経過したイベントは、候補日・回答を含め自動的に削除されます。</li>
             <li>回答（名前・出欠・コメント）は、イベントページの回答一覧からいつでも編集・削除できます。</li>
           </ul>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">5. 第三者への提供</h2>
+          <h2 className="mt-6 font-serif text-base text-rose-800">6. 第三者への提供</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
             法令に基づく場合を除き、収集した情報を第三者に提供しません。広告目的での利用・提供も行っていません。
           </p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">6. 外部サービスの利用</h2>
+          <h2 className="mt-6 font-serif text-base text-rose-800">7. 外部サービスの利用</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
             データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、
             旧URLからの転送に Vercel を利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。
           </p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">7. イベントページの公開範囲</h2>
+          <h2 className="mt-6 font-serif text-base text-rose-800">8. イベントページの公開範囲</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
             イベントページは、URLを知っている人なら誰でも閲覧・回答できます。検索エンジンに登録されない設定にしていますが、
             URLの共有範囲にはご注意ください。本名を知られたくない場合は、ニックネームでの回答をおすすめします。
           </p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">8. ポリシーの変更</h2>
+          <h2 className="mt-6 font-serif text-base text-rose-800">9. ポリシーの変更</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
             必要に応じて本ポリシーを改定することがあります。重要な変更を行う場合は、本サービス上でお知らせします。
           </p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">9. お問い合わせ</h2>
+          <h2 className="mt-6 font-serif text-base text-rose-800">10. お問い合わせ</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
             本ポリシーに関するお問い合わせは、
             <Link

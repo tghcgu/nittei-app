@@ -1535,6 +1535,10 @@ export default function Home() {
           <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
             プライバシーポリシー
           </Link>
+          <span className="mx-2">·</span>
+          <Link href="/history" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
+            ページ表示履歴
+          </Link>
         </p>
       </div>
 
