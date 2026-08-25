@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
@@ -109,6 +109,26 @@ function toDateStr(d: Date): string {
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + 'T00:00:00')
   return `${d.getMonth() + 1}/${d.getDate()}(${DAYS[d.getDay()]})`
+}
+
+const emptySubscribe = () => () => {}
+
+function readLocalUpdatedAt(shareId: string) {
+  try {
+    return window.localStorage.getItem(`nittei-updated-${shareId}`)
+  } catch {
+    // プライベートモードなどで localStorage が使えないときは表示しないだけ
+    return null
+  }
+}
+
+function formatDateTime(value: string | number | Date | null | undefined) {
+  if (!value) return null
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return null
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${DAYS[d.getDay()]}) ${hh}:${mm}`
 }
 
 function answerColor(v: AnswerValue | undefined) {
@@ -260,6 +280,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
   const [showAnswerCounts, setShowAnswerCounts] = useState(true)
+  // 見出し列（名前・候補日）を横スクロール時に固定するか
+  const [stickyHeadColumn, setStickyHeadColumn] = useState(true)
+  // 「今の時刻」「端末の記録」はビルド時のHTMLとズレるため、マウント後に描画する
+  const infoMounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
+  // 送信直後にその場で反映するための上書き値
+  const [localUpdatedOverride, setLocalUpdatedOverride] = useState<string | null>(null)
   const [showPeerAnswers, setShowPeerAnswers] = useState(true)
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
   const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
@@ -453,6 +479,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
     return map
   }, [responseRows])
+  // 見出し列の固定クラス。OFF のときは普通のセルとして流す
+  const stickyHeadClass = (z: string) =>
+    stickyHeadColumn ? `response-sticky-cell sticky left-0 ${z} ` : ''
+
   const answerCountsByCandidate = useMemo(() => {
     const counts = new Map<string, Record<AnswerValue, number>>()
 
@@ -473,6 +503,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
   const hasResponses = responseRows.length > 0
+  const viewedAt = useMemo(() => (infoMounted ? new Date() : null), [infoMounted])
+  const localUpdatedAt =
+    localUpdatedOverride ?? (infoMounted ? readLocalUpdatedAt(shareId) : null)
+  // 最終更新は「イベントの更新」と「いちばん新しい回答の投稿」の遅いほうを採る
+  const lastUpdatedAt = useMemo(() => {
+    let latest = new Date(event.updated_at).getTime()
+    for (const response of responseRows) {
+      const t = new Date(response.created_at).getTime()
+      if (!Number.isNaN(t) && t > latest) latest = t
+    }
+    return Number.isNaN(latest) ? null : new Date(latest)
+  }, [event.updated_at, responseRows])
   const peerResponses = useMemo(
     () => responseRows.filter((response) => response.id !== editingResponseId),
     [responseRows, editingResponseId]
@@ -1231,6 +1273,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setSharedNote('')
       // editingResponseId はこの後クリアするので、新規か更新かを先に確定させる
       setSubmitSuccess(editingResponseId ? 'updated' : 'created')
+      const updatedNow = new Date().toISOString()
+      setLocalUpdatedOverride(updatedNow)
+      try {
+        window.localStorage.setItem(`nittei-updated-${shareId}`, updatedNow)
+      } catch {
+        // 保存できなくても回答自体には影響しない
+      }
       setEditingResponseId(null)
       setLastSetAllAnswers(null)
       resetAnswerHistory()
@@ -1920,6 +1969,17 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </label>
               )}
               {hasResponses && (
+                <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">
+                  <input
+                    type="checkbox"
+                    checked={stickyHeadColumn}
+                    onChange={(e) => setStickyHeadColumn(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-rose-700"
+                  />
+                  見出し固定
+                </label>
+              )}
+              {hasResponses && (
                 <div className="flex overflow-hidden rounded-full border border-stone-300">
                   <button
                     type="button"
@@ -1967,7 +2027,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-auto text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className="response-sticky-cell sticky left-0 z-20 w-28 min-w-28 max-w-28 pb-1 pr-3 text-left text-xs font-normal text-stone-600">名前</th>
+                    <th className={`${stickyHeadClass('z-20')}w-28 min-w-28 max-w-28 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
@@ -1985,7 +2045,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {showAnswerCounts && ANSWER_OPTIONS.map((option) => (
                     <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/5">
-                      <th className="response-sticky-cell sticky left-0 z-10 w-28 min-w-28 max-w-28 py-0 pr-3 text-left font-normal">
+                      <th className={`${stickyHeadClass('z-10')}w-28 min-w-28 max-w-28 py-0 pr-3 text-left font-normal`}>
                         <span className={answerColor(option.value)}>
                           {option.value === '-' ? '−' : option.value}
                         </span>
@@ -2007,7 +2067,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   ))}
                   {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/10">
-                      <td className="response-sticky-cell sticky left-0 z-10 w-28 min-w-28 max-w-28 py-0 pr-3 text-left text-stone-700">
+                      <td className={`${stickyHeadClass('z-10')}w-28 min-w-28 max-w-28 py-0 pr-3 text-left text-stone-700`}>
                         <div>{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs text-stone-600">{r.note.trim()}</div>
@@ -2051,7 +2111,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-auto text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className="response-sticky-cell sticky left-0 z-20 pb-1 pr-0.5 text-left text-xs font-normal text-stone-600">候補日</th>
+                    <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>候補日</th>
                     {showAnswerCounts && ANSWER_OPTIONS.map((option) => (
                       <th
                         key={`count-heading-${option.value}`}
@@ -2081,7 +2141,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-300 even:bg-stone-500/10">
-                      <td className="response-sticky-cell sticky left-0 z-10 py-0 pr-0.5 text-left whitespace-nowrap">
+                      <td className={`${stickyHeadClass('z-10')}py-0 pr-0.5 text-left whitespace-nowrap`}>
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -2122,6 +2182,20 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
           )}
         </div>
+
+        {/* 日時はサーバー(UTC)とブラウザ(現地時間)で食い違うため、マウント後に描画する */}
+        {infoMounted && (
+          <div className="mt-8 rounded-2xl bg-white/50 px-4 py-3 text-[11px] leading-relaxed text-stone-600">
+            <p className="mb-1 font-medium text-stone-700">【このページについての情報】</p>
+            <p>ページ表示日時：{formatDateTime(viewedAt)}</p>
+            <p>作成日時：{formatDateTime(event.created_at)}</p>
+            <p>最終更新日時：{formatDateTime(lastUpdatedAt)}</p>
+            {localUpdatedAt && (
+              <p>この端末からの最終更新日時：{formatDateTime(localUpdatedAt)}</p>
+            )}
+            <p>回答人数：{responseRows.length}人</p>
+          </div>
+        )}
 
         <p className="mt-6 text-center text-[11px] text-stone-600">
           <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
