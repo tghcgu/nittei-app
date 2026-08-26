@@ -7,6 +7,7 @@ export type Database = {
           share_id: string
           name: string
           description: string | null
+          answer_choices: AnswerChoiceSet
           created_at: string
           updated_at: string
         }
@@ -15,6 +16,7 @@ export type Database = {
           share_id: string
           name: string
           description?: string | null
+          answer_choices?: AnswerChoiceSet
           created_at?: string
           updated_at?: string
         }
@@ -23,6 +25,7 @@ export type Database = {
           share_id?: string
           name?: string
           description?: string | null
+          answer_choices?: AnswerChoiceSet
           created_at?: string
           updated_at?: string
         }
@@ -81,21 +84,21 @@ export type Database = {
           id: string
           response_id: string
           candidate_id: string
-          value: '○' | '△' | '✕' | '-'
+          value: AnswerValue
           note: string | null
         }
         Insert: {
           id?: string
           response_id: string
           candidate_id: string
-          value: '○' | '△' | '✕' | '-'
+          value: AnswerValue
           note?: string | null
         }
         Update: {
           id?: string
           response_id?: string
           candidate_id?: string
-          value?: '○' | '△' | '✕' | '-'
+          value?: AnswerValue
           note?: string | null
         }
         Relationships: []
@@ -112,4 +115,6 @@ export type Database = {
 export type Event = Database['public']['Tables']['events']['Row']
 export type Candidate = Database['public']['Tables']['candidates']['Row']
 export type Answer = Database['public']['Tables']['answers']['Row']
-export type AnswerValue = '○' | '△' | '✕' | '-'
+export type AnswerValue = '◎' | '○' | '△' | '✕' | '-'
+// 主催者が選ぶ回答の選択肢セット（伝助と同じ3種類）
+export type AnswerChoiceSet = '○△✕' | '○✕' | '◎○△✕'
