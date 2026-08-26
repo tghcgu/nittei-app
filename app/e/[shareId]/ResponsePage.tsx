@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
 import { recordHistory } from '@/lib/history'
+import { answerValuesFor } from '@/lib/answer-choices'
 import { describeCalendarFileError, describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
 
@@ -26,6 +27,11 @@ type Props = {
 }
 
 const ANSWER_OPTIONS = [
+  {
+    value: '◎' as AnswerValue,
+    idle: 'border-stone-300 text-stone-500 hover:border-emerald-400 hover:text-emerald-500',
+    active: 'answer-mark-strong border-emerald-600 bg-emerald-100 text-emerald-800 font-bold',
+  },
   {
     value: '○' as AnswerValue,
     idle: 'border-stone-300 text-stone-500 hover:border-emerald-300 hover:text-emerald-400',
@@ -133,6 +139,7 @@ function formatDateTime(value: string | number | Date | null | undefined) {
 }
 
 function answerColor(v: AnswerValue | undefined) {
+  if (v === '◎') return 'answer-mark-strong text-emerald-800 font-bold'
   if (v === '○') return 'text-emerald-700 font-bold'
   if (v === '△') return 'text-amber-700 font-bold'
   if (v === '✕') return 'text-stone-600'
@@ -299,7 +306,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [bulkValue, setBulkValue] = useState<AnswerValue>('○')
   const [bulkTimeStart, setBulkTimeStart] = useState('')
   const [bulkTimeEnd, setBulkTimeEnd] = useState('')
-  const [bulkTimeValue, setBulkTimeValue] = useState<AnswerValue>(ANSWER_OPTIONS[2].value)
+  const [bulkTimeValue, setBulkTimeValue] = useState<AnswerValue>('✕')
   // 一括回答パネル共通の曜日フィルター（空＝全曜日が対象）
   const [bulkWeekdays, setBulkWeekdays] = useState<Set<number>>(new Set())
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
@@ -490,25 +497,31 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     stickyHeadColumn ? `response-sticky-cell sticky left-0 ${z} ` : ''
 
   const answerCountsByCandidate = useMemo(() => {
-    const counts = new Map<string, Record<AnswerValue, number>>()
+    const counts = new Map<string, Partial<Record<AnswerValue, number>>>()
+    const allowed = answerValuesFor(event.answer_choices)
 
     for (const candidate of candidates) {
-      counts.set(candidate.id, { '○': 0, '△': 0, '✕': 0, '-': 0 })
+      counts.set(candidate.id, Object.fromEntries(allowed.map((v) => [v, 0])))
     }
 
     for (const response of responseRows) {
       for (const answer of response.answers) {
         const candidateCounts = counts.get(answer.candidate_id)
-        if (candidateCounts) candidateCounts[answer.value] += 1
+        if (candidateCounts) candidateCounts[answer.value] = (candidateCounts[answer.value] ?? 0) + 1
       }
     }
 
     return counts
-  }, [candidates, responseRows])
+  }, [candidates, responseRows, event.answer_choices])
   const editingResponse = editingResponseId
     ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
   const hasResponses = responseRows.length > 0
+  // このイベントで使える選択肢（主催者が作成時に選んだセット）
+  const answerOptions = useMemo(() => {
+    const allowed = answerValuesFor(event.answer_choices)
+    return ANSWER_OPTIONS.filter((opt) => allowed.includes(opt.value))
+  }, [event.answer_choices])
   const viewedAt = useMemo(() => (infoMounted ? new Date() : null), [infoMounted])
   const localUpdatedAt =
     localUpdatedOverride ?? (infoMounted ? readLocalUpdatedAt(shareId) : null)
@@ -886,7 +899,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function getAnswerValue(value: string | undefined) {
-    return ANSWER_OPTIONS.find((opt) => opt.value === value)?.value ?? null
+    return answerOptions.find((opt) => opt.value === value)?.value ?? null
   }
 
   function getAnswerPaintTargetAtPoint(clientX: number, clientY: number) {
@@ -1458,7 +1471,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <div className="flex items-center gap-1.5">
                     <span className="shrink-0">予定あり：</span>
                     <div className="flex gap-0.5">
-                      {ANSWER_OPTIONS.map((opt) => (
+                      {answerOptions.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
@@ -1476,7 +1489,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <div className="flex items-center gap-1.5">
                     <span className="shrink-0">予定なし：</span>
                     <div className="flex gap-0.5">
-                      {ANSWER_OPTIONS.map((opt) => (
+                      {answerOptions.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
@@ -1558,7 +1571,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               </button>
               <div className="flex items-center gap-1">
                 <span className="text-xs text-stone-600">全部これに揃える：</span>
-                {ANSWER_OPTIONS.map((opt) => {
+                {answerOptions.map((opt) => {
                   const isActive = keepExistingAnswers
                     ? lastSetAllAnswers?.value === opt.value &&
                       lastSetAllAnswers.candidateIds.some((id) => answers[id] === opt.value)
@@ -1679,7 +1692,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </div>
                 {/* 回答選択 */}
                 <div className="mb-2 flex gap-2">
-                  {ANSWER_OPTIONS.map((opt) => (
+                  {answerOptions.map((opt) => (
                     <button
                       key={opt.value}
                       type="button"
@@ -1721,7 +1734,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </div>
                   <div className="mb-2 flex items-center gap-2">
                     <span className="text-xs text-stone-600">重なる候補を：</span>
-                    {ANSWER_OPTIONS.map((opt) => (
+                    {answerOptions.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
@@ -1818,7 +1831,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 pr-2">
-                    {ANSWER_OPTIONS.map((opt) => (
+                    {answerOptions.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
@@ -2049,7 +2062,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {showAnswerCounts && ANSWER_OPTIONS.map((option) => (
+                  {showAnswerCounts && answerOptions.map((option) => (
                     <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/5">
                       <th className={`${stickyHeadClass('z-10')}w-28 min-w-28 max-w-28 py-0 pr-3 text-left font-normal`}>
                         <span className={answerColor(option.value)}>
@@ -2118,7 +2131,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <thead>
                   <tr>
                     <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>候補日</th>
-                    {showAnswerCounts && ANSWER_OPTIONS.map((option) => (
+                    {showAnswerCounts && answerOptions.map((option) => (
                       <th
                         key={`count-heading-${option.value}`}
                         title={`${option.value === '-' ? '−' : option.value}の人数`}
@@ -2155,7 +2168,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <span className="ml-1 text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
                         )}
                       </td>
-                      {showAnswerCounts && ANSWER_OPTIONS.map((option) => {
+                      {showAnswerCounts && answerOptions.map((option) => {
                         const count = answerCountsByCandidate.get(c.id)?.[option.value] ?? 0
                         return (
                           <td

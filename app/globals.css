@@ -145,7 +145,8 @@ html[data-theme="dark"] .bg-blue-50\/50 {
   background-color: rgba(12, 34, 64, 0.58) !important;
 }
 
-html[data-theme="dark"] .bg-emerald-50 {
+html[data-theme="dark"] .bg-emerald-50,
+html[data-theme="dark"] .bg-emerald-100 {
   background-color: rgba(3, 66, 42, 0.55) !important;
 }
 
@@ -174,6 +175,7 @@ html[data-theme="dark"] .border-blue-300 {
   border-color: rgba(96, 165, 250, 0.42) !important;
 }
 
+html[data-theme="dark"] .border-emerald-600,
 html[data-theme="dark"] .border-emerald-500,
 html[data-theme="dark"] .border-amber-400,
 html[data-theme="dark"] .border-blue-300 {
@@ -211,6 +213,11 @@ html[data-theme="dark"] .text-rose-400 {
 html[data-theme="dark"] .text-emerald-700,
 html[data-theme="dark"] .text-emerald-600 {
   color: #34d399 !important;
+}
+
+/* ◎ は ○ より一段明るくして、黒背景でも埋もれないようにする */
+html[data-theme="dark"] .text-emerald-800 {
+  color: #6ee7b7 !important;
 }
 
 html[data-theme="dark"] .text-amber-700,
@@ -302,4 +309,11 @@ html[data-theme="dark"] .focus\:ring-rose-200:focus {
 
 html[data-theme="dark"] .focus\:ring-blue-100:focus {
   --tw-ring-color: rgba(96, 165, 250, 0.32) !important;
+}
+
+/* ◎ は字画が細く小さく見えるので、少しだけ大きくする */
+.answer-mark-strong {
+  font-size: 1.15em;
+  line-height: 1;
+  -webkit-text-stroke: 0.02em currentColor;
 }

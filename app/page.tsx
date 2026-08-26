@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
+import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES } from '@/lib/answer-choices'
+import type { AnswerChoiceSet } from '@/lib/database.types'
 import {
   DndContext,
   closestCenter,
@@ -289,6 +291,8 @@ export default function Home() {
   const router = useRouter()
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
+  // 回答の選択肢（伝助と同じ3種類。既定は「○△✕」）
+  const [answerChoices, setAnswerChoices] = useState<AnswerChoiceSet>(DEFAULT_ANSWER_CHOICES)
   const [defaultStartTime, setDefaultStartTime] = useState(DEFAULT_CLOCK_TIME)
   const [defaultEndTime, setDefaultEndTime] = useState('')
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -412,6 +416,7 @@ export default function Home() {
         setEditEventId(event.id)
         setEventName(event.name)
         setDescription(event.description ?? '')
+        setAnswerChoices(event.answer_choices ?? DEFAULT_ANSWER_CHOICES)
         candidatesRef.current = drafts
         setCandidates(drafts)
         replaceCandidatePast([])
@@ -975,7 +980,7 @@ export default function Home() {
 
         const { error: eventError } = await supabase
           .from('events')
-          .update({ name: eventName, description: description || null })
+          .update({ name: eventName, description: description || null, answer_choices: answerChoices })
           .eq('id', editEventId)
 
         if (eventError) throw eventError
@@ -1031,7 +1036,7 @@ export default function Home() {
 
         const { data, error: eventError } = await supabase
           .from('events')
-          .insert({ share_id: shareId, name: eventName, description: description || null })
+          .insert({ share_id: shareId, name: eventName, description: description || null, answer_choices: answerChoices })
           .select('id')
           .single()
 
@@ -1163,6 +1168,30 @@ export default function Home() {
               rows={3}
               className="block w-full resize rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
+          </div>
+
+          {/* 回答の選択肢 */}
+          <div className="mt-3">
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              回答の選択肢
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ANSWER_CHOICE_SETS.map((set) => (
+                <button
+                  key={set.value}
+                  type="button"
+                  onClick={() => setAnswerChoices(set.value)}
+                  aria-pressed={answerChoices === set.value}
+                  className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                    answerChoices === set.value
+                      ? 'border-rose-400 bg-rose-50 text-rose-800'
+                      : 'border-stone-300 text-stone-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800'
+                  }`}
+                >
+                  {set.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* 候補日時 */}
