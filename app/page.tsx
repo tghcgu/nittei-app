@@ -271,7 +271,7 @@ function SortableCandidate({
           value={toEndClockValue(c.timeLabel)}
           onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(toStartClockValue(c.timeLabel), e.target.value))}
           disabled={!toStartClockValue(c.timeLabel)}
-          aria-label="終了時間（任意）"
+          aria-label="終了時間(任意)"
           className="w-[4.45rem] rounded-lg border border-stone-300 bg-white px-1 py-2 text-[13px] text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 sm:w-28 sm:px-3 sm:text-base"
         />
       </div>
@@ -1159,7 +1159,7 @@ export default function Home() {
           {/* 説明 */}
           <div className="mb-0">
             <label className="mb-1 block text-sm font-medium text-stone-700">
-              説明（任意）
+              説明(任意)
             </label>
             <textarea
               value={description}
@@ -1230,7 +1230,7 @@ export default function Home() {
                     replaceDefaultTime(defaultTimeRef.current.start, e.target.value)
                   }}
                   disabled={!defaultStartTime}
-                  aria-label="終了時間（任意）"
+                  aria-label="終了時間(任意)"
                   className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
               </div>

@@ -29,8 +29,8 @@ type Props = {
 const ANSWER_OPTIONS = [
   {
     value: '◎' as AnswerValue,
-    idle: 'border-stone-300 text-stone-500 hover:border-emerald-400 hover:text-emerald-500',
-    active: 'answer-mark-strong border-emerald-600 bg-emerald-100 text-emerald-800 font-bold',
+    idle: 'border-stone-300 text-stone-500 hover:border-teal-400 hover:text-teal-500',
+    active: 'answer-mark-strong border-teal-600 bg-teal-100 text-teal-700 font-bold',
   },
   {
     value: '○' as AnswerValue,
@@ -139,7 +139,7 @@ function formatDateTime(value: string | number | Date | null | undefined) {
 }
 
 function answerColor(v: AnswerValue | undefined) {
-  if (v === '◎') return 'answer-mark-strong text-emerald-800 font-bold'
+  if (v === '◎') return 'answer-mark-strong text-teal-700 font-bold'
   if (v === '○') return 'text-emerald-700 font-bold'
   if (v === '△') return 'text-amber-700 font-bold'
   if (v === '✕') return 'text-stone-600'
@@ -1653,7 +1653,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   />
                 </div>
                 {/* 曜日フィルター：選ぶと下の2つの「適用」がその曜日だけに絞られる */}
-                <p className="mb-1 text-xs text-stone-600">曜日で絞る（任意）</p>
+                <p className="mb-1 text-xs text-stone-600">曜日で絞る(任意)</p>
                 <div className="mb-2 flex flex-wrap items-center gap-1">
                   {DAYS.map((label, i) => {
                     const hasCandidateOnWeekday = candidates.some(
@@ -1865,9 +1865,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         onChange={(e) =>
                           setDetailNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
                         }
-                        placeholder="メモ（任意）"
+                        placeholder="メモ(任意)"
                         className={`min-w-0 rounded-lg border border-blue-100 bg-blue-50/50 px-1.5 py-1 text-xs text-stone-700 placeholder-stone-500 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-                          hasVisiblePeerAnswers ? 'w-32' : 'w-0 flex-1'
+                          hasVisiblePeerAnswers ? 'w-12 sm:w-32' : 'w-0 flex-1'
                         }`}
                       />
                     )}
@@ -1933,7 +1933,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               type="text"
               value={sharedNote}
               onChange={(e) => setSharedNote(e.target.value)}
-              placeholder="全体へのメモ（任意）"
+              placeholder="全体へのメモ(任意)"
               className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
