@@ -311,9 +311,9 @@ html[data-theme="dark"] .focus\:ring-blue-100:focus {
   --tw-ring-color: rgba(96, 165, 250, 0.32) !important;
 }
 
-/* ◎ は字画が細く小さく見えるので、少しだけ大きくする */
+/* ◎ は字画が細いので縁取りで太らせる。
+   font-size を触ると行の高さが増えて表に縦スクロールバーが出るため、
+   レイアウトに影響しない text-stroke だけで太くする */
 .answer-mark-strong {
-  font-size: 1.15em;
-  line-height: 1;
-  -webkit-text-stroke: 0.02em currentColor;
+  -webkit-text-stroke: 0.045em currentColor;
 }
