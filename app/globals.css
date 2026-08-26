@@ -145,9 +145,12 @@ html[data-theme="dark"] .bg-blue-50\/50 {
   background-color: rgba(12, 34, 64, 0.58) !important;
 }
 
-html[data-theme="dark"] .bg-emerald-50,
-html[data-theme="dark"] .bg-emerald-100 {
+html[data-theme="dark"] .bg-emerald-50 {
   background-color: rgba(3, 66, 42, 0.55) !important;
+}
+
+html[data-theme="dark"] .bg-teal-100 {
+  background-color: rgba(3, 60, 66, 0.55) !important;
 }
 
 html[data-theme="dark"] .bg-amber-50 {
@@ -175,7 +178,7 @@ html[data-theme="dark"] .border-blue-300 {
   border-color: rgba(96, 165, 250, 0.42) !important;
 }
 
-html[data-theme="dark"] .border-emerald-600,
+html[data-theme="dark"] .border-teal-600,
 html[data-theme="dark"] .border-emerald-500,
 html[data-theme="dark"] .border-amber-400,
 html[data-theme="dark"] .border-blue-300 {
@@ -215,9 +218,9 @@ html[data-theme="dark"] .text-emerald-600 {
   color: #34d399 !important;
 }
 
-/* ◎ は ○ より一段明るくして、黒背景でも埋もれないようにする */
-html[data-theme="dark"] .text-emerald-800 {
-  color: #6ee7b7 !important;
+/* ◎ は青緑。○(緑)と紛れないよう、黒背景では明るめにする */
+html[data-theme="dark"] .text-teal-700 {
+  color: #5eead4 !important;
 }
 
 html[data-theme="dark"] .text-amber-700,
