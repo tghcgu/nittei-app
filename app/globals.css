@@ -23,7 +23,7 @@ body {
 }
 
 tbody tr:nth-child(even) > .response-sticky-cell {
-  background-color: #f1efec;
+  background-color: #e0dedc;
 }
 
 html[data-theme="dark"] {
@@ -48,7 +48,7 @@ html[data-theme="dark"] .response-sticky-cell {
 }
 
 html[data-theme="dark"] tbody tr:nth-child(even) > .response-sticky-cell {
-  background-color: #151413;
+  background-color: #1e1e1d;
 }
 
 .theme-toggle {

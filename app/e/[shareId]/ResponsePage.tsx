@@ -1818,7 +1818,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   key={c.id}
                   data-answer-row-id={c.id}
                   className={`col-span-2 grid h-9 grid-cols-subgrid items-center rounded-l-md ${
-                    index % 2 === 1 ? 'bg-stone-500/15' : ''
+                    index % 2 === 1 ? 'bg-stone-500/20' : ''
                   }`}
                 >
                   <div className="whitespace-nowrap pr-2">
@@ -1904,7 +1904,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     <div
                       key={c.id}
                       className={`col-span-full grid h-9 grid-cols-subgrid items-center rounded-r-md ${
-                        index % 2 === 1 ? 'bg-stone-500/15' : ''
+                        index % 2 === 1 ? 'bg-stone-500/20' : ''
                       }`}
                     >
                       {peerResponses.map((response) => {
@@ -2063,7 +2063,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </thead>
                 <tbody>
                   {showAnswerCounts && answerOptions.map((option) => (
-                    <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/5">
+                    <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/10">
                       <th className={`${stickyHeadClass('z-10')}w-28 min-w-28 max-w-28 py-0 pr-3 text-left font-normal`}>
                         <span className={answerColor(option.value)}>
                           {option.value === '-' ? '−' : option.value}
@@ -2085,7 +2085,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </tr>
                   ))}
                   {responseRows.map((r) => (
-                    <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/10">
+                    <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/20">
                       <td className={`${stickyHeadClass('z-10')}w-28 min-w-28 max-w-28 py-0 pr-3 text-left text-stone-700`}>
                         <div>{r.name}</div>
                         {r.note?.trim() && (
@@ -2159,7 +2159,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </thead>
                 <tbody>
                   {candidates.map((c) => (
-                    <tr key={c.id} className="border-t border-stone-300 even:bg-stone-500/10">
+                    <tr key={c.id} className="border-t border-stone-300 even:bg-stone-500/20">
                       <td className={`${stickyHeadClass('z-10')}py-0 pr-0.5 text-left whitespace-nowrap`}>
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
