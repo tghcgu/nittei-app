@@ -120,6 +120,35 @@ function formatDate(dateStr: string) {
 
 const emptySubscribe = () => () => {}
 
+// 「みんなの回答」の表示設定。端末内に覚えておく
+type TablePrefs = { counts: boolean; sticky: boolean; layout: 'h' | 'v' }
+const TABLE_PREFS_KEY = 'nittei-table-prefs'
+const DEFAULT_TABLE_PREFS: TablePrefs = { counts: true, sticky: true, layout: 'v' }
+
+function readTablePrefs(): TablePrefs | null {
+  try {
+    const raw = window.localStorage.getItem(TABLE_PREFS_KEY)
+    if (!raw) return null
+    const parsed: Record<string, unknown> = JSON.parse(raw)
+    return {
+      counts: typeof parsed.counts === 'boolean' ? parsed.counts : DEFAULT_TABLE_PREFS.counts,
+      sticky: typeof parsed.sticky === 'boolean' ? parsed.sticky : DEFAULT_TABLE_PREFS.sticky,
+      layout: parsed.layout === 'h' || parsed.layout === 'v' ? parsed.layout : DEFAULT_TABLE_PREFS.layout,
+    }
+  } catch {
+    // localStorage が使えない環境では既定値のまま
+    return null
+  }
+}
+
+function writeTablePrefs(prefs: TablePrefs) {
+  try {
+    window.localStorage.setItem(TABLE_PREFS_KEY, JSON.stringify(prefs))
+  } catch {
+    // 保存できなくても表示には影響しない
+  }
+}
+
 function readLocalUpdatedAt(shareId: string) {
   try {
     return window.localStorage.getItem(`nittei-updated-${shareId}`)
@@ -286,12 +315,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState<'created' | 'updated' | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [tableLayout, setTableLayout] = useState<'h' | 'v'>('v')
-  const [showAnswerCounts, setShowAnswerCounts] = useState(true)
+  const [tablePrefsOverride, setTablePrefsOverride] = useState<TablePrefs | null>(null)
   // 見出し列（名前・候補日）を横スクロール時に固定するか
-  const [stickyHeadColumn, setStickyHeadColumn] = useState(true)
   // 「今の時刻」「端末の記録」はビルド時のHTMLとズレるため、マウント後に描画する
   const infoMounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
+  // 表示設定は端末に覚えさせる。サーバーでは読めないのでマウント後に反映する
+  const tablePrefs =
+    tablePrefsOverride ?? (infoMounted ? readTablePrefs() : null) ?? DEFAULT_TABLE_PREFS
+  const { counts: showAnswerCounts, sticky: stickyHeadColumn, layout: tableLayout } = tablePrefs
+  const updateTablePrefs = (patch: Partial<TablePrefs>) => {
+    const next = { ...tablePrefs, ...patch }
+    setTablePrefsOverride(next)
+    writeTablePrefs(next)
+  }
   // 送信直後にその場で反映するための上書き値
   const [localUpdatedOverride, setLocalUpdatedOverride] = useState<string | null>(null)
   const [showPeerAnswers, setShowPeerAnswers] = useState(true)
@@ -1966,45 +2002,46 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           id="responses-section"
           className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
-          <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h2 className="font-serif text-xl text-stone-700">みんなの回答</h2>
-            <div className="flex flex-wrap items-center gap-2">
+          {/* スマホでは見出しの下に操作を1行で置く。入りきらないときはその行だけ横に流す */}
+          <div className="mb-4 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
+            <h2 className="shrink-0 font-serif text-xl text-stone-700">みんなの回答</h2>
+            <div className="-mx-1 flex w-full shrink-0 items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:gap-2 sm:pb-0">
               <button
                 type="button"
                 onClick={scrollToAnswerForm}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                className="shrink-0 rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:px-3"
               >
                 ↑ 回答へ
               </button>
               {hasResponses && (
-                <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">
+                <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
                   <input
                     type="checkbox"
                     checked={showAnswerCounts}
-                    onChange={(e) => setShowAnswerCounts(e.target.checked)}
+                    onChange={(e) => updateTablePrefs({ counts: e.target.checked })}
                     className="h-3.5 w-3.5 accent-rose-700"
                   />
                   集計
                 </label>
               )}
               {hasResponses && (
-                <label className="flex cursor-pointer items-center gap-1.5 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700">
+                <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
                   <input
                     type="checkbox"
                     checked={stickyHeadColumn}
-                    onChange={(e) => setStickyHeadColumn(e.target.checked)}
+                    onChange={(e) => updateTablePrefs({ sticky: e.target.checked })}
                     className="h-3.5 w-3.5 accent-rose-700"
                   />
                   見出し固定
                 </label>
               )}
               {hasResponses && (
-                <div className="flex overflow-hidden rounded-full border border-stone-300">
+                <div className="flex shrink-0 overflow-hidden rounded-full border border-stone-300">
                   <button
                     type="button"
-                    onClick={() => setTableLayout('h')}
+                    onClick={() => updateTablePrefs({ layout: 'h' })}
                     title="横向き表示"
-                    className={`px-3 py-1.5 text-xs transition-colors ${
+                    className={`px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
                       tableLayout === 'h'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
@@ -2014,9 +2051,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTableLayout('v')}
+                    onClick={() => updateTablePrefs({ layout: 'v' })}
                     title="縦向き表示"
-                    className={`border-l border-stone-300 px-3 py-1.5 text-xs transition-colors ${
+                    className={`border-l border-stone-300 px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
                       tableLayout === 'v'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
