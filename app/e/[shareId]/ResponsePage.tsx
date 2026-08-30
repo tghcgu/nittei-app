@@ -2002,19 +2002,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           id="responses-section"
           className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
-          {/* スマホでも1行に並べる。入りきらないときはこの行だけ横に流す */}
-          <div className="mb-4 -mx-1 flex items-center gap-x-2 overflow-x-auto px-1 pb-1 sm:gap-x-3">
+          {/* スマホでは見出しの下に操作を1行で置く。入りきらないときはその行だけ横に流す */}
+          <div className="mb-4 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
             <h2 className="shrink-0 font-serif text-xl text-stone-700">みんなの回答</h2>
-            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            <div className="-mx-1 flex w-full shrink-0 items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:gap-2 sm:pb-0">
               <button
                 type="button"
                 onClick={scrollToAnswerForm}
-                className="shrink-0 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                className="shrink-0 rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:px-3"
               >
                 ↑ 回答へ
               </button>
               {hasResponses && (
-                <label className="flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:px-3">
+                <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
                   <input
                     type="checkbox"
                     checked={showAnswerCounts}
@@ -2025,7 +2025,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </label>
               )}
               {hasResponses && (
-                <label className="flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-stone-300 px-2.5 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:px-3">
+                <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
                   <input
                     type="checkbox"
                     checked={stickyHeadColumn}
@@ -2041,7 +2041,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     type="button"
                     onClick={() => updateTablePrefs({ layout: 'h' })}
                     title="横向き表示"
-                    className={`px-3 py-1.5 text-xs transition-colors ${
+                    className={`px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
                       tableLayout === 'h'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
@@ -2053,7 +2053,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     type="button"
                     onClick={() => updateTablePrefs({ layout: 'v' })}
                     title="縦向き表示"
-                    className={`border-l border-stone-300 px-3 py-1.5 text-xs transition-colors ${
+                    className={`border-l border-stone-300 px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
                       tableLayout === 'v'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
