@@ -2080,7 +2080,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 横向きテーブル：行=回答者、列=候補日 ── */
             <div className="relative isolate overflow-x-auto">
-              <table className="response-results-table w-auto text-center text-sm leading-tight">
+              <table className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
                     <th className={`${stickyHeadClass('z-20')}w-40 min-w-40 max-w-40 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>名前</th>
@@ -2164,7 +2164,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 縦向きテーブル：行=候補日、列=回答者 ── */
             <div className="relative isolate overflow-x-auto">
-              <table className="response-results-table w-auto text-center text-sm leading-tight">
+              <table className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
                     <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>候補日</th>
