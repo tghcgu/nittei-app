@@ -1568,6 +1568,16 @@ export default function Home() {
           <Link href="/history" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
             ページ表示履歴
           </Link>
+          <span className="mx-2">·</span>
+          <a
+            href="https://www.amazon.jp/hz/wishlist/ls/5B63O13XSOQ4?ref_=wl_share"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Amazon のほしい物リストが開きます"
+            className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
+          >
+            支援 <span aria-hidden="true">↗</span>
+          </a>
         </p>
       </div>
 
