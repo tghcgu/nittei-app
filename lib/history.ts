@@ -7,7 +7,6 @@ export type HistoryEntry = {
 }
 
 const HISTORY_KEY = 'nittei-history'
-const HISTORY_MAX = 50
 
 export function readHistory(): HistoryEntry[] {
   try {
@@ -29,12 +28,19 @@ export function readHistory(): HistoryEntry[] {
 }
 
 export function recordHistory(shareId: string, name: string) {
-  try {
-    const others = readHistory().filter((entry) => entry.shareId !== shareId)
-    const next = [{ shareId, name, at: new Date().toISOString() }, ...others].slice(0, HISTORY_MAX)
-    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next))
-  } catch {
-    // 保存できなくても閲覧には影響しない
+  const others = readHistory().filter((entry) => entry.shareId !== shareId)
+  let next: HistoryEntry[] = [{ shareId, name, at: new Date().toISOString() }, ...others]
+
+  // 件数の上限は設けない。localStorage が一杯で書けないときだけ、
+  // 古いものから減らして書き直す（新しい訪問を捨てないため）
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next))
+      return
+    } catch {
+      if (next.length <= 1) return
+      next = next.slice(0, Math.max(1, Math.floor(next.length * 0.8)))
+    }
   }
 }
 
