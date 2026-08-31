@@ -1925,7 +1925,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {peerResponses.map((response) => (
                       <div
                         key={response.id}
-                        className="flex min-w-5 max-w-24 items-end justify-center self-stretch border-l border-stone-500/50 px-0.5 pb-0.5"
+                        className="flex min-w-5 max-w-36 items-end justify-center self-stretch border-l border-stone-500/50 px-0.5 pb-0.5"
                       >
                         <div
                           className="line-clamp-3 overflow-hidden break-all text-center text-[11px] leading-tight text-stone-600"
@@ -2083,7 +2083,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-auto text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className={`${stickyHeadClass('z-20')}w-28 min-w-28 max-w-28 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>名前</th>
+                    <th className={`${stickyHeadClass('z-20')}w-40 min-w-40 max-w-40 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
@@ -2101,7 +2101,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {showAnswerCounts && answerOptions.map((option) => (
                     <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/10">
-                      <th className={`${stickyHeadClass('z-10')}w-28 min-w-28 max-w-28 py-0 pr-3 text-left font-normal`}>
+                      <th className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left font-normal`}>
                         <span className={answerColor(option.value)}>
                           {option.value === '-' ? '−' : option.value}
                         </span>
@@ -2123,7 +2123,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   ))}
                   {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/20">
-                      <td className={`${stickyHeadClass('z-10')}w-28 min-w-28 max-w-28 py-0 pr-3 text-left text-stone-700`}>
+                      <td className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left text-stone-700`}>
                         <div>{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs text-stone-600">{r.note.trim()}</div>
@@ -2140,7 +2140,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mx-auto max-w-32 break-words text-xs text-stone-600">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-48 break-words text-xs text-stone-600">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
@@ -2178,7 +2178,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       </th>
                     ))}
                     {responseRows.map((r) => (
-                      <th key={r.id} className="max-w-40 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
+                      <th key={r.id} className="max-w-56 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
                         <div className="break-keep break-words">{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs font-normal text-stone-600">{r.note.trim()}</div>
@@ -2225,7 +2225,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mx-auto max-w-32 break-words text-xs text-stone-600">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-48 break-words text-xs text-stone-600">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
