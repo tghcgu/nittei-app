@@ -558,40 +558,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const allowed = answerValuesFor(event.answer_choices)
     return ANSWER_OPTIONS.filter((opt) => allowed.includes(opt.value))
   }, [event.answer_choices])
-
-  // 集計列も一緒に固定する。日付列の幅は候補日の文字数で変わるので、
-  // 実際の列幅を測って CSS 変数に入れ、各列の left に使う
-  const verticalTableRef = useRef<HTMLTableElement>(null)
-  const frozenCountColumns = stickyHeadColumn && showAnswerCounts ? answerOptions.length : 0
-  useEffect(() => {
-    const table = verticalTableRef.current
-    if (!table || frozenCountColumns === 0) return
-
-    const update = () => {
-      const cells = table.querySelectorAll<HTMLElement>('thead tr > *')
-      let left = 0
-      for (let i = 0; i <= frozenCountColumns; i++) {
-        table.style.setProperty(`--sticky-left-${i}`, `${left}px`)
-        left += cells[i]?.getBoundingClientRect().width ?? 0
-      }
-    }
-    update()
-
-    const observer = new ResizeObserver(update)
-    observer.observe(table)
-    return () => observer.disconnect()
-  }, [frozenCountColumns, candidates.length, responseRows.length, tableLayout])
-
-  // 集計列のセルに付けるクラスと left の位置（index は集計列の何番目か）
-  const stickyCountProps = (index: number, z: string) => {
-    if (frozenCountColumns === 0) return { className: '', style: undefined }
-    return {
-      className: `response-sticky-cell sticky ${z} ${
-        index === frozenCountColumns - 1 ? 'response-sticky-edge ' : ''
-      }`,
-      style: { left: `var(--sticky-left-${index + 1})` },
-    }
-  }
   const viewedAt = useMemo(() => (infoMounted ? new Date() : null), [infoMounted])
   const localUpdatedAt =
     localUpdatedOverride ?? (infoMounted ? readLocalUpdatedAt(shareId) : null)
@@ -2117,7 +2083,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className={`${stickyHeadClass('z-20')}response-sticky-edge w-40 min-w-40 max-w-40 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>名前</th>
+                    <th className={`${stickyHeadClass('z-20')}w-40 min-w-40 max-w-40 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>名前</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
@@ -2135,7 +2101,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {showAnswerCounts && answerOptions.map((option) => (
                     <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/10">
-                      <th className={`${stickyHeadClass('z-10')}response-sticky-edge w-40 min-w-40 max-w-40 py-0 pr-3 text-left font-normal`}>
+                      <th className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left font-normal`}>
                         <span className={answerColor(option.value)}>
                           {option.value === '-' ? '−' : option.value}
                         </span>
@@ -2157,7 +2123,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   ))}
                   {responseRows.map((r) => (
                     <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/20">
-                      <td className={`${stickyHeadClass('z-10')}response-sticky-edge w-40 min-w-40 max-w-40 py-0 pr-3 text-left text-stone-700`}>
+                      <td className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left text-stone-700`}>
                         <div>{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs text-stone-600">{r.note.trim()}</div>
@@ -2198,16 +2164,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 縦向きテーブル：行=候補日、列=回答者 ── */
             <div className="relative isolate overflow-x-auto">
-              <table ref={verticalTableRef} className="response-results-table w-max text-center text-sm leading-tight">
+              <table className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className={`${stickyHeadClass('z-20')}${frozenCountColumns === 0 ? 'response-sticky-edge ' : ''}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>候補日</th>
-                    {showAnswerCounts && answerOptions.map((option, index) => (
+                    <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>候補日</th>
+                    {showAnswerCounts && answerOptions.map((option) => (
                       <th
                         key={`count-heading-${option.value}`}
                         title={`${option.value === '-' ? '−' : option.value}の人数`}
-                        style={stickyCountProps(index, 'z-20').style}
-                        className={`${stickyCountProps(index, 'z-20').className}min-w-7 border-l border-stone-500/50 px-1 pb-1 font-normal ${answerColor(option.value)}`}
+                        className={`min-w-7 border-l border-stone-500/50 px-1 pb-1 font-normal ${answerColor(option.value)}`}
                       >
                         {option.value === '-' ? '−' : option.value}
                       </th>
@@ -2232,7 +2197,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-300 even:bg-stone-500/20">
-                      <td className={`${stickyHeadClass('z-10')}${frozenCountColumns === 0 ? 'response-sticky-edge ' : ''}py-0 pr-0.5 text-left whitespace-nowrap`}>
+                      <td className={`${stickyHeadClass('z-10')}py-0 pr-0.5 text-left whitespace-nowrap`}>
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -2240,14 +2205,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <span className="ml-1 text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
                         )}
                       </td>
-                      {showAnswerCounts && answerOptions.map((option, index) => {
+                      {showAnswerCounts && answerOptions.map((option) => {
                         const count = answerCountsByCandidate.get(c.id)?.[option.value] ?? 0
                         return (
                           <td
                             key={`count-${option.value}`}
                             title={`${option.value === '-' ? '−' : option.value}：${count}人`}
-                            style={stickyCountProps(index, 'z-10').style}
-                            className={`${stickyCountProps(index, 'z-10').className}min-w-7 border-l border-stone-500/50 px-1 py-0 font-medium text-stone-700`}
+                            className="min-w-7 border-l border-stone-500/50 px-1 py-0 font-medium text-stone-700"
                           >
                             {count || ''}
                           </td>

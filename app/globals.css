@@ -14,10 +14,6 @@ body {
 .response-sticky-cell {
   background-color: #fbfaf8;
   background-clip: padding-box;
-}
-
-/* 固定される列のいちばん右にだけ影を出す */
-.response-sticky-edge {
   box-shadow: 7px 0 8px -8px rgba(68, 64, 60, 0.65);
 }
 
@@ -48,9 +44,6 @@ html[data-theme="dark"] body {
 
 html[data-theme="dark"] .response-sticky-cell {
   background-color: #080808;
-}
-
-html[data-theme="dark"] .response-sticky-edge {
   box-shadow: 7px 0 8px -8px rgba(231, 229, 228, 0.5);
 }
 
