@@ -65,7 +65,8 @@
 
 #### 回答・集計
 
-- `○ / △ / ✕ / -` の4択回答
+- 主催者が選んだ選択肢セットで回答（`○✕` / `○△✕` / `◎○△✕`、既定は `○△✕`）
+- どのセットでも使える `-`（その日の状況をメモする用）
 - `-` 選択時の日別コメント
 - 回答全体へのメモ
 - 全候補日を同じ記号にそろえる一括入力
@@ -75,8 +76,12 @@
 - マウスまたはスマートフォンの長押し・なぞり入力
 - なぞり中の画面端自動スクロール
 - 回答入力の戻る・進む
-- 回答者単位で既存回答を編集・削除
+- 回答者単位で既存回答を編集・削除（名前も変更可）
+- 入力欄の横に他の人の回答を並べて確認
 - 回答一覧の縦表示・横表示切り替え
+- 記号ごとの回答数サマリーの表示切り替え
+- 候補日の列を横スクロール時に固定する切り替え
+- これらの表示設定をブラウザに記憶
 
 #### カレンダーファイル
 
@@ -95,6 +100,9 @@
 
 - ライトモード・ダークモード
 - 選択したテーマをブラウザの `localStorage` に保存
+- 端末内に残る「ページ表示履歴」（`/history`、開いたイベントの一覧）
+- ページ下部の「このページについての情報」（表示日時・作成日時・最終更新日時・端末ごとの最終更新・回答人数）
+- フッターから支援先（外部サイト）へのリンク
 - スマートフォン・PC対応
 - イベントページごとの共有用メタデータ
 - イベントページは検索結果へ出さない `noindex` 設定
@@ -114,6 +122,7 @@
 | プライバシー | https://nittei-app.qoj.workers.dev/privacy | 利用者向け |
 | 利用規約 | https://nittei-app.qoj.workers.dev/terms | 利用者向け |
 | お問い合わせ | https://nittei-app.qoj.workers.dev/contact | `knihud@gmail.com` を案内 |
+| ページ表示履歴 | https://nittei-app.qoj.workers.dev/history | 端末内の履歴一覧。`noindex` |
 
 旧Vercelプロジェクトは、Google Search Consoleのアドレス変更と既存リンクの維持に使っています。移行が完全に落ち着くまでは削除しないでください。
 
@@ -158,7 +167,7 @@ Supabaseの `public` スキーマに、主に次の4テーブルがあります�
 
 | テーブル | 内容 | 主な列 |
 | --- | --- | --- |
-| `events` | イベント本体 | `id`, `share_id`, `name`, `description`, `created_at`, `updated_at` |
+| `events` | イベント本体 | `id`, `share_id`, `name`, `description`, `answer_choices`, `created_at`, `updated_at` |
 | `candidates` | 候補日時 | `id`, `event_id`, `date`, `time_label`, `sort_order` |
 | `responses` | 回答者 | `id`, `event_id`, `name`, `note`, `created_at` |
 | `answers` | 候補日ごとの回答 | `id`, `response_id`, `candidate_id`, `value`, `note` |
@@ -172,7 +181,8 @@ events
 
 - `share_id` が共有URLの短いIDです。
 - `time_label` には `19:00〜22:00` のような表示用時間帯を保存します。
-- `answers.value` はTypeScript上で `'○' | '△' | '✕' | '-'` に限定しています。
+- `answers.value` は `'◎' | '○' | '△' | '✕' | '-'` に限定しています。TypeScriptの型に加え、DB側にも `answers_value_check` 制約があります。
+- `events.answer_choices` は回答の選択肢セットで、`'○✕' | '○△✕' | '◎○△✕'` のいずれかです。既定値は `'○△✕'` で、`events_answer_choices_check` 制約があります。DDLは `supabase/answer-choices.sql` にあります。
 - 外部キーは `ON DELETE CASCADE` を使い、親を削除したとき関連データも削除します。
 - 実際の型定義は `lib/database.types.ts` を参照してください。
 
@@ -191,7 +201,20 @@ events
 
 このアプリはログイン不要です。イベントURLを知っている人は、そのイベントの内容・回答者名・回答・コメントを閲覧できます。現在のRLSポリシーは、ログインなしの操作を成立させるため、公開ロールに読み書き・一部削除を許可しています。
 
-つまり、**RLSが有効でも、イベントURLを知る人ごとの厳密な編集権限はありません**。機密情報、住所、電話番号、秘密の会議情報などは保存しないでください。イベントページには `noindex` を設定していますが、これはアクセス制御ではありません。
+つまり、**RLSが有効でも、イベントURLを知る人ごとの厳密な編集権限はありません**。URLを知っていれば、イベント名や候補日の編集、他人の回答の編集・削除もできます。機密情報、住所、電話番号、秘密の会議情報などは保存しないでください。イベントページには `noindex` を設定していますが、これはアクセス制御ではありません。
+
+#### ブラウザに保存するもの
+
+サーバーへは送らず、`localStorage` に置いているものが4つあります。
+
+| キー | 内容 |
+| --- | --- |
+| `nittei-theme` | ライト・ダークの選択 |
+| `nittei-history` | 開いたイベントの一覧（`/history` で表示・削除） |
+| `nittei-table-prefs` | 集計・見出し固定・縦横の表示設定 |
+| `nittei-updated-<shareId>` | その端末で最後に回答した日時 |
+
+いずれもブラウザのデータを消すと消えます。
 
 #### キーの扱い
 
@@ -703,17 +726,22 @@ app/
   contact/page.tsx                 お問い合わせ先
   privacy/page.tsx                 プライバシーポリシー
   terms/page.tsx                   利用規約
+  history/page.tsx                 ページ表示履歴（noindex）
+  history/HistoryList.tsx          履歴一覧の中身（クライアント側）
   e/[shareId]/page.tsx             イベント取得、動的メタデータ、404判定
   e/[shareId]/ResponsePage.tsx     回答UI、集計、編集、.ics解析、一括操作
   api/cleanup-old-events/route.ts  古いイベントの削除API
 lib/
+  answer-choices.ts                回答の選択肢セットの定義
   calendar-files.ts                .ics / zip読込、誕生日カレンダー除外
   database.types.ts                Supabaseテーブル型
+  history.ts                       ページ表示履歴のlocalStorage読み書き
   site.ts                          サイト名、説明、正式URL、検索キーワード
   supabase.ts                      ブラウザ・サーバー共通Supabaseクライアント
 supabase/
   rls-policies.sql                 RLSと公開操作ポリシー
   auto-delete-old-events.sql       updated_at列、更新トリガー
+  answer-choices.sql               回答の選択肢セット用の列と制約
 custom-worker.mjs                  Cloudflare Worker入口、所有権確認、メンテ、Cron
 wrangler.jsonc                     Worker、Assets、Service Binding、Cron設定
 open-next.config.ts                OpenNext for Cloudflare設定
@@ -739,9 +767,9 @@ HANDOFF.md                         AI・開発引き継ぎメモ
 
 ### Overview
 
-Nittei-gumi is a login-free web application for scheduling and attendance coordination. An organizer creates candidate dates, shares the generated URL, and participants answer each candidate with `○ / △ / ✕ / -` plus optional comments.
+Nittei-gumi is a login-free web application for scheduling and attendance coordination. An organizer creates candidate dates, shares the generated URL, and participants answer each candidate with the symbol set the organizer picked, plus optional comments.
 
-The organizer defines what each symbol means for the event. The `-` option can carry a per-candidate note such as “available after 18:00” or “depends on work.”
+The organizer chooses one of `○✕`, `○△✕`, or `◎○△✕` (default `○△✕`) and defines what each symbol means for the event. A `-` option is always available and can carry a per-candidate note such as “available after 18:00” or “depends on work.”
 
 Production: https://nittei-app.qoj.workers.dev/
 
@@ -764,7 +792,8 @@ Production: https://nittei-app.qoj.workers.dev/
 
 #### Responses
 
-- Four response values: `○ / △ / ✕ / -`
+- Response values follow the organizer's choice (`○✕` / `○△✕` / `◎○△✕`, default `○△✕`)
+- A `-` value is always available for noting the situation of that day
 - Per-candidate comments for `-`
 - A shared note for the whole response
 - Apply one value to all candidates
@@ -773,8 +802,12 @@ Production: https://nittei-app.qoj.workers.dev/
 - Mouse and touch drag-paint input
 - Edge auto-scroll while painting answers
 - Undo and redo response changes
-- Edit or delete an existing participant response
+- Edit or delete an existing participant response, including the name
+- See other participants' answers beside your own input
 - Vertical and horizontal result views
+- Toggle the per-symbol count summary
+- Toggle pinning the candidate column while scrolling sideways
+- Remember these view settings in the browser
 
 #### Calendar files
 
@@ -794,6 +827,9 @@ Calendar files are parsed entirely in the browser. The original `.ics` or `.zip`
 - Responsive desktop and mobile UI
 - Light and dark themes
 - Theme persistence in browser `localStorage`
+- Per-device page view history at `/history`
+- A page information block at the bottom (viewed at, created at, last updated, last update from this device, number of responses)
+- A support link to an external site in the footer
 - Dynamic metadata for shared event links
 - `noindex` on event pages that may contain participant names
 - `robots.txt`, `sitemap.xml`, and structured data
@@ -812,6 +848,7 @@ Calendar files are parsed entirely in the browser. The original `.ics` or `.zip`
 | Privacy | https://nittei-app.qoj.workers.dev/privacy | User-facing policy |
 | Terms | https://nittei-app.qoj.workers.dev/terms | User-facing terms |
 | Contact | https://nittei-app.qoj.workers.dev/contact | Contact information |
+| Page view history | https://nittei-app.qoj.workers.dev/history | Per-device list, `noindex` |
 
 Do not remove the legacy Vercel project while old links and the Google Search Console address migration still depend on its redirect.
 
@@ -858,12 +895,14 @@ Treat `package.json` and `package-lock.json` as the authoritative version source
 
 | Table | Purpose | Main columns |
 | --- | --- | --- |
-| `events` | Event record | `id`, `share_id`, `name`, `description`, `created_at`, `updated_at` |
+| `events` | Event record | `id`, `share_id`, `name`, `description`, `answer_choices`, `created_at`, `updated_at` |
 | `candidates` | Candidate date/time | `id`, `event_id`, `date`, `time_label`, `sort_order` |
 | `responses` | Participant response | `id`, `event_id`, `name`, `note`, `created_at` |
 | `answers` | Answer for one candidate | `id`, `response_id`, `candidate_id`, `value`, `note` |
 
 `candidates` and `responses` belong to an `event`; `answers` connect a `response` to a `candidate`. Cascading foreign keys remove related rows with their parent. The TypeScript representation is in `lib/database.types.ts`.
+
+`answers.value` is limited to `'◎' | '○' | '△' | '✕' | '-'` by the `answers_value_check` constraint. `events.answer_choices` holds the symbol set (`'○✕' | '○△✕' | '◎○△✕'`, default `'○△✕'`) and is guarded by `events_answer_choices_check`. Both statements live in `supabase/answer-choices.sql`.
 
 #### Retention
 
@@ -877,7 +916,20 @@ Treat `package.json` and `package-lock.json` as the authoritative version source
 
 This application intentionally has no login flow. Anyone who knows an event URL can view its event details, participant names, answers, and comments. RLS is enabled, but its current public policies allow the reads and writes required by the no-login design, including selected update and delete operations.
 
-Therefore, **RLS does not provide per-user ownership in the current design**. Do not store confidential information. `noindex` reduces search indexing but is not access control.
+Therefore, **RLS does not provide per-user ownership in the current design**. Anyone with the URL can also edit the event and edit or delete other people's responses. Do not store confidential information. `noindex` reduces search indexing but is not access control.
+
+#### Stored in the browser
+
+Four things stay in `localStorage` and are never sent to the server.
+
+| Key | Contents |
+| --- | --- |
+| `nittei-theme` | Light or dark choice |
+| `nittei-history` | Events opened on this device (listed and clearable at `/history`) |
+| `nittei-table-prefs` | Count summary, pinned column, and vertical/horizontal view |
+| `nittei-updated-<shareId>` | When this device last answered |
+
+Clearing browser data removes all of them.
 
 | Variable | Exposure | Purpose |
 | --- | --- | --- |
@@ -1153,12 +1205,17 @@ app/api/cleanup-old-events/route.ts  Authenticated retention cleanup
 app/layout.tsx                       Global metadata, structured data, theme initialization
 app/robots.ts                        robots.txt
 app/sitemap.ts                       sitemap.xml
+app/history/page.tsx                 Per-device page view history (noindex)
+app/history/HistoryList.tsx          History list rendering (client side)
+lib/answer-choices.ts                Answer symbol sets
 lib/calendar-files.ts                .ics/.zip reading and birthday-calendar exclusion
 lib/database.types.ts                Supabase table types
+lib/history.ts                       Page view history localStorage helpers
 lib/site.ts                          Canonical site identity and URL
 lib/supabase.ts                      Supabase client
 supabase/rls-policies.sql            RLS policies
 supabase/auto-delete-old-events.sql  Activity timestamps and triggers
+supabase/answer-choices.sql          Answer symbol set column and constraints
 custom-worker.mjs                    Worker entry, maintenance mode, verification, cron
 wrangler.jsonc                       Worker and scheduled-trigger configuration
 open-next.config.ts                  OpenNext Cloudflare adapter configuration
