@@ -32,7 +32,7 @@ export default function PrivacyPage() {
           <h2 className="mt-6 font-serif text-base text-rose-800">1. 収集する情報</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>
-              利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答（○△✕−）とコメント
+              利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答とコメント
             </li>
             <li>
               自動的に収集する情報: アクセス状況の統計（Cloudflare Web Analytics
@@ -48,13 +48,14 @@ export default function PrivacyPage() {
 
           <h2 className="mt-6 font-serif text-base text-rose-800">3. 端末内に保存する情報</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
-            開いたイベントの一覧（ページ表示履歴）、表示テーマ、その端末で最後に回答した日時を、
-            お使いのブラウザの中だけに保存します。サーバーには送信されません。
+            開いたイベントの一覧（ページ表示履歴）、表示テーマ、回答一覧の表示設定、
+            その端末で最後に回答した日時を、お使いのブラウザの中だけに保存します。
+            サーバーには送信されません。
             履歴は「
             <Link href="/history" className="underline underline-offset-2 transition-colors hover:text-rose-700">
               ページ表示履歴
             </Link>
-            」からいつでも削除でき、ブラウザのデータを消しても消えます。
+            」からいつでも削除できます。ブラウザのデータを消せば、これらはまとめて消えます。
           </p>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">4. 利用目的</h2>
@@ -85,7 +86,9 @@ export default function PrivacyPage() {
 
           <h2 className="mt-6 font-serif text-base text-rose-800">8. イベントページの公開範囲</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">
-            イベントページは、URLを知っている人なら誰でも閲覧・回答できます。検索エンジンに登録されない設定にしていますが、
+            イベントページは、URLを知っている人なら誰でも閲覧・回答できます。
+            ログインの仕組みがないため、URLを知っている人はイベントの内容の編集や、
+            他の人の回答の編集・削除も行えます。検索エンジンに登録されない設定にしていますが、
             URLの共有範囲にはご注意ください。本名を知られたくない場合は、ニックネームでの回答をおすすめします。
           </p>
 
@@ -106,7 +109,11 @@ export default function PrivacyPage() {
             からお送りください。
           </p>
 
-          <p className="mt-6 text-xs text-stone-400">制定日: 2026年7月9日</p>
+          <p className="mt-6 text-xs text-stone-600">
+            制定日: 2026年7月9日
+            <span className="mx-2">·</span>
+            最終改定日: 2026年9月3日
+          </p>
         </div>
       </div>
     </div>
