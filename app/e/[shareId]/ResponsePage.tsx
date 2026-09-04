@@ -481,6 +481,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   // .ics 自動入力ステータス
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [isIcsDragOver, setIsIcsDragOver] = useState(false)
   const [icsMessage, setIcsMessage] = useState('')
   const [icsOptionsOpen, setIcsOptionsOpen] = useState(false)
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
@@ -717,11 +718,34 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setIcsMessage(doneMessage)
   }
 
-  async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    void processIcsFile(file)
+  }
 
+  // ファイルをフォームに落としても読み込めるようにする
+  function handleIcsDragOver(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setIsIcsDragOver(true)
+  }
+
+  function handleIcsDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setIsIcsDragOver(false)
+  }
+
+  function handleIcsDrop(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setIsIcsDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) void processIcsFile(file)
+  }
+
+  async function processIcsFile(file: File) {
     if (candidates.length === 0) {
       setIcsStatus('error')
       setIcsMessage('候補日がないため自動入力できません。')
@@ -1406,11 +1430,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <form
           id="answer-form"
           onSubmit={handleSubmit}
-          className={`mb-8 scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-3 shadow-sm backdrop-blur lg:mx-0 lg:px-6 ${
+          onDragOver={handleIcsDragOver}
+          onDragLeave={handleIcsDragLeave}
+          onDrop={handleIcsDrop}
+          className={`mb-8 scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-3 shadow-sm backdrop-blur transition-shadow lg:mx-0 lg:px-6 ${
             hasVisiblePeerAnswers
               ? 'lg:w-fit lg:max-w-full'
               : 'lg:max-w-2xl'
-          }`}
+          } ${isIcsDragOver ? 'ring-2 ring-rose-400' : ''}`}
         >
           <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
@@ -1542,7 +1569,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </div>
                 </div>
                 <p className="mt-2 text-xs leading-relaxed text-stone-600">
-                  カレンダーから書き出した .ics / .zip ファイルをアップロードできます。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
+                  カレンダーから書き出した .ics / .zip ファイルをアップロードできます（この枠にドラッグ&ドロップしても読み込めます）。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
                 </p>
               </div>
             )}

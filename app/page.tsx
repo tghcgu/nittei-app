@@ -309,6 +309,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [icsStatus, setIcsStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
+  const [isIcsDragOver, setIsIcsDragOver] = useState(false)
   const [icsMessage, setIcsMessage] = useState('')
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
   const icsInputRef = useRef<HTMLInputElement>(null)
@@ -426,8 +427,9 @@ export default function Home() {
           Object.fromEntries(drafts.map((candidate) => [candidate.dbId!, candidate.date]))
         )
         setSelectedCandidateIds(new Set())
+        // 時刻なしのイベントは時刻なしのまま開く（既定の21:00に戻さない）
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
-        replaceDefaultTime(draftTime.start || DEFAULT_CLOCK_TIME, draftTime.end)
+        replaceDefaultTime(draftTime.start, draftTime.end)
       } catch (err) {
         console.error(err)
         if (!cancelled) setError('編集する日程を読み込めませんでした。')
@@ -697,11 +699,34 @@ export default function Home() {
     )
   }
 
-  async function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    void processIcsFile(file)
+  }
 
+  // ファイルをフォームに落としても読み込めるようにする
+  function handleIcsDragOver(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setIsIcsDragOver(true)
+  }
+
+  function handleIcsDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setIsIcsDragOver(false)
+  }
+
+  function handleIcsDrop(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    setIsIcsDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) void processIcsFile(file)
+  }
+
+  async function processIcsFile(file: File) {
     setIcsStatus('loading')
     setIcsMessage('')
 
@@ -1130,7 +1155,12 @@ export default function Home() {
         {/* フォームカード */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl bg-white/70 px-6 pb-3 pt-4 shadow-sm backdrop-blur"
+          onDragOver={handleIcsDragOver}
+          onDragLeave={handleIcsDragLeave}
+          onDrop={handleIcsDrop}
+          className={`rounded-2xl bg-white/70 px-6 pb-3 pt-4 shadow-sm backdrop-blur transition-shadow ${
+            isIcsDragOver ? 'ring-2 ring-rose-400' : ''
+          }`}
         >
           {/* イベント名 */}
           <div className="mb-2">
@@ -1457,6 +1487,9 @@ export default function Home() {
             </button>
             {icsGuideOpen && (
               <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
+                <p className="text-stone-600">
+                  ファイルはこの枠にドラッグ&amp;ドロップしても読み込めます。
+                </p>
                 <div>
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
                     Google カレンダーを開く <span aria-hidden="true">↗</span>
