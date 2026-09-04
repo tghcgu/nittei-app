@@ -2126,8 +2126,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {showAnswerCounts && answerOptions.map((option) => (
-                    <tr key={`count-${option.value}`} className="border-t border-stone-300 bg-stone-500/10">
+                  {showAnswerCounts && answerOptions.map((option, index) => (
+                    <tr
+                      key={`count-${option.value}`}
+                      className={`border-t border-stone-300 ${
+                        index % 2 === 1 ? 'bg-stone-500/20' : ''
+                      }`}
+                    >
                       <th className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left font-normal`}>
                         <span className={answerColor(option.value)}>
                           {option.value === '-' ? '−' : option.value}
@@ -2148,8 +2153,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       <td className="border-l border-stone-500/50 py-0"></td>
                     </tr>
                   ))}
-                  {responseRows.map((r) => (
-                    <tr key={r.id} className="border-t border-stone-300 even:bg-stone-500/20">
+                  {responseRows.map((r, index) => (
+                    <tr
+                      key={r.id}
+                      className={`border-stone-300 even:bg-stone-500/20 ${
+                        index === 0 && showAnswerCounts ? 'border-t-2' : 'border-t'
+                      }`}
+                    >
                       <td className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left text-stone-700`}>
                         <div>{r.name}</div>
                         {r.note?.trim() && (
