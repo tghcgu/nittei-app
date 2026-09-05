@@ -1511,6 +1511,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </>
                 )}
               </button>
+              {/* スマホでは「設定」以降を次の行へ折り返す */}
+              <div className="h-0 basis-full sm:hidden" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => setIcsOptionsOpen((v) => !v)}
@@ -1528,6 +1530,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
               </button>
             </div>
+            <p className="mt-1.5 hidden text-[11px] text-stone-600 sm:block">
+              .ics / zip ファイルはこの枠にドラッグ&amp;ドロップしても読み込めます。
+            </p>
             {icsOptionsOpen && (
               <div className="mt-2 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2.5">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-none text-stone-600">
