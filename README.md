@@ -8,6 +8,30 @@
 
 [日本語](#japanese) | [English](#english)
 
+### 英語版 / English UI
+
+- 日本語の `/` と `/e/[shareId]` はそのままです。英語版は `/en` と `/en/e/[shareId]` で開きます。
+- 右上の `English` / `日本語` で切り替えできます。既存のイベントも同じID・回答データで開けます。
+- 作成・編集・回答・集計・履歴・カレンダー読み込み・お問い合わせ・利用規約・プライバシーポリシーに対応しています。
+- イベント名・説明・名前・コメントは自動翻訳しません。言語の切り替えで日付・時刻・回答値を変換することもありません。タイムゾーン変換機能ではありません。
+- 切り替え時はページを読み直します。入力途中の内容は送信・保存してから切り替えてください。
+
+The Japanese routes remain unchanged. The English interface is available at `/en`, with shared event pages at `/en/e/[shareId]`. Use the language link in the upper-right corner to switch. Both languages use the same event IDs and database; no database migration or separate Supabase project is required. User-entered content is not translated, and switching languages does not convert dates or time zones. Switching reloads the page, so save or submit unfinished edits first.
+
+Shared UI: `app/Home.tsx`, `app/e/[shareId]/ResponsePage.tsx`. Route entry points: `app/(ja)/` and `app/(en)/en/`. Translations and date formatting: `lib/i18n/`. Add new interface messages to `lib/i18n/en.json` and use `t(...)`; keep user data out of the translation function. Keep internal links localized with `path(...)`.
+
+#### 英語版のテスト / English UI tests
+
+```powershell
+npm ci
+npx playwright install chromium
+npm test
+```
+
+Tests start a separate Next.js server on port `3100` and an in-memory Supabase API fixture on `54329`. They override the database URL and key, never write to production, and discard test data when they exit. Build output goes to `.next-i18n-tests`; screenshots and failure traces go to `test-results`. Both are ignored by Git. Close other programs using these test ports before running. A custom Chromium binary can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+
+本番データには書き込みません。イベント作成・回答・編集・言語切替・履歴・カレンダー読み込み・ドラッグ選択・戻す/進む・PC/スマホ表示を検証します。通常の開発確認は `npm run dev` の後、`http://localhost:3000/en` を開いてください。本番へ反映するには、従来どおり別途Cloudflareへのデプロイが必要です。
+
 ---
 
 <a id="japanese"></a>
@@ -716,22 +740,27 @@ npx.cmd wrangler whoami
 
 ```text
 app/
-  page.tsx                         イベント作成・編集画面
-  layout.tsx                       全体レイアウト、SEO、構造化データ、テーマ初期化
+  (ja)/                            日本語ルート入口（既存URLを維持）
+  (en)/en/                         英語ルート入口
+  Home.tsx                         日英共通のイベント作成・編集画面
+  SiteLayout.tsx                   全体レイアウト、SEO、構造化データ、テーマ初期化
+  LocaleProvider.tsx               言語コンテキスト
+  LanguageSwitch.tsx               日英の切り替え
   globals.css                      全体スタイル、レスポンシブ、ダークモード
   ThemeToggle.tsx                  ライト・ダーク切り替えとlocalStorage保存
   robots.ts                        robots.txt生成
   sitemap.ts                       sitemap.xml生成
   icon.png / favicon.ico           サイトアイコン
-  contact/page.tsx                 お問い合わせ先
-  privacy/page.tsx                 プライバシーポリシー
-  terms/page.tsx                   利用規約
-  history/page.tsx                 ページ表示履歴（noindex）
+  contact/ContactPage.tsx          お問い合わせ先
+  privacy/PrivacyPage.tsx          プライバシーポリシー
+  terms/TermsPage.tsx              利用規約
+  history/HistoryPage.tsx          ページ表示履歴（noindex）
   history/HistoryList.tsx          履歴一覧の中身（クライアント側）
-  e/[shareId]/page.tsx             イベント取得、動的メタデータ、404判定
+  e/[shareId]/EventPage.tsx        イベント取得、動的メタデータ、404判定
   e/[shareId]/ResponsePage.tsx     回答UI、集計、編集、.ics解析、一括操作
   api/cleanup-old-events/route.ts  古いイベントの削除API
 lib/
+  i18n/                            英語辞書、日時表記、言語別URL、英語メタデータ
   answer-choices.ts                回答の選択肢セットの定義
   calendar-files.ts                .ics / zip読込、誕生日カレンダー除外
   database.types.ts                Supabaseテーブル型
@@ -1198,16 +1227,21 @@ Never commit:
 ### Repository map
 
 ```text
-app/page.tsx                         Event create/edit UI
-app/e/[shareId]/page.tsx             Event loading, metadata, and 404 handling
+app/(ja)/                            Japanese route entries
+app/(en)/en/                         English route entries
+app/Home.tsx                         Shared event create/edit UI
+app/e/[shareId]/EventPage.tsx        Event loading, metadata, and 404 handling
 app/e/[shareId]/ResponsePage.tsx     Response UI, results, calendar import, bulk actions
 app/api/cleanup-old-events/route.ts  Authenticated retention cleanup
-app/layout.tsx                       Global metadata, structured data, theme initialization
+app/SiteLayout.tsx                   Global metadata, structured data, theme initialization
+app/LocaleProvider.tsx               Locale context
+app/LanguageSwitch.tsx               Language switch
 app/robots.ts                        robots.txt
 app/sitemap.ts                       sitemap.xml
-app/history/page.tsx                 Per-device page view history (noindex)
+app/history/HistoryPage.tsx          Per-device page view history (noindex)
 app/history/HistoryList.tsx          History list rendering (client side)
 lib/answer-choices.ts                Answer symbol sets
+lib/i18n/                            English messages, date formatting, localized routes
 lib/calendar-files.ts                .ics/.zip reading and birthday-calendar exclusion
 lib/database.types.ts                Supabase table types
 lib/history.ts                       Page view history localStorage helpers

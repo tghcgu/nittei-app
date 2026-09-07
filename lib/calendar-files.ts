@@ -1,3 +1,5 @@
+import { getI18n, type Locale } from './i18n'
+
 type CalendarText = {
   name: string
   text: string
@@ -65,27 +67,29 @@ export async function readCalendarFileTexts(file: File): Promise<CalendarFileRea
 
 // readCalendarFileTexts が投げる既知のエラーをユーザー向けメッセージに変換する。
 // 未知のエラーなら null（呼び出し側が汎用メッセージを出す）。
-export function describeCalendarFileError(error: unknown): string | null {
+export function describeCalendarFileError(error: unknown, locale: Locale = 'ja'): string | null {
+  const { t } = getI18n(locale)
   if (!(error instanceof Error)) return null
 
   if (error.message === 'NO_ICS_IN_ZIP') {
-    return 'zip内に .ics ファイルが見つかりませんでした。カレンダーをエクスポートしたzipか確認してください。'
+    return t("zip内に .ics ファイルが見つかりませんでした。カレンダーをエクスポートしたzipか確認してください。")
   }
   if (error.message === 'ONLY_BIRTHDAY_ICS_IN_ZIP') {
-    return 'zip内にあったのは誕生日カレンダーのみでした。予定の入ったカレンダーを書き出してください。'
+    return t("zip内にあったのは誕生日カレンダーのみでした。予定の入ったカレンダーを書き出してください。")
   }
   return null
 }
 
-export function describeCalendarFileRead(result: CalendarFileReadResult) {
-  if (!result.isZip) return '.ics を解析しました。'
+export function describeCalendarFileRead(result: CalendarFileReadResult, locale: Locale = 'ja') {
+  const { t } = getI18n(locale)
+  if (!result.isZip) return t(".ics を解析しました。")
 
   const skipped = result.skippedBirthdayNames.length
   const loaded = result.texts.length
 
   if (skipped > 0) {
-    return `zip内の${loaded}件の .ics を解析しました。誕生日カレンダー${skipped}件は自動で除外しました。`
+    return t("zip内の{0}件の .ics を解析しました。誕生日カレンダー{1}件は自動で除外しました。", loaded, skipped)
   }
 
-  return `zip内の${loaded}件の .ics を解析しました。`
+  return t("zip内の{0}件の .ics を解析しました。", loaded)
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useSyncExternalStore } from "react";
+import { useI18n } from './LocaleProvider';
 
 type Theme = "light" | "dark";
 
@@ -42,6 +43,7 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeToggle() {
+  const { t } = useI18n();
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const isDark = theme === "dark";
 
@@ -69,8 +71,8 @@ export function ThemeToggle() {
         const nextTheme = isDark ? "light" : "dark";
         applyTheme(nextTheme);
       }}
-      aria-label={isDark ? "ライトモードに切り替える" : "ダークモードに切り替える"}
-      title={isDark ? "ライトモード" : "ダークモード"}
+      aria-label={isDark ? t("ライトモードに切り替える") : t("ダークモードに切り替える")}
+      title={isDark ? t("ライトモード") : t("ダークモード")}
     >
       <span aria-hidden="true">{isDark ? "☀" : "☾"}</span>
     </button>

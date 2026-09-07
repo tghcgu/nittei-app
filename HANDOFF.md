@@ -42,9 +42,13 @@
 - Cloudflare 用ビルドは webpack (Turbopack 成果物は OpenNext 非対応。スクリプトに組み込み済み)。
 
 アプリの主なファイル:
-- app/page.tsx: イベント作成・編集画面
-- app/e/[shareId]/page.tsx: 回答ページのサーバー側データ取得とメタデータ
+- app/Home.tsx: 日英共通のイベント作成・編集画面
+- app/e/[shareId]/EventPage.tsx: 回答ページのサーバー側データ取得とメタデータ
 - app/e/[shareId]/ResponsePage.tsx: 回答ページのUIと操作
+- app/(ja)/ と app/(en)/en/: 日本語・英語のルート入口。日本語URLは変更しない
+- app/SiteLayout.tsx: 共通レイアウト。言語ごとにhtmlのlangをサーバーで設定する
+- lib/i18n/: 英語辞書・日付書式・言語別リンク。DB内の文字列は翻訳しない
+- tests/: 独立したメモリ内DBで行うPlaywrightテスト。npm testで実行、本番データは触らない
 - lib/supabase.ts: Supabaseクライアント
 - lib/database.types.ts: Supabaseテーブル型
 - lib/site.ts: サイト名、タイトル、URL、説明文

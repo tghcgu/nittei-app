@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next'
 import { siteUrl } from '@/lib/site'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
+  const pages: MetadataRoute.Sitemap = [
     {
       url: siteUrl,
       lastModified: new Date(),
@@ -28,4 +28,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
   ]
+  return pages.flatMap((page) => {
+    const pathname = page.url.slice(siteUrl.length)
+    const englishUrl = `${siteUrl}/en${pathname}`
+    const alternates = { languages: { ja: page.url, en: englishUrl } }
+    return [{ ...page, alternates }, { ...page, url: englishUrl, alternates }]
+  })
 }

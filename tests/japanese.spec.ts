@@ -1,0 +1,108 @@
+import { expect, test } from '@playwright/test'
+import { formatDate, getI18n, localizedPath } from '../lib/i18n'
+
+test('Japanese date formats and links remain unchanged', () => {
+  expect(formatDate('2026-09-14', 'ja')).toBe('9/14(月)')
+  expect(localizedPath('/e/original', 'ja')).toBe('/e/original')
+  expect(localizedPath('/?edit=original', 'ja')).toBe('/?edit=original')
+  expect(getI18n('ja').t('みんなの回答')).toBe('みんなの回答')
+  expect(getI18n('ja').t('{0}日を追加', 4)).toBe('4日を追加')
+})
+
+test('Japanese create, optional times, calendar import, answer drag, edit, and results', async ({ page, request }) => {
+  test.setTimeout(90000)
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto('/')
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja')
+  await expect(page).toHaveTitle(/日程組/)
+  await expect(page.getByRole('button', { name: '月', exact: true })).toBeVisible()
+  await page.getByPlaceholder('例：みんなでご飯').fill('日本語版の回帰テスト')
+  await page.getByPlaceholder('場所や詳細など').fill('○: 参加可能\n△: 調整中\n✕: 不参加')
+  await page.getByRole('button', { name: '📅 範囲で追加', exact: true }).click()
+  const range = page.locator('.fixed.inset-0')
+  await range.locator('input[type="date"]').nth(0).fill('2026-09-14')
+  await range.locator('input[type="date"]').nth(1).fill('2026-09-17')
+  await range.getByRole('button', { name: '4日を追加', exact: true }).click()
+  await expect(page.locator('.candidate-row')).toHaveCount(4)
+
+  const calendar = {
+    name: 'busy.ics', mimeType: 'text/calendar',
+    buffer: Buffer.from('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:ja-regression\r\nDTSTAMP:20260901T000000Z\r\nDTSTART;VALUE=DATE:20260914\r\nDTEND;VALUE=DATE:20260915\r\nSUMMARY:Busy\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'),
+  }
+  await page.locator('input[type="file"]').setInputFiles(calendar)
+  await expect(page.locator('.candidate-row')).toHaveCount(3)
+  await expect(page.getByText(/1件を削除しました/)).toBeVisible()
+  await page.getByRole('button', { name: '↶ 戻す', exact: true }).click()
+  await expect(page.locator('.candidate-row')).toHaveCount(4)
+  await page.getByRole('button', { name: '↷ 進む', exact: true }).click()
+  await expect(page.locator('.candidate-row')).toHaveCount(3)
+  await page.getByRole('button', { name: '↶ 戻す', exact: true }).click()
+  await page.locator('.candidate-row').last().getByLabel('開始時間', { exact: true }).fill('')
+  await page.getByRole('button', { name: '作成する', exact: true }).first().click()
+  await page.waitForURL(/\/e\/[a-z0-9]+$/)
+  const eventUrl = page.url()
+  const shareId = new URL(eventUrl).pathname.split('/').pop()!
+  expect(new URL(eventUrl).pathname).not.toContain('/en')
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+  const events = await (await request.get(`http://127.0.0.1:54329/rest/v1/events?share_id=eq.${shareId}`)).json()
+  const candidates = await (await request.get(`http://127.0.0.1:54329/rest/v1/candidates?event_id=eq.${events[0].id}&order=sort_order`)).json()
+  expect(candidates.map((row: { date: string }) => row.date)).toEqual(['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'])
+  expect(candidates.map((row: { time_label: string | null }) => row.time_label)).toEqual(['21:00〜', '21:00〜', '21:00〜', null])
+
+  await page.getByPlaceholder('例：山田').fill('山田')
+  const circles = page.locator('[data-answer-candidate-id][data-answer-value="○"]')
+  await circles.first().scrollIntoViewIfNeeded()
+  const a = (await circles.nth(0).boundingBox())!
+  const b = (await circles.nth(2).boundingBox())!
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 12 })
+  await page.mouse.up()
+  await expect(page.locator('[data-answer-candidate-id].bg-emerald-50')).toHaveCount(3)
+  await page.getByRole('button', { name: '↶ 戻す', exact: true }).click()
+  await expect(page.locator('[data-answer-candidate-id].bg-emerald-50')).toHaveCount(0)
+  await page.getByRole('button', { name: '↷ 進む', exact: true }).click()
+  await expect(page.locator('[data-answer-candidate-id].bg-emerald-50')).toHaveCount(3)
+  await page.locator('[data-answer-candidate-id][data-answer-value="-"]').last().click()
+  await page.getByPlaceholder('メモ(任意)', { exact: true }).fill('夕方なら可能')
+  await page.getByPlaceholder('全体へのメモ(任意)', { exact: true }).fill('全体メモ')
+  await page.getByRole('button', { name: '回答を送信', exact: true }).click()
+  await expect(page.locator('table')).toContainText('山田')
+  await expect(page.locator('table')).toContainText('全体メモ')
+  const responses = await (await request.get(`http://127.0.0.1:54329/rest/v1/responses?event_id=eq.${events[0].id}&select=*,answers(*)`)).json()
+  expect(responses[0].answers.map((answer: { value: string }) => answer.value)).toEqual(['○', '○', '○', '-'])
+  expect(responses[0].answers[3].note).toBe('夕方なら可能')
+
+  await page.getByRole('button', { name: '編集', exact: true }).first().click()
+  await expect(page.getByPlaceholder('例：山田')).toHaveValue('山田')
+  await expect(page.getByPlaceholder('メモ(任意)', { exact: true })).toHaveValue('夕方なら可能')
+  await page.getByPlaceholder('例：山田').fill('山')
+  await page.getByRole('button', { name: '回答を更新', exact: true }).click()
+  await page.getByRole('link', { name: '日程を編集', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`\\?edit=${shareId}$`))
+  await expect(page.getByPlaceholder('例：みんなでご飯')).toHaveValue('日本語版の回帰テスト')
+  await expect(page.locator('.candidate-row').last().getByLabel('開始時間', { exact: true })).toHaveValue('')
+  await page.getByRole('button', { name: '更新する', exact: true }).first().click()
+  await page.waitForURL(eventUrl)
+  await page.locator('input[type="file"]').setInputFiles(calendar)
+  await expect(page.getByText(/内容を確認してから送信してください/)).toBeVisible()
+  await expect(page.locator('[data-answer-candidate-id][data-answer-value="✕"]').first()).toHaveClass(/bg-stone-100/)
+  await page.getByRole('button', { name: '↶ 戻す', exact: true }).click()
+
+  const before = await page.locator('thead th').count()
+  await page.getByRole('checkbox', { name: '集計', exact: true }).uncheck()
+  expect(await page.locator('thead th').count()).toBe(before - 4)
+  await page.getByRole('checkbox', { name: '集計', exact: true }).check()
+  await page.getByRole('button', { name: '╠═╣ 横', exact: true }).click()
+  await expect(page.locator('table')).toContainText('名前')
+  await page.getByRole('button', { name: '縦 ╦', exact: true }).click()
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    await page.screenshot({ path: `test-results/japanese-response-${width}.png`, fullPage: true })
+  }
+  await page.getByRole('link', { name: 'ページ表示履歴', exact: true }).click()
+  await expect(page.getByRole('link', { name: '日本語版の回帰テスト' })).toHaveAttribute('href', `/e/${shareId}`)
+  expect(errors).toEqual([])
+})
