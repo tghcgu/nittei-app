@@ -19,12 +19,12 @@ body {
 }
 
 @media (max-width: 640px) {
-  html[lang="en"] .candidate-default-times {
+  .candidate-default-times {
     flex: 1 1 100%;
     min-width: 0;
   }
 
-  html[lang="en"] .candidate-default-times input {
+  .candidate-default-times input {
     flex: 1;
     width: 0;
     min-width: 0;

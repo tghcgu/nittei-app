@@ -41,6 +41,8 @@
   "時刻なし": "No time",
   "全部これに揃える": "Apply to all",
   "選択した日程に適用": "Apply to selected",
+  "全部に適用": "Apply to all",
+  "選択分に適用": "Apply to selected",
   "件選択中": " selected",
   "↶ 戻す": "↶ Undo",
   "↷ 進む": "↷ Redo",

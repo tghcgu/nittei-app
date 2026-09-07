@@ -2100,9 +2100,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       }`}
                     >
                       <td className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left text-stone-700`}>
-                        <div>{r.name}</div>
+                        <div className="[overflow-wrap:anywhere]">{r.name}</div>
                         {r.note?.trim() && (
-                          <div className="text-xs text-stone-600">{r.note.trim()}</div>
+                          <div className="[overflow-wrap:anywhere] text-xs text-stone-600">{r.note.trim()}</div>
                         )}
                       </td>
                       {candidates.map((c) => {
@@ -2116,7 +2116,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mx-auto max-w-48 break-words text-xs text-stone-600">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-48 [overflow-wrap:anywhere] text-xs text-stone-600">{answer.note.trim()}</p>
                             )}
                           </td>
                         )
@@ -2153,9 +2153,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     ))}
                     {responseRows.map((r) => (
                       <th key={r.id} className="max-w-44 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
-                        <div className="break-keep break-words">{r.name}</div>
+                        <div className="mx-auto max-w-44 [overflow-wrap:anywhere]">{r.name}</div>
                         {r.note?.trim() && (
-                          <div className="text-xs font-normal text-stone-600">{r.note.trim()}</div>
+                          <div className="mx-auto max-w-44 [overflow-wrap:anywhere] text-xs font-normal text-stone-600">{r.note.trim()}</div>
                         )}
                         <button
                           type="button"
@@ -2197,7 +2197,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                               {answer?.value ?? '−'}
                             </span>
                             {answer?.value === '-' && answer.note?.trim() && (
-                              <p className="mx-auto max-w-48 break-words text-xs text-stone-600">{answer.note.trim()}</p>
+                              <p className="mx-auto max-w-48 [overflow-wrap:anywhere] text-xs text-stone-600">{answer.note.trim()}</p>
                             )}
                           </td>
                         )

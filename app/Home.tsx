@@ -1207,13 +1207,15 @@ export default function Home() {
                   type="button"
                   onClick={() => setAnswerChoices(set.value)}
                   aria-pressed={answerChoices === set.value}
+                  aria-label={t(set.label)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                     answerChoices === set.value
                       ? 'border-rose-400 bg-rose-50 text-rose-800'
                       : 'border-stone-300 text-stone-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800'
                   }`}
                 >
-                  {t(set.label)}
+                  <span className="sm:hidden">{set.values.join(' / ')}</span>
+                  <span className="hidden sm:inline">{t(set.label)}</span>
                 </button>
               ))}
             </div>
@@ -1258,30 +1260,40 @@ export default function Home() {
                   className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
               </div>
-              <button
-                type="button"
-                onClick={clearDefaultTime}
-                disabled={!defaultStartTime && !defaultEndTime}
-                title={t("開始・終了時刻を空にする")}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >{t("時刻なし")}</button>
-              <button
-                type="button"
-                onClick={applyTimeToAll}
-                disabled={candidates.length === 0}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >{t("全部これに揃える")}</button>
-              <button
-                type="button"
-                onClick={applyTimeToSelected}
-                disabled={selectedCandidateIds.size === 0}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >{t("選択した日程に適用")}</button>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:contents">
+                <button
+                  type="button"
+                  onClick={clearDefaultTime}
+                  disabled={!defaultStartTime && !defaultEndTime}
+                  title={t("開始・終了時刻を空にする")}
+                  className="rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70 sm:px-3"
+                >{t("時刻なし")}</button>
+                <button
+                  type="button"
+                  onClick={applyTimeToAll}
+                  disabled={candidates.length === 0}
+                  aria-label={t("全部これに揃える")}
+                  className="rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70 sm:px-3"
+                >
+                  <span className="sm:hidden">{t("全部に適用")}</span>
+                  <span className="hidden sm:inline">{t("全部これに揃える")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={applyTimeToSelected}
+                  disabled={selectedCandidateIds.size === 0}
+                  aria-label={t("選択した日程に適用")}
+                  className="rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70 sm:px-3"
+                >
+                  <span className="sm:hidden">{t("選択分に適用")}</span>
+                  <span className="hidden sm:inline">{t("選択した日程に適用")}</span>
+                </button>
+              </div>
               {selectedCandidateIds.size > 0 && (
                 <span className="text-xs text-stone-600">
                   {selectedCandidateIds.size}{t("件選択中")}</span>
               )}
-              <div className="ml-auto flex shrink-0 items-center gap-1">
+              <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
                 <button
                   type="button"
                   onClick={undoCandidateChange}
