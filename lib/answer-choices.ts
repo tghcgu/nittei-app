@@ -1,9 +1,10 @@
 import type { AnswerChoiceSet, AnswerValue } from './database.types'
+import type { MessageKey } from './i18n'
 
 // 主催者がイベント作成時に選ぶ「回答の選択肢」。伝助と同じ3種類。
 export const ANSWER_CHOICE_SETS: {
   value: AnswerChoiceSet
-  label: string
+  label: MessageKey
   values: AnswerValue[]
 }[] = [
   { value: '○✕', label: '「○✕」から選択', values: ['○', '✕'] },

@@ -8,6 +8,10 @@ import {
   siteUrl,
 } from "@/lib/site";
 import { ThemeToggle } from "./ThemeToggle";
+import { LocaleProvider } from './LocaleProvider';
+import { LanguageSwitch } from './LanguageSwitch';
+import type { Locale } from '@/lib/i18n';
+import { englishDescription } from '@/lib/i18n/metadata';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -26,6 +30,7 @@ export const metadata: Metadata = {
   keywords: siteKeywords,
   alternates: {
     canonical: "/",
+    languages: { ja: '/', en: '/en', 'x-default': '/' },
   },
   robots: {
     index: true,
@@ -95,11 +100,13 @@ const themeInitScript = `
 
 export default function RootLayout({
   children,
+  locale = 'ja',
 }: Readonly<{
   children: React.ReactNode;
+  locale?: Locale;
 }>) {
   return (
-    <html lang="ja" data-theme="light" suppressHydrationWarning>
+    <html lang={locale} data-theme="light" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
@@ -110,10 +117,16 @@ export default function RootLayout({
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(locale === 'en' ? {
+            ...jsonLd, name: 'Nitteigumi', description: englishDescription,
+            url: `${siteUrl}/en`, inLanguage: 'en',
+          } : jsonLd) }}
         />
-        {children}
-        <ThemeToggle />
+        <LocaleProvider locale={locale}>
+          <LanguageSwitch />
+          {children}
+          <ThemeToggle />
+        </LocaleProvider>
         {process.env.NODE_ENV === "production" && (
           // Cloudflare Web Analytics(Cookie不使用のアクセス解析)
           <script

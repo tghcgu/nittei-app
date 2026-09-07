@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "playwright test",
     "preview": "next build --webpack && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
     "deploy": "next build --webpack && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare deploy"
   },
@@ -23,6 +24,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -4,9 +4,12 @@ import { cache } from 'react'
 import { supabase } from '@/lib/supabase'
 import { siteDescription, siteName, siteTitle, siteUrl } from '@/lib/site'
 import { ResponsePage } from './ResponsePage'
+import { localizedPath, type Locale } from '@/lib/i18n'
+import { englishDescription, englishTitle } from '@/lib/i18n/metadata'
 
 type Props = {
   params: Promise<{ shareId: string }>
+  locale?: Locale
 }
 
 const eventSelect = 'id, share_id, name, description, answer_choices, created_at, updated_at'
@@ -24,21 +27,21 @@ const getEventByShareId = cache(async (shareId: string) => {
   return data
 })
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateEventMetadata({ params, locale = 'ja' }: Props): Promise<Metadata> {
   const { shareId } = await params
   const event = await getEventByShareId(shareId)
 
   if (!event) {
     return {
       title: {
-        absolute: siteTitle,
+        absolute: locale === 'en' ? englishTitle : siteTitle,
       },
     }
   }
 
-  const title = `${event.name}-${siteTitle}`
-  const description = event.description?.replace(/\s+/g, ' ').trim() || siteDescription
-  const url = `${siteUrl}/e/${shareId}`
+  const title = `${event.name}-${locale === 'en' ? englishTitle : siteTitle}`
+  const description = event.description?.replace(/\s+/g, ' ').trim() || (locale === 'en' ? englishDescription : siteDescription)
+  const url = `${siteUrl}${localizedPath(`/e/${shareId}`, locale)}`
 
   return {
     title: {
@@ -53,13 +56,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     },
     alternates: {
       canonical: url,
+      languages: { ja: `/e/${shareId}`, en: `/en/e/${shareId}` },
     },
     openGraph: {
       title,
       description,
       url,
-      siteName,
-      locale: 'ja_JP',
+      siteName: locale === 'en' ? 'Nitteigumi' : siteName,
+      locale: locale === 'en' ? 'en_US' : 'ja_JP',
       type: 'website',
     },
     twitter: {

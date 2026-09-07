@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useI18n } from './LocaleProvider'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
 import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES } from '@/lib/answer-choices'
@@ -90,7 +91,6 @@ type CalendarPaintSession = {
   initialSelected: Set<string>
 }
 
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 const emptySubscribe = () => () => {}
 const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
@@ -214,6 +214,7 @@ function SortableCandidate({
   onUpdate: (id: string, field: 'date' | 'timeLabel', value: string) => void
   onRemove: (id: string) => void
 }) {
+  const { t } = useI18n()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: c.id })
 
@@ -227,14 +228,14 @@ function SortableCandidate({
     <div
       ref={setNodeRef}
       style={style}
-      className={`grid grid-cols-[auto_auto_7.2rem_minmax(0,1fr)_auto] items-center gap-x-0.5 gap-y-1 sm:flex sm:flex-wrap sm:gap-2 ${isDragging ? 'opacity-60' : ''}`}
+      className={`candidate-row grid grid-cols-[auto_auto_7.2rem_minmax(0,1fr)_auto] items-center gap-x-0.5 gap-y-1 sm:flex sm:flex-wrap sm:gap-2 ${isDragging ? 'opacity-60' : ''}`}
     >
       {/* ドラッグハンドル */}
       <span
         {...attributes}
         {...listeners}
         className="shrink-0 cursor-grab touch-none select-none text-sm text-stone-500 hover:text-stone-600 active:cursor-grabbing sm:text-base"
-        title="ドラッグで並び替え"
+        title={t("ドラッグで並び替え")}
       >
         ⠿
       </span>
@@ -242,7 +243,7 @@ function SortableCandidate({
         type="checkbox"
         checked={selected}
         onChange={() => onToggleSelected(c.id)}
-        aria-label="候補を選択"
+        aria-label={t("候補を選択")}
         className="h-4 w-4 shrink-0 rounded border-stone-300 text-rose-700 focus:ring-rose-200"
       />
       <input
@@ -261,7 +262,7 @@ function SortableCandidate({
             const start = e.target.value
             onUpdate(c.id, 'timeLabel', toTimeLabel(start, start ? toEndClockValue(c.timeLabel) : ''))
           }}
-          aria-label="開始時間"
+          aria-label={t("開始時間")}
           className="w-[4.45rem] rounded-lg border border-stone-300 bg-white px-1 py-2 text-[13px] text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 sm:w-28 sm:px-3 sm:text-base"
         />
         <span className="text-sm text-stone-600">〜</span>
@@ -271,7 +272,7 @@ function SortableCandidate({
           value={toEndClockValue(c.timeLabel)}
           onChange={(e) => onUpdate(c.id, 'timeLabel', toTimeLabel(toStartClockValue(c.timeLabel), e.target.value))}
           disabled={!toStartClockValue(c.timeLabel)}
-          aria-label="終了時間(任意)"
+          aria-label={t("終了時間(任意)")}
           className="w-[4.45rem] rounded-lg border border-stone-300 bg-white px-1 py-2 text-[13px] text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500 sm:w-28 sm:px-3 sm:text-base"
         />
       </div>
@@ -288,6 +289,7 @@ function SortableCandidate({
 
 // ---- メインコンポーネント ----
 export default function Home() {
+  const { locale, t, path, weekdays: WEEKDAYS } = useI18n()
   const router = useRouter()
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
@@ -432,7 +434,7 @@ export default function Home() {
         replaceDefaultTime(draftTime.start, draftTime.end)
       } catch (err) {
         console.error(err)
-        if (!cancelled) setError('編集する日程を読み込めませんでした。')
+        if (!cancelled) setError(t("編集する日程を読み込めませんでした。"))
       } finally {
         if (!cancelled) setIsLoadingEdit(false)
       }
@@ -443,7 +445,7 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   function syncSelectedCandidates(nextCandidates: Candidate[]) {
     const ids = new Set(nextCandidates.map((candidate) => candidate.id))
@@ -663,7 +665,7 @@ export default function Home() {
   function removeBusyCandidates(
     busyPeriods: BusyPeriod[],
     datedCandidates: Candidate[],
-    readSummary = '.ics を解析しました。'
+    readSummary = t(".ics を解析しました。")
   ) {
     const busyIds = new Set<string>()
     for (const c of datedCandidates) {
@@ -679,7 +681,7 @@ export default function Home() {
 
     if (busyIds.size === 0) {
       setIcsStatus('done')
-      setIcsMessage(`${readSummary} 予定と重なる日程はありませんでした。`)
+      setIcsMessage(t("{0} 予定と重なる日程はありませんでした。", readSummary))
       return
     }
 
@@ -694,8 +696,8 @@ export default function Home() {
     setIcsStatus('done')
     setIcsMessage(
       kept > 0
-        ? `${readSummary} ${removed}件を削除しました（残り${kept}件）。確認してから作成してください。`
-        : `${readSummary} ${removed}件すべて予定と重なったため削除しました。候補日を追加し直してください。`
+        ? t("{0} {1}件を削除しました（残り{2}件）。確認してから作成してください。", readSummary, removed, kept)
+        : t("{0} {1}件すべて予定と重なったため削除しました。候補日を追加し直してください。", readSummary, removed)
     )
   }
 
@@ -734,7 +736,7 @@ export default function Home() {
       const datedCandidates = candidates.filter((c) => c.date)
       if (datedCandidates.length === 0) {
         setIcsStatus('error')
-        setIcsMessage('先に候補日を追加してください。')
+        setIcsMessage(t("先に候補日を追加してください。"))
         return
       }
 
@@ -776,12 +778,12 @@ export default function Home() {
         }
       }
 
-      removeBusyCandidates(busyPeriods, datedCandidates, describeCalendarFileRead(calendarFiles))
+      removeBusyCandidates(busyPeriods, datedCandidates, describeCalendarFileRead(calendarFiles, locale))
     } catch (err) {
       setIcsStatus('error')
       setIcsMessage(
-        describeCalendarFileError(err) ??
-          '読み取りに失敗しました。.ics または .zip ファイルか確認してください。'
+        describeCalendarFileError(err, locale) ??
+          t("読み取りに失敗しました。.ics または .zip ファイルか確認してください。")
       )
     }
   }
@@ -934,7 +936,7 @@ export default function Home() {
     const validCandidates = candidates.filter((c) => c.date)
 
     if (validCandidates.length === 0) {
-      setError('候補日を追加してください。')
+      setError(t("候補日を追加してください。"))
       return
     }
 
@@ -964,8 +966,8 @@ export default function Home() {
 
           if (removedAnswerCount && removedAnswerCount > 0) {
             const ok = window.confirm(
-              `削除しようとしている候補日には、${removedAnswerCount}件の回答が含まれています。\n` +
-                'この候補日を削除すると、その日に対する回答もすべて削除されます。続けますか？'
+              t("削除しようとしている候補日には、{0}件の回答が含まれています。\n", removedAnswerCount) +
+                t("この候補日を削除すると、その日に対する回答もすべて削除されます。続けますか？")
             )
             if (!ok) {
               setIsSubmitting(false)
@@ -993,8 +995,8 @@ export default function Home() {
 
           if (movedAnswerCount && movedAnswerCount > 0) {
             const ok = window.confirm(
-              `日付を変更した候補日には、${movedAnswerCount}件の回答が付いています。\n` +
-                '日付を変更すると、これらの回答は新しい日付への回答として引き継がれます。続けますか？'
+              t("日付を変更した候補日には、{0}件の回答が付いています。\n", movedAnswerCount) +
+                t("日付を変更すると、これらの回答は新しい日付への回答として引き継がれます。続けますか？")
             )
             if (!ok) {
               setIsSubmitting(false)
@@ -1049,7 +1051,7 @@ export default function Home() {
           if (deleteError) throw deleteError
         }
 
-        router.push(`/e/${editShareId}`)
+        router.push(path(`/e/${editShareId}`))
         return
       }
 
@@ -1074,7 +1076,7 @@ export default function Home() {
       }
 
       if (!event) {
-        throw new Error('共有URLの生成に失敗しました。')
+        throw new Error(t("共有URLの生成に失敗しました。"))
       }
 
       const candidateRows = validCandidates.map((c, i) => ({
@@ -1090,10 +1092,10 @@ export default function Home() {
 
       if (candidatesError) throw candidatesError
 
-      router.push(`/e/${shareId}`)
+      router.push(path(`/e/${shareId}`))
     } catch (err) {
       console.error(err)
-      setError('保存中にエラーが発生しました。もう一度試してください。')
+      setError(t("保存中にエラーが発生しました。もう一度試してください。"))
       setIsSubmitting(false)
     }
   }
@@ -1110,8 +1112,8 @@ export default function Home() {
   const canUndoCandidates = candidatePast.length > 0
   const canRedoCandidates = candidateFuture.length > 0
   const isEditMode = Boolean(editEventId && editShareId)
-  const submitLabel = isEditMode ? '更新する' : '作成する'
-  const submittingLabel = isEditMode ? '更新中...' : '作成中...'
+  const submitLabel = isEditMode ? t("更新する") : t("作成する")
+  const submittingLabel = isEditMode ? t("更新中...") : t("作成中...")
 
   function scrollToPageBottom() {
     window.scrollTo({
@@ -1133,23 +1135,21 @@ export default function Home() {
         {/* ヘッダー */}
         <div className="mb-2 text-center">
           <h1 className="inline-flex items-baseline gap-1.5 font-serif text-3xl text-rose-800">
-            <span>日程組</span>
-            <span className="font-sans text-xs font-normal text-stone-600">略して {siteShortName}</span>
+            <span>{t("日程組")}</span>
+            {locale === 'ja' && <span className="font-sans text-xs font-normal text-stone-600">略して {siteShortName}</span>}
           </h1>
           <p className="text-sm text-stone-600">
             {isLoadingEdit
-              ? '日程を読み込んでいます...'
+              ? t("日程を読み込んでいます...")
               : isEditMode
-              ? '日程を編集して、共有ページに戻りましょう'
-              : '候補日を入力して、参加者に共有しましょう'}
+              ? t("日程を編集して、共有ページに戻りましょう")
+              : t("候補日を入力して、参加者に共有しましょう")}
           </p>
           <button
             type="button"
             onClick={scrollToPageBottom}
             className="mt-1 rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-          >
-            ↓ 最下部へ
-          </button>
+          >{t("↓ 最下部へ")}</button>
         </div>
 
         {/* フォームカード */}
@@ -1165,8 +1165,7 @@ export default function Home() {
           {/* イベント名 */}
           <div className="mb-2">
             <div className="mb-1 flex items-center justify-between gap-3">
-              <label className="block text-sm font-medium text-stone-700">
-                イベント名 <span className="text-rose-700">*</span>
+              <label className="block text-sm font-medium text-stone-700">{t("イベント名")}<span className="text-rose-700">*</span>
               </label>
               <button
                 type="submit"
@@ -1181,20 +1180,18 @@ export default function Home() {
               required
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
-              placeholder="例：みんなでご飯"
+              placeholder={t("例：みんなでご飯")}
               className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
           {/* 説明 */}
           <div className="mb-0">
-            <label className="mb-1 block text-sm font-medium text-stone-700">
-              説明(任意)
-            </label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">{t("説明(任意)")}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="場所や詳細など"
+              placeholder={t("場所や詳細など")}
               rows={3}
               className="block w-full resize rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
@@ -1202,9 +1199,7 @@ export default function Home() {
 
           {/* 回答の選択肢 */}
           <div className="mt-3">
-            <label className="mb-1 block text-sm font-medium text-stone-700">
-              回答の選択肢
-            </label>
+            <label className="mb-1 block text-sm font-medium text-stone-700">{t("回答の選択肢")}</label>
             <div className="flex flex-wrap gap-2">
               {ANSWER_CHOICE_SETS.map((set) => (
                 <button
@@ -1218,7 +1213,7 @@ export default function Home() {
                       : 'border-stone-300 text-stone-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800'
                   }`}
                 >
-                  {set.label}
+                  {t(set.label)}
                 </button>
               ))}
             </div>
@@ -1226,14 +1221,13 @@ export default function Home() {
 
           {/* 候補日時 */}
           <div className="mb-8">
-            <label className="mb-1 block text-sm font-medium text-stone-700">
-              候補日時 <span className="text-rose-700">*</span>
+            <label className="mb-1 block text-sm font-medium text-stone-700">{t("候補日時")}<span className="text-rose-700">*</span>
             </label>
 
             {/* 時間帯バー */}
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3">
-              <span className="shrink-0 text-sm text-stone-600">時間帯：</span>
-              <div className="flex items-center gap-1">
+              <span className="shrink-0 text-sm text-stone-600">{t("時間帯：")}</span>
+              <div className="candidate-default-times flex items-center gap-1">
                 <input
                   type="time"
                   step={900}
@@ -1245,7 +1239,7 @@ export default function Home() {
                     beginTimeEdit()
                     replaceDefaultTime(start, start ? defaultTimeRef.current.end : '')
                   }}
-                  aria-label="開始時間"
+                  aria-label={t("開始時間")}
                   className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
                 />
                 <span className="text-sm text-stone-600">〜</span>
@@ -1260,7 +1254,7 @@ export default function Home() {
                     replaceDefaultTime(defaultTimeRef.current.start, e.target.value)
                   }}
                   disabled={!defaultStartTime}
-                  aria-label="終了時間(任意)"
+                  aria-label={t("終了時間(任意)")}
                   className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
               </div>
@@ -1268,31 +1262,24 @@ export default function Home() {
                 type="button"
                 onClick={clearDefaultTime}
                 disabled={!defaultStartTime && !defaultEndTime}
-                title="開始・終了時刻を空にする"
+                title={t("開始・終了時刻を空にする")}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                時刻なし
-              </button>
+              >{t("時刻なし")}</button>
               <button
                 type="button"
                 onClick={applyTimeToAll}
                 disabled={candidates.length === 0}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                全部これに揃える
-              </button>
+              >{t("全部これに揃える")}</button>
               <button
                 type="button"
                 onClick={applyTimeToSelected}
                 disabled={selectedCandidateIds.size === 0}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                選択した日程に適用
-              </button>
+              >{t("選択した日程に適用")}</button>
               {selectedCandidateIds.size > 0 && (
                 <span className="text-xs text-stone-600">
-                  {selectedCandidateIds.size}件選択中
-                </span>
+                  {selectedCandidateIds.size}{t("件選択中")}</span>
               )}
               <div className="ml-auto flex shrink-0 items-center gap-1">
                 <button
@@ -1300,17 +1287,13 @@ export default function Home() {
                   onClick={undoCandidateChange}
                   disabled={!canUndoCandidates}
                   className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  ↶ 戻す
-                </button>
+                >{t("↶ 戻す")}</button>
                 <button
                   type="button"
                   onClick={redoCandidateChange}
                   disabled={!canRedoCandidates}
                   className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  ↷ 進む
-                </button>
+                >{t("↷ 進む")}</button>
               </div>
             </div>
 
@@ -1329,7 +1312,9 @@ export default function Home() {
                     ←
                   </button>
                   <span className="font-serif text-lg text-stone-700">
-                    {calYear}年{calMonth + 1}月
+                    {locale === 'en'
+                      ? new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long' }).format(new Date(calYear, calMonth, 1))
+                      : `${calYear}年${calMonth + 1}月`}
                   </span>
                   <button
                     type="button"
@@ -1347,13 +1332,11 @@ export default function Home() {
                   className="mb-1.5 w-full rounded-full border border-rose-300 bg-rose-50 px-4 py-1.5 text-sm font-semibold text-rose-800 shadow-sm ring-1 ring-rose-100 transition-all hover:border-rose-400 hover:bg-rose-100 hover:shadow disabled:cursor-not-allowed disabled:border-stone-300 disabled:bg-white disabled:text-stone-500 disabled:shadow-none disabled:ring-0 disabled:hover:bg-white"
                 >
                   {addableMonthDates.length > 0
-                    ? `この月の今日以降を選択（${addableMonthDates.length}日）`
-                    : 'この月は追加できる日がありません'}
+                    ? t("この月の今日以降を選択（{0}日）", addableMonthDates.length)
+                    : t("この月は追加できる日がありません")}
                 </button>
 
-                <p className="mb-1 text-center text-xs text-stone-600">
-                  日付を選んで、下の「追加」ボタンで確定（ドラッグや曜日ボタンでまとめて選択）
-                </p>
+                <p className="mb-1 text-center text-xs text-stone-600">{t("日付を選んで、下の「追加」ボタンで確定（ドラッグや曜日ボタンでまとめて選択）")}</p>
 
                 {/* 曜日ヘッダー */}
                 <div className="mb-0.5 grid grid-cols-7 text-center text-xs text-stone-600">
@@ -1440,7 +1423,7 @@ export default function Home() {
                   disabled={calSelected.size === 0}
                   className="mt-2 w-full rounded-full bg-rose-800 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {calSelected.size > 0 ? `${calSelected.size}日を追加` : '日付を選んでください'}
+                  {calSelected.size > 0 ? t("{0}日を追加", calSelected.size) : t("日付を選んでください")}
                 </button>
               </div>
               )}
@@ -1452,17 +1435,13 @@ export default function Home() {
                 type="button"
                 onClick={() => setRangeOpen(true)}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition-colors hover:border-rose-200 hover:text-rose-700"
-              >
-                📅 範囲で追加
-              </button>
+              >{t("📅 範囲で追加")}</button>
               <button
                 type="button"
                 onClick={sortByDate}
                 disabled={candidates.length < 2}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ↕ 日付順に並べ替え
-              </button>
+              >{t("↕ 日付順に並べ替え")}</button>
               <input ref={icsInputRef} type="file" accept=".ics,.zip" className="hidden" onChange={handleIcsUpload} />
               <button
                 type="button"
@@ -1470,7 +1449,7 @@ export default function Home() {
                 disabled={icsStatus === 'loading'}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-sm text-stone-600 transition-colors hover:border-rose-200 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {icsStatus === 'loading' ? '解析中...' : '📂 .ics / zip で空き日程を絞り込む'}
+                {icsStatus === 'loading' ? t("解析中...") : t("📂 .ics / zip で空き日程を絞り込む")}
               </button>
             </div>
             {icsMessage && (
@@ -1482,41 +1461,35 @@ export default function Home() {
               type="button"
               onClick={() => setIcsGuideOpen((v) => !v)}
               className="mt-1 text-xs text-stone-600 underline hover:text-rose-700"
-            >
-              書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
+            >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
             </button>
             {icsGuideOpen && (
               <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
-                <p className="text-stone-600">
-                  ファイルはこの枠にドラッグ&amp;ドロップしても読み込めます。
-                </p>
+                <p className="text-stone-600">{t("ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
                 <div>
-                  <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
-                    Google カレンダーを開く <span aria-hidden="true">↗</span>
+                  <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Google カレンダーを開く")}<span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>開いたページで「エクスポート」をクリック</li>
-                    <li>ZIP がダウンロードされる</li>
-                    <li>その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）</li>
+                    <li>{t("開いたページで「エクスポート」をクリック")}</li>
+                    <li>{t("ZIP がダウンロードされる")}</li>
+                    <li>{t("その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）")}</li>
                   </ol>
                 </div>
                 <div>
-                  <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
-                    Apple カレンダー（iCloud）を開く <span aria-hidden="true">↗</span>
+                  <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Apple カレンダー（iCloud）を開く")}<span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>PC ブラウザで開く</li>
-                    <li>カレンダー名の横の共有マークから書き出し</li>
-                    <li>その .ics をアップロード</li>
+                    <li>{t("PC ブラウザで開く")}</li>
+                    <li>{t("カレンダー名の横の共有マークから書き出し")}</li>
+                    <li>{t("その .ics をアップロード")}</li>
                   </ol>
                 </div>
                 <div>
-                  <a href="https://outlook.live.com/calendar/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
-                    Outlook カレンダーを開く <span aria-hidden="true">↗</span>
+                  <a href="https://outlook.live.com/calendar/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Outlook カレンダーを開く")}<span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>Outlook の URL 先で .ics ファイルをダウンロード</li>
-                    <li>その .ics をアップロード</li>
+                    <li>{t("Outlook の URL 先で .ics ファイルをダウンロード")}</li>
+                    <li>{t("その .ics をアップロード")}</li>
                   </ol>
                 </div>
               </div>
@@ -1548,9 +1521,7 @@ export default function Home() {
                 </SortableContext>
               </DndContext>
             ) : (
-              <p className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-3 text-sm text-stone-600">
-                候補日はまだありません
-              </p>
+              <p className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-3 text-sm text-stone-600">{t("候補日はまだありません")}</p>
             )}
           </div>
 
@@ -1576,40 +1547,26 @@ export default function Home() {
             type="button"
             onClick={scrollToPageTop}
             className="rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-          >
-            ↑ 最上部へ
-          </button>
+          >{t("↑ 最上部へ")}</button>
         </div>
-        <p className="mt-2 text-center text-[11px] text-stone-600">
-          ※ 最後の更新から1年が経過したイベントは自動的に削除されます
-        </p>
-        <p className="mt-1 text-center text-xs text-stone-600">
-          不具合・ご要望はこちら:{' '}
-          <Link href="/contact" className="underline underline-offset-2 transition-colors hover:text-rose-700">
-            お問い合わせ
-          </Link>
+        <p className="mt-2 text-center text-[11px] text-stone-600">{t("※ 最後の更新から1年が経過したイベントは自動的に削除されます")}</p>
+        <p className="mt-1 text-center text-xs text-stone-600">{t("不具合・ご要望はこちら:")}{' '}
+          <Link href={path("/contact")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("お問い合わせ")}</Link>
         </p>
         <p className="mt-1 text-center text-[11px] text-stone-600">
-          <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
-            利用規約
-          </Link>
+          <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>
           <span className="mx-2">·</span>
-          <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
-            プライバシーポリシー
-          </Link>
+          <Link href={path("/privacy")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("プライバシーポリシー")}</Link>
           <span className="mx-2">·</span>
-          <Link href="/history" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
-            ページ表示履歴
-          </Link>
+          <Link href={path("/history")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("ページ表示履歴")}</Link>
           <span className="mx-2">·</span>
           <a
             href="https://www.amazon.jp/hz/wishlist/ls/5B63O13XSOQ4?ref_=wl_share"
             target="_blank"
             rel="noopener noreferrer"
-            title="Amazon のほしい物リストが開きます"
+            title={t("Amazon のほしい物リストが開きます")}
             className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
-          >
-            支援 <span aria-hidden="true">↗</span>
+          >{t("支援")}<span aria-hidden="true">↗</span>
           </a>
         </p>
       </div>
@@ -1621,10 +1578,8 @@ export default function Home() {
           onClick={(e) => { if (e.target === e.currentTarget) setRangeOpen(false) }}
         >
           <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-6 shadow-2xl">
-            <p className="mb-1 text-center font-serif text-lg text-stone-700">範囲で追加</p>
-            <p className="mb-5 text-center text-xs text-stone-600">
-              開始日〜終了日を選ぶと、その間の日程をまとめて追加できます
-            </p>
+            <p className="mb-1 text-center font-serif text-lg text-stone-700">{t("範囲で追加")}</p>
+            <p className="mb-5 text-center text-xs text-stone-600">{t("開始日〜終了日を選ぶと、その間の日程をまとめて追加できます")}</p>
             <div className="flex items-center gap-2">
               <input
                 type="date"
@@ -1649,16 +1604,14 @@ export default function Home() {
                 className="flex-1 rounded-full bg-rose-800 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {rangeStart && rangeEnd && rangeStart <= rangeEnd
-                  ? `${datesBetween(rangeStart, rangeEnd).length}日を追加`
-                  : '日付を選んでください'}
+                  ? t("{0}日を追加", datesBetween(rangeStart, rangeEnd).length)
+                  : t("日付を選んでください")}
               </button>
               <button
                 type="button"
                 onClick={() => setRangeOpen(false)}
                 className="rounded-full border border-stone-300 px-4 py-2.5 text-sm text-stone-600 transition-colors hover:border-stone-300 hover:text-stone-700"
-              >
-                閉じる
-              </button>
+              >{t("閉じる")}</button>
             </div>
           </div>
         </div>

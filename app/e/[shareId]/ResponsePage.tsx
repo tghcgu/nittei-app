@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
+import { useI18n } from '@/app/LocaleProvider'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
 import { recordHistory } from '@/lib/history'
@@ -54,7 +55,6 @@ const ANSWER_OPTIONS = [
   },
 ]
 
-const DAYS = ['日', '月', '火', '水', '木', '金', '土']
 const MAX_RECURRING_OCCURRENCES = 10000
 
 type CalendarComponent = {
@@ -113,11 +113,6 @@ function toDateStr(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr + 'T00:00:00')
-  return `${d.getMonth() + 1}/${d.getDate()}(${DAYS[d.getDay()]})`
-}
-
 const emptySubscribe = () => () => {}
 
 // 「みんなの回答」の表示設定。端末内に覚えておく
@@ -156,15 +151,6 @@ function readLocalUpdatedAt(shareId: string) {
     // プライベートモードなどで localStorage が使えないときは表示しないだけ
     return null
   }
-}
-
-function formatDateTime(value: string | number | Date | null | undefined) {
-  if (!value) return null
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return null
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mm = String(d.getMinutes()).padStart(2, '0')
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日(${DAYS[d.getDay()]}) ${hh}:${mm}`
 }
 
 function answerColor(v: AnswerValue | undefined) {
@@ -302,6 +288,7 @@ function getFirstCandidateMonthRange(candidates: Candidate[]) {
 
 // ---- メインコンポーネント ----
 export function ResponsePage({ shareId, event, candidates, responses }: Props) {
+  const { locale, t, path, formatDate, formatDateTime, weekdays: DAYS } = useI18n()
   const [responseRows, setResponseRows] = useState<ResponseWithAnswers[]>(responses)
   const [isLoadingResponses, setIsLoadingResponses] = useState(false)
   const [responsesError, setResponsesError] = useState<string | null>(null)
@@ -361,7 +348,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopyUrl() {
-    const url = `${window.location.origin}/e/${shareId}`
+    const url = `${window.location.origin}${path(`/e/${shareId}`)}`
     try {
       if (!navigator.clipboard) throw new Error('clipboard unavailable')
       await navigator.clipboard.writeText(url)
@@ -369,7 +356,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // 非HTTPSやWebViewなどクリップボードが使えない環境では手動コピー用に提示する
-      window.prompt('このURLをコピーしてください', url)
+      window.prompt(t("このURLをコピーしてください"), url)
     }
   }
 
@@ -503,11 +490,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setResponseRows((data ?? []) as ResponseWithAnswers[])
     } catch (err) {
       console.error(err)
-      setResponsesError('回答一覧の読み込みに失敗しました。再読み込みしてください。')
+      setResponsesError(t("回答一覧の読み込みに失敗しました。再読み込みしてください。"))
     } finally {
       setIsLoadingResponses(false)
     }
-  }, [event.id])
+  }, [event.id, t])
 
   // 開いたイベントを端末内の「ページ表示履歴」に記録する（サーバーには送らない）
   useEffect(() => {
@@ -617,7 +604,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   async function handleDeleteResponse(r: ResponseWithAnswers) {
-    const ok = window.confirm(`${r.name} さんの回答を削除します。`)
+    const ok = window.confirm(t("{0} さんの回答を削除します。", r.name))
     if (!ok) return
 
     setDeletingResponseId(r.id)
@@ -645,7 +632,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setResponseRows((prev) => prev.filter((response) => response.id !== r.id))
     } catch (err) {
       console.error(err)
-      setError('回答の削除に失敗しました。もう一度試してください。')
+      setError(t("回答の削除に失敗しました。もう一度試してください。"))
     } finally {
       setDeletingResponseId(null)
     }
@@ -748,7 +735,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   async function processIcsFile(file: File) {
     if (candidates.length === 0) {
       setIcsStatus('error')
-      setIcsMessage('候補日がないため自動入力できません。')
+      setIcsMessage(t("候補日がないため自動入力できません。"))
       return
     }
 
@@ -797,13 +784,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
       applyBusyPeriodsToAnswers(
         busyPeriods,
-        `${describeCalendarFileRead(calendarFiles)} 内容を確認してから送信してください。`
+        t("{0} 内容を確認してから送信してください。", describeCalendarFileRead(calendarFiles, locale))
       )
     } catch (err) {
       setIcsStatus('error')
       setIcsMessage(
-        describeCalendarFileError(err) ??
-          '読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。'
+        describeCalendarFileError(err, locale) ??
+          t("読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。")
       )
     }
   }
@@ -1367,7 +1354,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setTimeout(() => setSubmitSuccess(null), 3000)
     } catch (err) {
       console.error(err)
-      setError('送信中にエラーが発生しました。もう一度試してください。')
+      setError(t("送信中にエラーが発生しました。もう一度試してください。"))
     } finally {
       setIsSubmitting(false)
     }
@@ -1380,21 +1367,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* サイトヘッダー */}
         <div className="mb-2 grid min-h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2">
           <Link
-            href={`/?edit=${shareId}`}
+            href={path(`/?edit=${shareId}`)}
             className="col-start-3 row-start-1 justify-self-end whitespace-nowrap text-xs text-stone-600 transition-colors hover:text-rose-700 sm:ml-8 sm:justify-self-start sm:text-sm"
-          >
-            日程を編集
-          </Link>
+          >{t("日程を編集")}</Link>
           <Link
-            href="/"
-            aria-label="日程組で新しいイベントを作成"
+            href={path("/")}
+            aria-label={t("日程組で新しいイベントを作成")}
             className="group col-start-2 row-start-1 inline-flex items-baseline justify-self-center gap-1 whitespace-nowrap border-b border-transparent pb-0.5 font-serif text-xl text-stone-700 transition-colors hover:border-stone-400 hover:text-stone-900 sm:gap-1.5 sm:text-2xl"
           >
-            <span>日程組</span>
-            <span className="font-sans text-[10px] font-normal text-stone-600 transition-colors group-hover:text-stone-700 sm:text-xs">
-              略して{siteShortName}
-            </span>
-            <span className="text-xs text-stone-600 transition-colors group-hover:text-stone-700 sm:text-sm">で作成</span>
+            <span>{t("日程組")}</span>
+            {locale === 'ja' && <>
+              <span className="font-sans text-[10px] font-normal text-stone-600 transition-colors group-hover:text-stone-700 sm:text-xs">略して{siteShortName}</span>
+              <span className="text-xs text-stone-600 transition-colors group-hover:text-stone-700 sm:text-sm">で作成</span>
+            </>}
           </Link>
         </div>
 
@@ -1411,18 +1396,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               className="inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
             >
               {copied ? (
-                <>✓ コピーしました</>
+                <>{t("✓ コピーしました")}</>
               ) : (
-                <>/e/{shareId} ⧉</>
+                <>{path(`/e/${shareId}`)} ⧉</>
               )}
             </button>
             <button
               type="button"
               onClick={scrollToResponses}
               className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
-            >
-              ↓ みんなの回答へ
-            </button>
+            >{t("↓ みんなの回答へ")}</button>
           </div>
         </div>
 
@@ -1441,7 +1424,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         >
           <div className="mb-1 flex items-center justify-between">
             <h2 className="font-serif text-xl text-stone-700">
-              {editingResponseId ? '回答を編集' : '回答する'}
+              {editingResponseId ? t("回答を編集") : t("回答する")}
             </h2>
             {editingResponseId && (
               <div className="flex items-center gap-3">
@@ -1452,31 +1435,28 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     disabled={deletingResponseId === editingResponse.id}
                     className="text-sm text-stone-600 transition-colors hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {deletingResponseId === editingResponse.id ? '削除中...' : '削除'}
+                    {deletingResponseId === editingResponse.id ? t("削除中...") : t("削除")}
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={handleCancelEdit}
                   className="text-sm text-stone-600 transition-colors hover:text-rose-700"
-                >
-                  キャンセル
-                </button>
+                >{t("キャンセル")}</button>
               </div>
             )}
           </div>
 
           {/* 名前 */}
           <div className="mb-3">
-            <label className="mb-1 block text-sm font-medium text-stone-700">
-              お名前 <span className="text-rose-700">*</span>
+            <label className="mb-1 block text-sm font-medium text-stone-700">{t("お名前")}<span className="text-rose-700">*</span>
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="例：山田"
+              placeholder={t("例：山田")}
               className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-600"
             />
           </div>
@@ -1499,16 +1479,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               >
                 {icsStatus === 'loading' ? (
                   <>
-                    <span className="animate-spin">⟳</span>
-                    解析中...
-                  </>
+                    <span className="animate-spin">⟳</span>{t("解析中...")}</>
                 ) : (
                   <>
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M19 4h-1V2h-2v2H8V2H6v2H5C3.89 4 3 4.9 3 6v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM5 7V6h14v1H5z"/>
-                    </svg>
-                    .ics / zip から自動入力
-                  </>
+                    </svg>{t(".ics / zip から自動入力")}</>
                 )}
               </button>
               {/* スマホでは「設定」以降を次の行へ折り返す */}
@@ -1518,33 +1494,29 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 onClick={() => setIcsOptionsOpen((v) => !v)}
                 aria-expanded={icsOptionsOpen}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-              >
-                設定 {icsOptionsOpen ? '▲' : '▼'}
+              >{t("設定")}{icsOptionsOpen ? '▲' : '▼'}
               </button>
               <button
                 type="button"
                 onClick={() => setIcsGuideOpen((v) => !v)}
                 aria-expanded={icsGuideOpen}
                 className="shrink-0 whitespace-nowrap text-[11px] text-stone-600 underline hover:text-rose-700"
-              >
-                書き出し方法を見る {icsGuideOpen ? '▲' : '▼'}
+              >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
               </button>
             </div>
-            <p className="mt-1.5 hidden text-[11px] text-stone-600 sm:block">
-              .ics / zip ファイルはこの枠にドラッグ&amp;ドロップしても読み込めます。
-            </p>
+            <p className="mt-1.5 hidden text-[11px] text-stone-600 sm:block">{t(".ics / zip ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
             {icsOptionsOpen && (
               <div className="mt-2 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2.5">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-none text-stone-600">
                   <div className="flex items-center gap-1.5">
-                    <span className="shrink-0">予定あり：</span>
+                    <span className="shrink-0">{t("予定あり：")}</span>
                     <div className="flex gap-0.5">
                       {answerOptions.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
                           onClick={() => setIcsBusyValue((current) => current === opt.value ? null : opt.value)}
-                          aria-label={icsBusyValue === opt.value ? '予定ありの入力を解除する' : `予定ありを${opt.value}にする`}
+                          aria-label={icsBusyValue === opt.value ? t("予定ありの入力を解除する") : t("予定ありを{0}にする", opt.value)}
                           className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
                             icsBusyValue === opt.value ? opt.active : opt.idle
                           }`}
@@ -1555,14 +1527,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="shrink-0">予定なし：</span>
+                    <span className="shrink-0">{t("予定なし：")}</span>
                     <div className="flex gap-0.5">
                       {answerOptions.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
                           onClick={() => setIcsFreeValue((current) => current === opt.value ? null : opt.value)}
-                          aria-label={icsFreeValue === opt.value ? '予定なしの入力を解除する' : `予定なしを${opt.value}にする`}
+                          aria-label={icsFreeValue === opt.value ? t("予定なしの入力を解除する") : t("予定なしを{0}にする", opt.value)}
                           className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
                             icsFreeValue === opt.value ? opt.active : opt.idle
                           }`}
@@ -1573,40 +1545,35 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </div>
                   </div>
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-stone-600">
-                  カレンダーから書き出した .ics / .zip ファイルをアップロードできます（この枠にドラッグ&ドロップしても読み込めます）。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。
-                </p>
+                <p className="mt-2 text-xs leading-relaxed text-stone-600">{t("カレンダーから書き出した .ics / .zip ファイルをアップロードできます（この枠にドラッグ&ドロップしても読み込めます）。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。")}</p>
               </div>
             )}
             {icsGuideOpen && (
               <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
                 <div>
-                  <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
-                    Google カレンダーを開く <span aria-hidden="true">↗</span>
+                  <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Google カレンダーを開く")}<span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>開いたページで「エクスポート」をクリック</li>
-                    <li>ZIP がダウンロードされる</li>
-                    <li>その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）</li>
+                    <li>{t("開いたページで「エクスポート」をクリック")}</li>
+                    <li>{t("ZIP がダウンロードされる")}</li>
+                    <li>{t("その ZIP をそのままアップロード（誕生日カレンダーは自動で除外）")}</li>
                   </ol>
                 </div>
                 <div>
-                  <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
-                    Apple カレンダー（iCloud）を開く <span aria-hidden="true">↗</span>
+                  <a href="https://www.icloud.com/calendar" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Apple カレンダー（iCloud）を開く")}<span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>PC ブラウザで開く</li>
-                    <li>カレンダー名の横の共有マークから書き出し</li>
-                    <li>その .ics をアップロード</li>
+                    <li>{t("PC ブラウザで開く")}</li>
+                    <li>{t("カレンダー名の横の共有マークから書き出し")}</li>
+                    <li>{t("その .ics をアップロード")}</li>
                   </ol>
                 </div>
                 <div>
-                  <a href="https://outlook.live.com/calendar/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">
-                    Outlook カレンダーを開く <span aria-hidden="true">↗</span>
+                  <a href="https://outlook.live.com/calendar/options/calendar/SharedCalendars" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Outlook カレンダーを開く")}<span aria-hidden="true">↗</span>
                   </a>
                   <ol className="mt-1 list-decimal pl-4 space-y-0.5 text-stone-600">
-                    <li>Outlook の URL 先で .ics ファイルをダウンロード</li>
-                    <li>その .ics をアップロード</li>
+                    <li>{t("Outlook の URL 先で .ics ファイルをダウンロード")}</li>
+                    <li>{t("その .ics をアップロード")}</li>
                   </ol>
                 </div>
               </div>
@@ -1634,11 +1601,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     ? 'border-rose-400 bg-rose-50 text-rose-800'
                     : 'border-stone-300 text-stone-600 hover:border-rose-200 hover:text-rose-700'
                 }`}
-              >
-                📋 範囲で一括回答
-              </button>
+              >{t("📋 範囲で一括回答")}</button>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-stone-600">全部これに揃える：</span>
+                <span className="text-xs text-stone-600">{t("全部これに揃える：")}</span>
                 {answerOptions.map((opt) => {
                   const isActive = keepExistingAnswers
                     ? lastSetAllAnswers?.value === opt.value &&
@@ -1668,9 +1633,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     setLastSetAllAnswers(null)
                   }}
                   className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
-                />
-                入力済の行は変更しない
-              </label>
+                />{t("入力済の行は変更しない")}</label>
             </div>
             <div className="mt-1 flex items-center gap-1">
               <button
@@ -1678,30 +1641,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 onClick={undoAnswerChange}
                 disabled={answerPast.length === 0}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                ↶ 戻す
-              </button>
+              >{t("↶ 戻す")}</button>
               <button
                 type="button"
                 onClick={redoAnswerChange}
                 disabled={answerFuture.length === 0}
                 className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                ↷ 進む
-              </button>
+              >{t("↷ 進む")}</button>
             </div>
 
             {bulkOpen && (
               <div className="mt-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs font-medium text-stone-600">日程範囲と回答を選択して「適用」</p>
+                  <p className="text-xs font-medium text-stone-600">{t("日程範囲と回答を選択して「適用」")}</p>
                   <button
                     type="button"
                     onClick={() => setBulkOpen(false)}
                     className="text-xs text-stone-600 hover:text-stone-700"
-                  >
-                    閉じる
-                  </button>
+                  >{t("閉じる")}</button>
                 </div>
                 {/* 日付範囲 */}
                 <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -1721,7 +1678,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   />
                 </div>
                 {/* 曜日フィルター：選ぶと下の2つの「適用」がその曜日だけに絞られる */}
-                <p className="mb-1 text-xs text-stone-600">曜日で絞る(任意)</p>
+                <p className="mb-1 text-xs text-stone-600">{t("曜日で絞る(任意)")}</p>
                 <div className="mb-2 flex flex-wrap items-center gap-1">
                   {DAYS.map((label, i) => {
                     const hasCandidateOnWeekday = candidates.some(
@@ -1753,9 +1710,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       type="button"
                       onClick={() => setBulkWeekdays(new Set())}
                       className="text-xs text-stone-600 underline hover:text-stone-700"
-                    >
-                      解除
-                    </button>
+                    >{t("解除")}</button>
                   )}
                 </div>
                 {/* 回答選択 */}
@@ -1778,13 +1733,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   onClick={applyBulkAnswer}
                   disabled={!bulkStart || !bulkEnd || bulkStart > bulkEnd}
                   className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  適用
-                </button>
+                >{t("適用")}</button>
                 <div className="mt-3 border-t border-stone-300 pt-2.5">
-                  <p className="mb-1.5 text-xs font-medium text-stone-600">
-                    日付範囲 + 時間帯で一括回答
-                  </p>
+                  <p className="mb-1.5 text-xs font-medium text-stone-600">{t("日付範囲 + 時間帯で一括回答")}</p>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <input
                       type="time"
@@ -1801,7 +1752,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     />
                   </div>
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="text-xs text-stone-600">重なる候補を：</span>
+                    <span className="text-xs text-stone-600">{t("重なる候補を：")}</span>
                     {answerOptions.map((opt) => (
                       <button
                         key={opt.value}
@@ -1828,12 +1779,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         bulkTimeStart === bulkTimeEnd
                       }
                       className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      適用
-                    </button>
-                    <span className="text-xs text-stone-600">
-                      上の日付範囲・曜日の中で、少しでも時間が重なる候補を変更します
-                    </span>
+                    >{t("適用")}</button>
+                    <span className="text-xs text-stone-600">{t("上の日付範囲・曜日の中で、少しでも時間が重なる候補を変更します")}</span>
                   </div>
                 </div>
               </div>
@@ -1843,8 +1790,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           {/* 候補日ごとの回答。見出しと切替は横スクロールさせず、回答列だけを動かす。 */}
           <div className="mb-1">
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <div className="text-sm font-medium text-stone-700">
-                各日程への出欠 <span className="text-rose-700">*</span>
+              <div className="text-sm font-medium text-stone-700">{t("各日程への出欠")}<span className="text-rose-700">*</span>
               </div>
               {peerResponses.length > 0 && (
                 <button
@@ -1857,14 +1803,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   }`}
                 >
                   {hasVisiblePeerAnswers
-                    ? '✓ 他の人の回答を横に表示'
-                    : '他の人の回答を横に表示'}
+                    ? t("✓ 他の人の回答を横に表示")
+                    : t("他の人の回答を横に表示")}
                 </button>
               )}
             </div>
-            <p className="mt-0.5 text-[10px] leading-tight text-stone-600">
-              長押し・ドラッグでまとめて入力できます
-            </p>
+            <p className="mt-0.5 text-[10px] leading-tight text-stone-600">{t("長押し・ドラッグでまとめて入力できます")}</p>
           </div>
           <div className="mb-6 flex min-w-0 overflow-hidden">
             {/* 日付と自分の回答は、他の人の回答とは別の固定領域に置く。 */}
@@ -1878,7 +1822,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               {hasVisiblePeerAnswers && (
                 <div className="col-span-2 grid h-12 grid-cols-subgrid items-end">
                   <div />
-                  <div className="pr-2 pb-0.5 text-[10px] text-stone-600">あなた</div>
+                  <div className="pr-2 pb-0.5 text-[10px] text-stone-600">{t("あなた")}</div>
                 </div>
               )}
               {candidates.map((c, index) => (
@@ -1889,7 +1833,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     index % 2 === 1 ? 'bg-stone-500/20' : ''
                   }`}
                 >
-                  <div className="whitespace-nowrap pr-2">
+                  <div className="answer-date-label whitespace-nowrap pr-2">
                     <span className="whitespace-nowrap font-serif text-sm text-stone-700">{formatDate(c.date)}</span>
                     {c.time_label && (
                       <>
@@ -1898,7 +1842,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       </>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 pr-2">
+                  <div className="answer-inputs flex items-center gap-1.5 pr-2">
                     {answerOptions.map((opt) => (
                       <button
                         key={opt.value}
@@ -1933,7 +1877,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         onChange={(e) =>
                           setDetailNotes((prev) => ({ ...prev, [c.id]: e.target.value }))
                         }
-                        placeholder="メモ(任意)"
+                        placeholder={t("メモ(任意)")}
                         className={`min-w-0 rounded-lg border border-blue-100 bg-blue-50/50 px-1.5 py-1 text-xs text-stone-700 placeholder-stone-500 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 ${
                           hasVisiblePeerAnswers ? 'w-12 sm:w-32' : 'w-0 flex-1'
                         }`}
@@ -2001,7 +1945,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               type="text"
               value={sharedNote}
               onChange={(e) => setSharedNote(e.target.value)}
-              placeholder="全体へのメモ(任意)"
+              placeholder={t("全体へのメモ(任意)")}
               className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
@@ -2015,7 +1959,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             )}
             {submitSuccess && (
               <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-                {submitSuccess === 'updated' ? '回答を更新しました！' : '回答を送信しました！ありがとうございます。'}
+                {submitSuccess === 'updated' ? t("回答を更新しました！") : t("回答を送信しました！ありがとうございます。")}
               </p>
             )}
 
@@ -2024,7 +1968,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               disabled={isSubmitting || Boolean(deletingResponseId)}
               className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isSubmitting ? '送信中...' : editingResponseId ? '回答を更新' : '回答を送信'}
+              {isSubmitting ? t("送信中...") : editingResponseId ? t("回答を更新") : t("回答を送信")}
             </button>
           </div>
         </form>
@@ -2036,15 +1980,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         >
           {/* スマホでは見出しの下に操作を1行で置く。入りきらないときはその行だけ横に流す */}
           <div className="mb-4 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
-            <h2 className="shrink-0 font-serif text-xl text-stone-700">みんなの回答</h2>
+            <h2 className="shrink-0 font-serif text-xl text-stone-700">{t("みんなの回答")}</h2>
             <div className="-mx-1 flex w-full shrink-0 items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:gap-2 sm:pb-0">
               <button
                 type="button"
                 onClick={scrollToAnswerForm}
                 className="shrink-0 rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:px-3"
-              >
-                ↑ 回答へ
-              </button>
+              >{t("↑ 回答へ")}</button>
               {hasResponses && (
                 <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
                   <input
@@ -2052,9 +1994,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     checked={showAnswerCounts}
                     onChange={(e) => updateTablePrefs({ counts: e.target.checked })}
                     className="h-3.5 w-3.5 accent-rose-700"
-                  />
-                  集計
-                </label>
+                  />{t("集計")}</label>
               )}
               {hasResponses && (
                 <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
@@ -2063,36 +2003,30 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     checked={stickyHeadColumn}
                     onChange={(e) => updateTablePrefs({ sticky: e.target.checked })}
                     className="h-3.5 w-3.5 accent-rose-700"
-                  />
-                  見出し固定
-                </label>
+                  />{t("見出し固定")}</label>
               )}
               {hasResponses && (
                 <div className="flex shrink-0 overflow-hidden rounded-full border border-stone-300">
                   <button
                     type="button"
                     onClick={() => updateTablePrefs({ layout: 'h' })}
-                    title="横向き表示"
+                    title={t("横向き表示")}
                     className={`px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
                       tableLayout === 'h'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
                     }`}
-                  >
-                    ╠═╣ 横
-                  </button>
+                  >{t("╠═╣ 横")}</button>
                   <button
                     type="button"
                     onClick={() => updateTablePrefs({ layout: 'v' })}
-                    title="縦向き表示"
+                    title={t("縦向き表示")}
                     className={`border-l border-stone-300 px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
                       tableLayout === 'v'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
                     }`}
-                  >
-                    縦 ╦
-                  </button>
+                  >{t("縦 ╦")}</button>
                 </div>
               )}
             </div>
@@ -2105,9 +2039,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           )}
 
           {isLoadingResponses && !hasResponses ? (
-            <p className="text-sm text-stone-600">回答一覧を読み込み中...</p>
+            <p className="text-sm text-stone-600">{t("回答一覧を読み込み中...")}</p>
           ) : !hasResponses ? (
-            <p className="text-sm text-stone-600">まだ回答がありません。</p>
+            <p className="text-sm text-stone-600">{t("まだ回答がありません。")}</p>
           ) : tableLayout === 'h' ? (
 
             /* ── 横向きテーブル：行=回答者、列=候補日 ── */
@@ -2115,7 +2049,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className={`${stickyHeadClass('z-20')}w-40 min-w-40 max-w-40 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>名前</th>
+                    <th className={`${stickyHeadClass('z-20')}w-40 min-w-40 max-w-40 pb-1 pr-3 text-left text-xs font-normal text-stone-600`}>{t("名前")}</th>
                     {candidates.map((c) => (
                       <th
                         key={c.id}
@@ -2148,7 +2082,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={candidate.id}
-                            title={`${option.value === '-' ? '−' : option.value}：${count}人`}
+                            title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
                             className="border-l border-stone-500/50 px-1.5 py-0 font-medium text-stone-700"
                           >
                             {count || ''}
@@ -2192,9 +2126,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           type="button"
                           onClick={() => handleEdit(r)}
                           className="text-xs text-stone-500 transition-colors hover:text-rose-700"
-                        >
-                          編集
-                        </button>
+                        >{t("編集")}</button>
                       </td>
                     </tr>
                   ))}
@@ -2209,18 +2141,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <table className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
-                    <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>候補日</th>
+                    <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>{t("候補日")}</th>
                     {showAnswerCounts && answerOptions.map((option) => (
                       <th
                         key={`count-heading-${option.value}`}
-                        title={`${option.value === '-' ? '−' : option.value}の人数`}
+                        title={t("{0}の人数", option.value === '-' ? '−' : option.value)}
                         className={`min-w-7 border-l border-stone-500/50 px-1 pb-1 font-normal ${answerColor(option.value)}`}
                       >
                         {option.value === '-' ? '−' : option.value}
                       </th>
                     ))}
                     {responseRows.map((r) => (
-                      <th key={r.id} className="max-w-56 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
+                      <th key={r.id} className="max-w-44 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
                         <div className="break-keep break-words">{r.name}</div>
                         {r.note?.trim() && (
                           <div className="text-xs font-normal text-stone-600">{r.note.trim()}</div>
@@ -2229,9 +2161,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           type="button"
                           onClick={() => handleEdit(r)}
                           className="text-xs font-normal text-stone-500 transition-colors hover:text-rose-700"
-                        >
-                          編集
-                        </button>
+                        >{t("編集")}</button>
                       </th>
                     ))}
                   </tr>
@@ -2252,7 +2182,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={`count-${option.value}`}
-                            title={`${option.value === '-' ? '−' : option.value}：${count}人`}
+                            title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
                             className="min-w-7 border-l border-stone-500/50 px-1 py-0 font-medium text-stone-700"
                           >
                             {count || ''}
@@ -2284,42 +2214,33 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* 日時はサーバー(UTC)とブラウザ(現地時間)で食い違うため、マウント後に描画する */}
         {infoMounted && (
           <div className="mt-8 rounded-2xl bg-white/50 px-4 py-3 text-[11px] leading-relaxed text-stone-600">
-            <p className="mb-1 font-medium text-stone-700">【このページについての情報】</p>
-            <p>ページ表示日時：{formatDateTime(viewedAt)}</p>
-            <p>作成日時：{formatDateTime(event.created_at)}</p>
-            <p>最終更新日時：{formatDateTime(lastUpdatedAt)}</p>
+            <p className="mb-1 font-medium text-stone-700">{t("【このページについての情報】")}</p>
+            <p>{t("ページ表示日時：")}{formatDateTime(viewedAt)}</p>
+            <p>{t("作成日時：")}{formatDateTime(event.created_at)}</p>
+            <p>{t("最終更新日時：")}{formatDateTime(lastUpdatedAt)}</p>
             {localUpdatedAt && (
-              <p>この端末からの最終更新日時：{formatDateTime(localUpdatedAt)}</p>
+              <p>{t("この端末からの最終更新日時：")}{formatDateTime(localUpdatedAt)}</p>
             )}
-            <p>回答人数：{responseRows.length}人</p>
+            <p>{t("回答人数：")}{responseRows.length}{t("人")}</p>
           </div>
         )}
 
         <p className="mt-6 text-center text-[11px] text-stone-600">
-          <Link href="/terms" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
-            利用規約
-          </Link>
+          <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>
           <span className="mx-2">·</span>
-          <Link href="/privacy" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
-            プライバシーポリシー
-          </Link>
+          <Link href={path("/privacy")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("プライバシーポリシー")}</Link>
           <span className="mx-2">·</span>
-          <Link href="/history" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
-            ページ表示履歴
-          </Link>
+          <Link href={path("/history")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("ページ表示履歴")}</Link>
           <span className="mx-2">·</span>
-          <Link href="/contact" className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">
-            お問い合わせ
-          </Link>
+          <Link href={path("/contact")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("お問い合わせ")}</Link>
           <span className="mx-2">·</span>
           <a
             href="https://www.amazon.jp/hz/wishlist/ls/5B63O13XSOQ4?ref_=wl_share"
             target="_blank"
             rel="noopener noreferrer"
-            title="Amazon のほしい物リストが開きます"
+            title={t("Amazon のほしい物リストが開きます")}
             className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
-          >
-            支援 <span aria-hidden="true">↗</span>
+          >{t("支援")}<span aria-hidden="true">↗</span>
           </a>
         </p>
       </div>

@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": ".next-i18n-tests/tsconfig.tsbuildinfo"
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.mts",
+    ".next-i18n-tests/types/**/*.ts",
+    ".next-i18n-tests/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".open-next", ".wrangler", ".next"]
+}
