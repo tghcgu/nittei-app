@@ -1,13 +1,16 @@
 'use client'
 
-import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useEffectEvent, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useI18n } from './LocaleProvider'
-import { supabase } from '@/lib/supabase'
+import { eventClient } from '@/lib/supabase'
+import { newEditToken, readEditToken, storeEditToken, consumeEditKey } from '@/lib/edit-keys'
+import { useLanguageDraft } from './useLanguageDraft'
+import { calendarBusyPeriods, overlapsCalendar, type BusyPeriod } from '@/lib/calendar'
 import { siteShortName } from '@/lib/site'
-import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES } from '@/lib/answer-choices'
-import type { AnswerChoiceSet } from '@/lib/database.types'
+import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES, answerValuesFor } from '@/lib/answer-choices'
+import type { AnswerChoiceSet, Answer } from '@/lib/database.types'
 import {
   DndContext,
   closestCenter,
@@ -69,16 +72,6 @@ function areCandidatesEqual(a: Candidate[], b: Candidate[]) {
   })
 }
 
-type CalendarComponent = {
-  getFirstPropertyValue: (name: string) => unknown
-}
-
-type BusyPeriod = {
-  start: Date
-  end: Date
-  isAllDay: boolean
-}
-
 type CalendarPaintMode = 'add' | 'remove'
 
 type CalendarPaintSession = {
@@ -92,7 +85,6 @@ type CalendarPaintSession = {
 }
 
 const emptySubscribe = () => () => {}
-const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
 const CALENDAR_PAINT_MOVE_THRESHOLD = 8
 const SHARE_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -187,19 +179,6 @@ function getMonthDatesFromToday(year: number, month: number): string[] {
   return result
 }
 
-function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
-  const startDate = toDateStr(start)
-  const endDate = toDateStr(end)
-  if (startDate === endDate) return dateStr === startDate
-  return dateStr >= startDate && dateStr < endDate
-}
-
-function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
-  const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
-
-  return status !== 'CANCELLED'
-}
-
 // ---- ドラッグ可能な候補日行 ----
 function SortableCandidate({
   c,
@@ -291,6 +270,11 @@ function SortableCandidate({
 export default function Home() {
   const { locale, t, path, weekdays: WEEKDAYS } = useI18n()
   const router = useRouter()
+  const [draftKey, setDraftKey] = useState<string | null>(null)
+  const [editAllowed, setEditAllowed] = useState(true)
+  const [existingAnswers, setExistingAnswers] = useState<Pick<Answer, 'candidate_id' | 'value'>[]>([])
+  const [pendingIdentity, setPendingIdentity] = useState<{id: string; shareId: string; token: string} | null>(null)
+  const [pendingCandidateIds, setPendingCandidateIds] = useState<Record<string, string>>({})
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
   // 回答の選択肢（伝助と同じ3種類。既定は「○△✕」）
@@ -378,10 +362,14 @@ export default function Home() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  useEffect(() => {
+  const loadEditRoute = useEffectEvent(() => {
     const params = new URLSearchParams(window.location.search)
     const shareId = params.get('edit')
-    if (!shareId) return
+    if (!shareId) { setDraftKey('event-new'); return }
+    setEditShareId(shareId)
+    setEditAllowed(false)
+    consumeEditKey('event', shareId)
+    const supabase = eventClient(shareId)
     const editingShareId = shareId
 
     let cancelled = false
@@ -393,7 +381,7 @@ export default function Home() {
       try {
         const { data: event, error: eventError } = await supabase
           .from('events')
-          .select('*')
+          .select('id, share_id, name, description, answer_choices, created_at, updated_at, edit_protected')
           .eq('share_id', editingShareId)
           .single()
 
@@ -406,7 +394,14 @@ export default function Home() {
           .order('sort_order')
 
         if (candidatesError) throw candidatesError
+        const { data: savedAnswers, error: answersError } = await supabase.from('answers').select('candidate_id, value')
+        if (answersError) throw answersError
+        const { data: allowed, error: permissionError } = await supabase.rpc('nittei_can_edit_event', { target_id: event.id })
+        if (permissionError) throw permissionError
         if (cancelled) return
+        setExistingAnswers(savedAnswers ?? [])
+        setEditAllowed(Boolean(allowed))
+        if (!allowed) setError(t("編集用URLから開いてください。"))
 
         const drafts = (loadedCandidates ?? []).map((candidate) => ({
           id: candidate.id,
@@ -432,6 +427,7 @@ export default function Home() {
         // 時刻なしのイベントは時刻なしのまま開く（既定の21:00に戻さない）
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
         replaceDefaultTime(draftTime.start, draftTime.end)
+        setDraftKey(`event-${editingShareId}`)
       } catch (err) {
         console.error(err)
         if (!cancelled) setError(t("編集する日程を読み込めませんでした。"))
@@ -445,7 +441,43 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [t])
+  })
+  // Restore browser-only URL state after SSR; loading is guarded by the route.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => loadEditRoute(), [t])
+
+  useLanguageDraft(draftKey, {
+    eventName, description, answerChoices, candidates, nextId, pendingIdentity, pendingCandidateIds,
+    defaultStartTime, defaultEndTime, calYear, calMonth, calSelected: [...calSelected],
+    selectedCandidateIds: [...selectedCandidateIds], rangeOpen, rangeStart, rangeEnd,
+    candidatePast: candidatePast.map(entry => ({ ...entry, calSelected: [...entry.calSelected] })),
+    candidateFuture: candidateFuture.map(entry => ({ ...entry, calSelected: [...entry.calSelected] })),
+  }, draft => {
+    setEventName(draft.eventName)
+    setDescription(draft.description)
+    setAnswerChoices(draft.answerChoices)
+    candidatesRef.current = draft.candidates
+    setCandidates(draft.candidates)
+    setNextId(draft.nextId)
+    setPendingIdentity(draft.pendingIdentity)
+    setPendingCandidateIds(draft.pendingCandidateIds)
+    replaceDefaultTime(draft.defaultStartTime, draft.defaultEndTime)
+    setCalYear(draft.calYear)
+    setCalMonth(draft.calMonth)
+    replaceCalSelected(new Set(draft.calSelected))
+    setSelectedCandidateIds(new Set(draft.selectedCandidateIds))
+    setRangeOpen(draft.rangeOpen)
+    setRangeStart(draft.rangeStart)
+    setRangeEnd(draft.rangeEnd)
+    replaceCandidatePast(draft.candidatePast.map(entry => ({ ...entry, calSelected: new Set(entry.calSelected) })))
+    replaceCandidateFuture(draft.candidateFuture.map(entry => ({ ...entry, calSelected: new Set(entry.calSelected) })))
+  })
+
+  function choiceSetAvailable(value: AnswerChoiceSet) {
+    const kept = new Set(candidates.map(c => c.dbId))
+    const allowed = answerValuesFor(value)
+    return existingAnswers.every(a => !kept.has(a.candidate_id) || allowed.includes(a.value))
+  }
 
   function syncSelectedCandidates(nextCandidates: Candidate[]) {
     const ids = new Set(nextCandidates.map((candidate) => candidate.id))
@@ -642,26 +674,6 @@ export default function Home() {
   }
 
   // ---- .ics アップロード ----
-  function parseCandidateTimeRange(date: string, timeLabel: string) {
-    const fallback = {
-      start: new Date(date + 'T00:00:00').toISOString(),
-      end:   new Date(date + 'T23:59:00').toISOString(),
-    }
-    const m = timeLabel.match(/(\d{1,2}):(\d{2})[〜~\-](?:(\d{1,2}):(\d{2}))?/)
-    if (!m) return fallback
-    const startDate = new Date(date + 'T00:00:00')
-    startDate.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0)
-    let endDate: Date
-    if (m[3] !== undefined) {
-      endDate = new Date(date + 'T00:00:00')
-      endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
-    } else {
-      endDate = new Date(startDate)
-      endDate.setHours(endDate.getHours() + 3)
-    }
-    return { start: startDate.toISOString(), end: endDate.toISOString() }
-  }
-
   function removeBusyCandidates(
     busyPeriods: BusyPeriod[],
     datedCandidates: Candidate[],
@@ -669,13 +681,7 @@ export default function Home() {
   ) {
     const busyIds = new Set<string>()
     for (const c of datedCandidates) {
-      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
-      const csMs = new Date(cs).getTime()
-      const ceMs = new Date(ce).getTime()
-      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-        if (isAllDay) return isDateInAllDayRange(c.date, start, end)
-        return start.getTime() < ceMs && end.getTime() > csMs
-      })
+      const isBusy = overlapsCalendar(c, busyPeriods)
       if (isBusy) busyIds.add(c.id)
     }
 
@@ -740,43 +746,8 @@ export default function Home() {
         return
       }
 
-      const ICAL = (await import('ical.js')).default
-      const sorted = [...datedCandidates].sort((a, b) => a.date.localeCompare(b.date))
-      // 範囲境界はタイムゾーン情報なしの時刻として比較され（UTC扱い）、実際の境界と
-      // 最大±14時間ずれるため、前後1日広げて定期予定の取りこぼしを防ぐ。
-      // 厳密な重なり判定は後段の busyPeriods チェックが行う。
-      const rangeStartDay = new Date(sorted[0].date + 'T00:00:00')
-      rangeStartDay.setDate(rangeStartDay.getDate() - 1)
-      const rangeEndDay = new Date(sorted[sorted.length - 1].date + 'T00:00:00')
-      rangeEndDay.setDate(rangeEndDay.getDate() + 1)
-      const rangeStart = ICAL.Time.fromDateTimeString(toDateStr(rangeStartDay) + 'T00:00:00')
-      const rangeEnd = ICAL.Time.fromDateTimeString(toDateStr(rangeEndDay) + 'T23:59:59')
-
-      const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
-
       const calendarFiles = await readCalendarFileTexts(file)
-      for (const { text } of calendarFiles.texts) {
-        const jcal = ICAL.parse(text)
-        const comp = new ICAL.Component(jcal)
-        const vevents = comp.getAllSubcomponents('vevent')
-        for (const vevent of vevents) {
-          const event = new ICAL.Event(vevent)
-          if (!isBlockingCalendarEvent(vevent)) continue
-          if (event.isRecurring()) {
-            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-            let count = 0
-            for (let next = expand.next(); next && count < MAX_RECURRING_OCCURRENCES; next = expand.next()) {
-              count++
-              const detail = event.getOccurrenceDetails(next)
-              if (detail.startDate.compare(rangeEnd) > 0) break
-              if (detail.endDate.compare(rangeStart) <= 0) continue
-              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            }
-          } else {
-            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
-          }
-        }
-      }
+      const busyPeriods = await calendarBusyPeriods(calendarFiles, datedCandidates)
 
       removeBusyCandidates(busyPeriods, datedCandidates, describeCalendarFileRead(calendarFiles, locale))
     } catch (err) {
@@ -935,6 +906,8 @@ export default function Home() {
     e.preventDefault()
     const validCandidates = candidates.filter((c) => c.date)
 
+    if (isSubmitting || isLoadingEdit || !editAllowed) return
+
     if (validCandidates.length === 0) {
       setError(t("候補日を追加してください。"))
       return
@@ -944,11 +917,11 @@ export default function Home() {
     setError(null)
 
     try {
+      const supabase = eventClient(editShareId ?? '')
       if (editEventId && editShareId) {
         const existingCandidates = validCandidates.filter(
           (candidate): candidate is Candidate & { dbId: string } => Boolean(candidate.dbId)
         )
-        const newCandidates = validCandidates.filter((candidate) => !candidate.dbId)
         const keptCandidateIds = new Set(existingCandidates.map((candidate) => candidate.dbId))
         const removedCandidateIds = [...originalCandidateIds].filter(
           (candidateId) => !keptCandidateIds.has(candidateId)
@@ -1004,98 +977,49 @@ export default function Home() {
             }
           }
         }
-
-        const { error: eventError } = await supabase
-          .from('events')
-          .update({ name: eventName, description: description || null, answer_choices: answerChoices })
-          .eq('id', editEventId)
-
-        if (eventError) throw eventError
-
-        const updateResults = await Promise.all(
-          existingCandidates.map((candidate) =>
-            supabase
-              .from('candidates')
-              .update({
-                date: candidate.date,
-                time_label: candidate.timeLabel || null,
-                sort_order: validCandidates.indexOf(candidate),
-              })
-              .eq('id', candidate.dbId)
-          )
-        )
-        const candidateUpdateError = updateResults.find((result) => result.error)?.error
-        if (candidateUpdateError) throw candidateUpdateError
-
-        if (newCandidates.length > 0) {
-          const { error: insertError } = await supabase
-            .from('candidates')
-            .insert(
-              newCandidates.map((candidate) => ({
-                event_id: editEventId,
-                date: candidate.date,
-                time_label: candidate.timeLabel || null,
-                sort_order: validCandidates.indexOf(candidate),
-              }))
-            )
-
-          if (insertError) throw insertError
-        }
-
-        if (removedCandidateIds.length > 0) {
-          const { error: deleteError } = await supabase
-            .from('candidates')
-            .delete()
-            .in('id', removedCandidateIds)
-
-          if (deleteError) throw deleteError
-        }
-
-        router.push(path(`/e/${editShareId}`))
-        return
       }
 
-      let shareId = ''
-      let event: { id: string } | null = null
-
-      for (let attempt = 0; attempt < SHARE_ID_MAX_ATTEMPTS; attempt += 1) {
-        shareId = generateShareId()
-
-        const { data, error: eventError } = await supabase
-          .from('events')
-          .insert({ share_id: shareId, name: eventName, description: description || null, answer_choices: answerChoices })
-          .select('id')
-          .single()
-
-        if (!eventError) {
-          event = data
-          break
-        }
-
-        if (eventError.code !== '23505') throw eventError
-      }
-
-      if (!event) {
-        throw new Error(t("共有URLの生成に失敗しました。"))
-      }
-
-      const candidateRows = validCandidates.map((c, i) => ({
-        event_id: event.id,
+      const ids = { ...pendingCandidateIds }
+      const rows = validCandidates.map(c => ({
+        id: c.dbId ?? (ids[c.id] ??= crypto.randomUUID()),
         date: c.date,
         time_label: c.timeLabel || null,
-        sort_order: i,
       }))
-
-      const { error: candidatesError } = await supabase
-        .from('candidates')
-        .insert(candidateRows)
-
-      if (candidatesError) throw candidatesError
-
-      router.push(path(`/e/${shareId}`))
+      setPendingCandidateIds(ids)
+      let identity = pendingIdentity ?? { id: crypto.randomUUID(), shareId: generateShareId(), token: newEditToken() }
+      for (let attempt = 0; attempt < SHARE_ID_MAX_ATTEMPTS; attempt += 1) {
+        const shareId = editShareId ?? identity.shareId
+        if (!editEventId) {
+          setPendingIdentity(identity)
+          storeEditToken('event', shareId, identity.token)
+        }
+        const { error: saveError } = await eventClient(shareId).rpc('nittei_save_event', {
+          p_id: editEventId ?? identity.id,
+          p_share_id: shareId,
+          p_edit_token: editEventId ? readEditToken('event', shareId) : identity.token,
+          p_name: eventName.trim(),
+          p_description: description || null,
+          p_answer_choices: answerChoices,
+          p_candidates: rows,
+        })
+        if (!saveError) {
+          router.push(path(`/e/${shareId}`))
+          return
+        }
+        if (!editEventId && saveError.code === '23505' && saveError.message.includes('share_id')) {
+          identity = { ...identity, shareId: generateShareId() }
+          continue
+        }
+        throw saveError
+      }
+      throw new Error(t("共有URLの生成に失敗しました。"))
     } catch (err) {
       console.error(err)
-      setError(t("保存中にエラーが発生しました。もう一度試してください。"))
+      const message = err && typeof err === 'object' && 'message' in err ? String(err.message) : ''
+      setError(message.includes('ANSWER_CHOICES_IN_USE')
+        ? t("回答済みの記号は選択肢から外せません。")
+        : message.includes('EDIT_FORBIDDEN') ? t("編集用URLから開いてください。")
+        : t("保存中にエラーが発生しました。もう一度試してください。"))
       setIsSubmitting(false)
     }
   }
@@ -1169,7 +1093,7 @@ export default function Home() {
               </label>
               <button
                 type="submit"
-                disabled={isSubmitting || isLoadingEdit || !hasDatedCandidates}
+                disabled={isSubmitting || isLoadingEdit || !editAllowed || !hasDatedCandidates}
                 className="shrink-0 rounded-full bg-rose-800 px-5 py-1.5 text-sm font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? submittingLabel : submitLabel}
@@ -1178,6 +1102,7 @@ export default function Home() {
             <input
               type="text"
               required
+              maxLength={200}
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               placeholder={t("例：みんなでご飯")}
@@ -1206,6 +1131,8 @@ export default function Home() {
                   key={set.value}
                   type="button"
                   onClick={() => setAnswerChoices(set.value)}
+                  disabled={!choiceSetAvailable(set.value)}
+                  title={!choiceSetAvailable(set.value) ? t("回答済みの記号は選択肢から外せません。") : undefined}
                   aria-pressed={answerChoices === set.value}
                   aria-label={t(set.label)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
@@ -1547,7 +1474,7 @@ export default function Home() {
           {/* 送信ボタン */}
           <button
             type="submit"
-            disabled={isSubmitting || isLoadingEdit || !hasDatedCandidates}
+            disabled={isSubmitting || isLoadingEdit || !editAllowed || !hasDatedCandidates}
             className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? submittingLabel : submitLabel}

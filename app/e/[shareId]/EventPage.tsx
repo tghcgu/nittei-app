@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { cache } from 'react'
-import { supabase } from '@/lib/supabase'
+import { eventClient } from '@/lib/supabase'
 import { siteDescription, siteName, siteTitle, siteUrl } from '@/lib/site'
 import { ResponsePage } from './ResponsePage'
 import { localizedPath, type Locale } from '@/lib/i18n'
@@ -12,12 +12,12 @@ type Props = {
   locale?: Locale
 }
 
-const eventSelect = 'id, share_id, name, description, answer_choices, created_at, updated_at'
+const eventSelect = 'id, share_id, name, description, answer_choices, created_at, updated_at, edit_protected'
 
 const getEventByShareId = cache(async (shareId: string) => {
   // 「該当なし」（→404）とDB障害（→エラー）を区別する。
   // maybeSingle は0件のとき error にせず data: null を返す。
-  const { data, error } = await supabase
+  const { data, error } = await eventClient(shareId)
     .from('events')
     .select(eventSelect)
     .eq('share_id', shareId)
@@ -84,7 +84,7 @@ export default async function Page({
 
   if (!event) notFound()
 
-  const { data: candidates, error: candidatesError } = await supabase
+  const { data: candidates, error: candidatesError } = await eventClient(shareId)
     .from('candidates')
     .select('id, event_id, date, time_label, sort_order')
     .eq('event_id', event.id)

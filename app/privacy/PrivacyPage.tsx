@@ -39,6 +39,8 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <h2 className="mt-6 font-serif text-base text-rose-800">{t("3. 端末内に保存する情報")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("開いたイベントの一覧（ページ表示履歴）、表示テーマ、回答一覧の表示設定、 その端末で最後に回答した日時を、お使いのブラウザの中だけに保存します。 サーバーには送信されません。 履歴は「")}<Link href={path("/history")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("ページ表示履歴")}</Link>{t("」からいつでも削除できます。ブラウザのデータを消せば、これらはまとめて消えます。")}</p>
 
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("編集キーも端末内に保存し、権限確認のため送信します。データベースにはキーのハッシュのみ保存します。端末変更に備えて編集用URLを非公開で保管してください。言語切り替え時の下書きはタブ内に一時保存し、復元後に削除します。")}</p>
+
           <h2 className="mt-6 font-serif text-base text-rose-800">{t("4. 利用目的")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("日程調整機能の提供（回答の保存・集計・表示）")}</li>
@@ -49,7 +51,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <h2 className="mt-6 font-serif text-base text-rose-800">{t("5. 保存期間と削除")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("最後の更新から1年が経過したイベントは、候補日・回答を含め自動的に削除されます。")}</li>
-            <li>{t("回答（名前・出欠・コメント）は、イベントページの回答一覧からいつでも編集・削除できます。")}</li>
+            <li>{t("回答（名前・出欠・コメント）は、編集権限のある端末または編集用URLから編集・削除できます。")}</li>
           </ul>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">{t("6. 第三者への提供")}</h2>
@@ -59,7 +61,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。")}</p>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">{t("8. イベントページの公開範囲")}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("イベントページは、URLを知っている人なら誰でも閲覧・回答できます。 ログインの仕組みがないため、URLを知っている人はイベントの内容の編集や、 他の人の回答の編集・削除も行えます。検索エンジンに登録されない設定にしていますが、 URLの共有範囲にはご注意ください。本名を知られたくない場合は、ニックネームでの回答をおすすめします。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("イベントページは、共有URLを知っている人なら誰でも閲覧・回答できます。新規イベントと回答の編集には、それぞれの編集キーが必要です。主催者はそのイベントの回答も管理できます。移行前のイベント・回答は従来どおり共有URLで編集できます。検索エンジンへの登録を防ぐ設定はアクセス制限ではありません。共有URLと編集用URLの取り扱いにご注意ください。")}</p>
 
           <h2 className="mt-6 font-serif text-base text-rose-800">{t("9. ポリシーの変更")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("必要に応じて本ポリシーを改定することがあります。重要な変更を行う場合は、本サービス上でお知らせします。")}</p>
@@ -70,7 +72,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
               className="underline underline-offset-2 transition-colors hover:text-rose-700"
             >{t("お問い合わせページ")}</Link>{t("からお送りください。")}</p>
 
-          <p className="mt-6 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月3日")}</p>
+          <p className="mt-6 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月8日")}</p>
         </div>
       </div>
     </div>

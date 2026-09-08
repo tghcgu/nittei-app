@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { localizedPath } from '@/lib/i18n'
 import { useI18n } from './LocaleProvider'
+import { LANGUAGE_SWITCH_EVENT } from './useLanguageDraft'
 
 export function LanguageSwitch() {
   const pathname = usePathname()
@@ -15,6 +16,10 @@ export function LanguageSwitch() {
         lang={target}
         hrefLang={target}
         onClick={(event) => {
+          if (!window.dispatchEvent(new Event(LANGUAGE_SWITCH_EVENT, { cancelable: true }))) {
+            event.preventDefault()
+            return
+          }
           // Keep editing parameters and anchors when switching root layouts.
           event.currentTarget.href = localizedPath(pathname, target) + window.location.search + window.location.hash
         }}

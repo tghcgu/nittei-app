@@ -34,7 +34,7 @@ export default function TermsPage({ locale = 'ja' }: { locale?: Locale }) {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("本サービスはアカウント登録を必要としません。そのため、次の点にご了承のうえご利用ください。")}</p>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("イベントページのURLを知っている人は、誰でもその内容を閲覧できます。URLがそのままアクセス権になります。")}</li>
-            <li>{t("URLを知っている人は、イベント名・説明・候補日時の編集、他の人の回答の編集・削除も行えます。 本人確認の仕組みはありません。")}</li>
+            <li>{t("新規イベント・回答は編集キーの所持により編集権限を確認します。本人確認ではありません。主催者はイベントとその回答を管理できます。移行前のデータは従来どおり共有URLで編集できます。編集用URLは非公開で保管してください。")}</li>
             <li>{t("回答者名は自由に入力できるため、入力された名前が本人のものであることは保証されません。")}</li>
             <li>{t("以上の理由から、URLの共有範囲は利用者ご自身で管理してください。 また、他人に知られて困る情報は書き込まないでください。")}</li>
           </ul>
@@ -96,7 +96,7 @@ export default function TermsPage({ locale = 'ja' }: { locale?: Locale }) {
               className="underline underline-offset-2 transition-colors hover:text-rose-700"
             >{t("お問い合わせページ")}</Link>{t("からお送りください。")}</p>
 
-          <p className="mt-6 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月3日")}</p>
+          <p className="mt-6 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月8日")}</p>
         </div>
       </div>
     </div>

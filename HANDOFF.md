@@ -3,6 +3,12 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-08: DB切り替え必須 / Database cutover required
+
+新しい保存・権限処理は `supabase/secure-scheduling.sql` が必須です。準備時点では本番RPCは未導入でした。現在の適用状況を確認し、`SECURE-ROLLOUT.md` の手順でDBと対応Workerをセットで切り替えてください。SQLなしで新クライアントを本番へ出すことや、旧公開ポリシーを実行し直すことは禁止です。
+
+Read `SECURE-ROLLOUT.md` before deployment. The new client requires the database migration; verify whether it has been applied. Legacy links remain valid; new records use private edit keys. Tests execute real PostgreSQL policies/RPCs in isolated PGlite, not production.
+
 ## 最初に貼る文章
 
 以下を新しいチャットの最初に貼ると、このプロジェクトの文脈をかなり引き継げます。
@@ -52,7 +58,7 @@
 - lib/supabase.ts: Supabaseクライアント
 - lib/database.types.ts: Supabaseテーブル型
 - lib/site.ts: サイト名、タイトル、URL、説明文
-- supabase/rls-policies.sql: Supabase RLSポリシー
+- supabase/secure-scheduling.sql: 共有ID別RLS、編集キー、原子的な保存RPC
 
 現在入っている主な機能:
 - イベント作成

@@ -8,15 +8,17 @@
 
 [日本語](#japanese) | [English](#english)
 
+> このリリースの本番反映にはSupabaseのSQL切り替えが必要です。[切り替え手順 / Required database rollout](SECURE-ROLLOUT.md) を先に確認してください。Do not deploy this client before applying its matching database migration.
+
 ### 英語版 / English UI
 
 - 日本語の `/` と `/e/[shareId]` はそのままです。英語版は `/en` と `/en/e/[shareId]` で開きます。
 - 右上の `English` / `日本語` で切り替えできます。既存のイベントも同じID・回答データで開けます。
 - 作成・編集・回答・集計・履歴・カレンダー読み込み・お問い合わせ・利用規約・プライバシーポリシーに対応しています。
 - イベント名・説明・名前・コメントは自動翻訳しません。言語の切り替えで日付・時刻・回答値を変換することもありません。タイムゾーン変換機能ではありません。
-- 切り替え時はページを読み直します。入力途中の内容は送信・保存してから切り替えてください。
+- 言語切り替え時はページを読み直しますが、作成・編集・回答の下書きと戻す/進むの履歴をタブ内に保持して復元します。カレンダーファイル自体は保存しません。
 
-The Japanese routes remain unchanged. The English interface is available at `/en`, with shared event pages at `/en/e/[shareId]`. Use the language link in the upper-right corner to switch. Both languages use the same event IDs and database; no database migration or separate Supabase project is required. User-entered content is not translated, and switching languages does not convert dates or time zones. Switching reloads the page, so save or submit unfinished edits first.
+The Japanese routes remain unchanged. The English interface is available at `/en`, with shared event pages at `/en/e/[shareId]`. Use the language link in the upper-right corner to switch. Both languages use the same event IDs and database; no database migration or separate Supabase project is required. User-entered content is not translated, and switching languages does not convert dates or time zones. Switching reloads the page while preserving creation/edit/response drafts and undo history in sessionStorage for that tab. Calendar files themselves are not retained.
 
 Shared UI: `app/Home.tsx`, `app/e/[shareId]/ResponsePage.tsx`. Route entry points: `app/(ja)/` and `app/(en)/en/`. Translations and date formatting: `lib/i18n/`. Add new interface messages to `lib/i18n/en.json` and use `t(...)`; keep user data out of the translation function. Keep internal links localized with `path(...)`.
 
@@ -28,7 +30,7 @@ npx playwright install chromium
 npm test
 ```
 
-Tests start a separate Next.js server on port `3100` and an in-memory Supabase API fixture on `54329`. They override the database URL and key, never write to production, and discard test data when they exit. Build output goes to `.next-i18n-tests`; screenshots and failure traces go to `test-results`. Both are ignored by Git. Close other programs using these test ports before running. A custom Chromium binary can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+Tests start a separate Next.js server on port `3100` and a PostgREST-shaped endpoint backed by real in-memory PostgreSQL (PGlite) on `54329`. They override the database URL and key, never write to production, and discard test data when they exit. Build output goes to `.next-i18n-tests`; screenshots and failure traces go to `test-results`. Both are ignored by Git. Close other programs using these test ports before running. A custom Chromium binary can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
 
 本番データには書き込みません。イベント作成・回答・編集・言語切替・履歴・カレンダー読み込み・ドラッグ選択・戻す/進む・PC/スマホ表示を検証します。通常の開発確認は `npm run dev` の後、`http://localhost:3000/en` を開いてください。本番へ反映するには、従来どおり別途Cloudflareへのデプロイが必要です。
 
@@ -223,9 +225,9 @@ events
 
 #### 必ず理解しておくこと
 
-このアプリはログイン不要です。イベントURLを知っている人は、そのイベントの内容・回答者名・回答・コメントを閲覧できます。現在のRLSポリシーは、ログインなしの操作を成立させるため、公開ロールに読み書き・一部削除を許可しています。
+このアプリはログイン不要です。イベントURLを知っている人は、そのイベントの内容・回答者名・回答・コメントを閲覧できます。`supabase/secure-scheduling.sql` の適用後は、共有IDのない一括読み取りとテーブルへの直接書き込みを拒否し、変更は検証付きのRPCだけで行います。
 
-つまり、**RLSが有効でも、イベントURLを知る人ごとの厳密な編集権限はありません**。URLを知っていれば、イベント名や候補日の編集、他人の回答の編集・削除もできます。機密情報、住所、電話番号、秘密の会議情報などは保存しないでください。イベントページには `noindex` を設定していますが、これはアクセス制御ではありません。
+**新規イベント・回答は編集キーで保護します。** 主催者はイベントと回答を管理し、回答者は自分の回答を編集・削除できます。本人確認ではなく編集キーの所持による権限です。移行前のデータには所有者情報がないため、既存イベントの主催者権限と既存回答の編集は従来どおり共有URLで利用できます。機密情報、住所、電話番号、秘密の会議情報などは保存しないでください。イベントページには `noindex` を設定していますが、これはアクセス制御ではありません。
 
 #### ブラウザに保存するもの
 
@@ -239,6 +241,10 @@ events
 | `nittei-updated-<shareId>` | その端末で最後に回答した日時 |
 
 いずれもブラウザのデータを消すと消えます。
+
+別途、`nittei-event-key-<shareId>` / `nittei-response-key-<id>` に編集キーを保存します。これらは権限確認のためSupabaseへ送信しますが、DBにはハッシュのみを保存します。`管理用URLをコピー` / `回答の編集用URLをコピー` で非公開の復旧リンクを取得できます。キーはURLの `#key=` に含まれ、開いた後にURLから除去します。通常の共有URLにはキーを含めません。**編集用URLは参加者全員に共有せず、端末を変える前に安全な場所に控えてください。端末データと編集用URLの両方を失うと、キーの復元はできません。** 別のプレビュードメインへ端末内のキーは自動転送されません。
+
+言語切り替え時の下書きは `sessionStorage` の `nittei-draft-*` に一時保存し、次のページで復元後に削除します。通常のタブ終了後まで下書きを保持する機能ではありません。
 
 #### キーの扱い
 
@@ -257,7 +263,7 @@ events
 
 #### RLS
 
-`supabase/rls-policies.sql` で `events`、`candidates`、`responses`、`answers` のRLSを有効化します。現在の設計は利便性優先の公開ポリシーです。将来、編集トークンや認証を導入する場合は、UIだけでなくこのSQLも必ず見直してください。
+`supabase/secure-scheduling.sql` が現在のRLS・編集キー・一括保存RPCです。旧 `rls-policies.sql` は実行しないでください。導入・切り替え手順は [SECURE-ROLLOUT.md](SECURE-ROLLOUT.md) を参照してください。SQLと対応アプリはセットで導入します。
 
 ### ローカル開発
 
@@ -390,8 +396,8 @@ PCが壊れただけなら、Supabase上のデータは消えません。新し�
 
 1. まずテーブルを作成します。初期DDLの参考は `SPEC.md` にあります。
 2. `responses.note` と `events.updated_at` を含む、`lib/database.types.ts` と一致するスキーマにします。
-3. `supabase/rls-policies.sql` をSQL Editorで実行します。
-4. `supabase/auto-delete-old-events.sql` をSQL Editorで実行します。
+3. `supabase/auto-delete-old-events.sql` と `supabase/answer-choices.sql` をSQL Editorで実行します。
+4. `supabase/secure-scheduling.sql` をSQL Editorで実行します。既存環境への適用は [SECURE-ROLLOUT.md](SECURE-ROLLOUT.md) の切り替え手順に従います。
 5. 新しいProject URLとPublishable Keyを `.env.local` に設定します。
 6. 新しいService Role KeyをCloudflare Secretへ設定します。
 
@@ -768,7 +774,7 @@ lib/
   site.ts                          サイト名、説明、正式URL、検索キーワード
   supabase.ts                      ブラウザ・サーバー共通Supabaseクライアント
 supabase/
-  rls-policies.sql                 RLSと公開操作ポリシー
+  secure-scheduling.sql            RLS、編集キー、トランザクションRPC
   auto-delete-old-events.sql       updated_at列、更新トリガー
   answer-choices.sql               回答の選択肢セット用の列と制約
 custom-worker.mjs                  Cloudflare Worker入口、所有権確認、メンテ、Cron
@@ -943,9 +949,9 @@ Treat `package.json` and `package-lock.json` as the authoritative version source
 
 ### Privacy and security
 
-This application intentionally has no login flow. Anyone who knows an event URL can view its event details, participant names, answers, and comments. RLS is enabled, but its current public policies allow the reads and writes required by the no-login design, including selected update and delete operations.
+This application has no login flow. Anyone who knows an event URL can view its details, participant names, answers, and comments. After applying `supabase/secure-scheduling.sql`, RLS scopes reads to the supplied share ID and denies direct table writes. Checked, transactional RPCs handle mutations.
 
-Therefore, **RLS does not provide per-user ownership in the current design**. Anyone with the URL can also edit the event and edit or delete other people's responses. Do not store confidential information. `noindex` reduces search indexing but is not access control.
+**New events and responses use private edit keys.** Organizers manage their event and its responses; respondents manage their own response. This proves possession of a key, not a person's identity. Legacy events/responses have no recoverable owner identity and retain their previous share-link editing permissions. Do not store confidential information. `noindex` reduces search indexing but is not access control.
 
 #### Stored in the browser
 
@@ -959,6 +965,10 @@ Four things stay in `localStorage` and are never sent to the server.
 | `nittei-updated-<shareId>` | When this device last answered |
 
 Clearing browser data removes all of them.
+
+Private keys are stored separately under `nittei-event-key-<shareId>` and `nittei-response-key-<id>`. They are sent to Supabase for authorization; only hashes are stored in database rows. Use **Copy private event edit link** or **Copy private response edit link** to retain a recovery link. Its `#key=` fragment is consumed and removed on opening; ordinary share links never include it. Keep recovery links private and back them up before changing devices. Losing both the browser data and the recovery link means the key cannot be recovered. Keys do not automatically transfer across preview and production domains.
+
+Language-switch drafts use `sessionStorage` keys `nittei-draft-*` and are removed after restoration in the next page. This is not a persistent autosave across closed tabs.
 
 | Variable | Exposure | Purpose |
 | --- | --- | --- |
@@ -1051,8 +1061,8 @@ For a new Supabase project:
 
 1. Create the base tables, using `SPEC.md` only as a historical starting point.
 2. Make the schema match `lib/database.types.ts`, including `responses.note` and `events.updated_at`.
-3. Run `supabase/rls-policies.sql`.
-4. Run `supabase/auto-delete-old-events.sql`.
+3. Run `supabase/auto-delete-old-events.sql` and `supabase/answer-choices.sql`.
+4. Run `supabase/secure-scheduling.sql`. For an existing deployment, follow [SECURE-ROLLOUT.md](SECURE-ROLLOUT.md) and deploy the matching client together.
 5. Update `.env.local`.
 6. Replace the Cloudflare `SUPABASE_SERVICE_ROLE_KEY` secret.
 
@@ -1247,7 +1257,7 @@ lib/database.types.ts                Supabase table types
 lib/history.ts                       Page view history localStorage helpers
 lib/site.ts                          Canonical site identity and URL
 lib/supabase.ts                      Supabase client
-supabase/rls-policies.sql            RLS policies
+supabase/secure-scheduling.sql       Scoped RLS, edit keys, transactional RPCs
 supabase/auto-delete-old-events.sql  Activity timestamps and triggers
 supabase/answer-choices.sql          Answer symbol set column and constraints
 custom-worker.mjs                    Worker entry, maintenance mode, verification, cron

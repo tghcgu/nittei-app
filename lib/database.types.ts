@@ -10,6 +10,7 @@ export type Database = {
           answer_choices: AnswerChoiceSet
           created_at: string
           updated_at: string
+          edit_protected: boolean
         }
         Insert: {
           id?: string
@@ -62,6 +63,7 @@ export type Database = {
           name: string
           note: string | null
           created_at: string
+          edit_protected: boolean
         }
         Insert: {
           id?: string
@@ -101,11 +103,31 @@ export type Database = {
           value?: AnswerValue
           note?: string | null
         }
-        Relationships: []
+        Relationships: [
+          { foreignKeyName: 'answers_response_id_fkey'; columns: ['response_id']; isOneToOne: false; referencedRelation: 'responses'; referencedColumns: ['id'] },
+          { foreignKeyName: 'answers_candidate_id_fkey'; columns: ['candidate_id']; isOneToOne: false; referencedRelation: 'candidates'; referencedColumns: ['id'] },
+        ]
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      nittei_can_edit_event: {
+        Args: { target_id: string }
+        Returns: boolean
+      }
+      nittei_save_event: {
+        Args: { p_id: string; p_share_id: string; p_edit_token: string | null; p_name: string; p_description: string | null; p_answer_choices: string; p_candidates: {id: string | null; date: string; time_label: string | null}[] }
+        Returns: string
+      }
+      nittei_save_response: {
+        Args: { p_id: string; p_edit_token: string | null; p_name: string; p_note: string | null; p_answers: {candidate_id: string; value: string; note: string | null}[] }
+        Returns: string
+      }
+      nittei_delete_response: {
+        Args: { p_id: string; p_edit_token: string | null }
+        Returns: undefined
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }

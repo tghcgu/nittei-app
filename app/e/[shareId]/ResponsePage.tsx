@@ -1,9 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/app/LocaleProvider'
-import { supabase } from '@/lib/supabase'
+import { eventClient } from '@/lib/supabase'
+import { newEditToken, readEditToken, storeEditToken, consumeEditKey } from '@/lib/edit-keys'
+import { useLanguageDraft } from '@/app/useLanguageDraft'
+import { calendarBusyPeriods, overlapsCalendar, type BusyPeriod } from '@/lib/calendar'
 import { siteShortName } from '@/lib/site'
 import { recordHistory } from '@/lib/history'
 import { answerValuesFor } from '@/lib/answer-choices'
@@ -17,6 +20,7 @@ type ResponseWithAnswers = {
   name: string
   note: string | null
   created_at: string
+  edit_protected: boolean
   answers: Answer[]
 }
 
@@ -54,18 +58,6 @@ const ANSWER_OPTIONS = [
     active: 'border-blue-300 bg-blue-50 text-blue-600 font-bold',
   },
 ]
-
-const MAX_RECURRING_OCCURRENCES = 10000
-
-type CalendarComponent = {
-  getFirstPropertyValue: (name: string) => unknown
-}
-
-type BusyPeriod = {
-  start: Date
-  end: Date
-  isAllDay: boolean
-}
 
 type ClockRange = {
   start: number
@@ -105,13 +97,6 @@ const ANSWER_PAINT_MOVE_THRESHOLD = 8
 const ANSWER_PAINT_EDGE_SCROLL_ZONE = 72
 const ANSWER_PAINT_EDGE_SCROLL_MIN_SPEED = 3
 const ANSWER_PAINT_EDGE_SCROLL_MAX_SPEED = 14
-
-function toDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 const emptySubscribe = () => () => {}
 
@@ -160,19 +145,6 @@ function answerColor(v: AnswerValue | undefined) {
   if (v === '✕') return 'text-stone-600'
   if (v === '-') return 'text-blue-600'
   return 'text-stone-500'
-}
-
-function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
-  const startDate = toDateStr(start)
-  const endDate = toDateStr(end)
-  if (startDate === endDate) return dateStr === startDate
-  return dateStr >= startDate && dateStr < endDate
-}
-
-function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
-  const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
-
-  return status !== 'CANCELLED'
 }
 
 function cloneLastSetAllAnswers(value: LastSetAllAnswers | null): LastSetAllAnswers | null {
@@ -319,7 +291,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [localUpdatedOverride, setLocalUpdatedOverride] = useState<string | null>(null)
   const [showPeerAnswers, setShowPeerAnswers] = useState(true)
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null)
-  const [editingAnswerIds, setEditingAnswerIds] = useState<Record<string, string>>({})
+  const [pendingIdentity, setPendingIdentity] = useState<{id: string; token: string} | null>(null)
+  const [keysReady, setKeysReady] = useState(false)
+  const [requestedResponseId, setRequestedResponseId] = useState<string | null>(null)
   const [deletingResponseId, setDeletingResponseId] = useState<string | null>(null)
 
   // 範囲で一括回答
@@ -346,6 +320,50 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
+
+  const loadEditKey = useEffectEvent(() => {
+    const responseId = new URLSearchParams(window.location.search).get('response')
+    if (responseId) consumeEditKey('response', responseId)
+    setRequestedResponseId(responseId)
+    setKeysReady(true)
+  })
+  // Private fragments are available only in the browser, never during SSR.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => loadEditKey(), [])
+
+  const canEditEvent = !event.edit_protected || (keysReady && Boolean(readEditToken('event', shareId)))
+  function canEditResponse(response: ResponseWithAnswers) {
+    return !response.edit_protected || canEditEvent || (keysReady && Boolean(readEditToken('response', response.id)))
+  }
+
+  async function handleCopyEditUrl(kind: 'event' | 'response', id: string) {
+    const token = readEditToken(kind, id)
+    if (!token) return
+    const route = kind === 'event' ? `/?edit=${shareId}` : `/e/${shareId}?response=${id}`
+    const url = `${window.location.origin}${path(route)}#key=${token}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { window.prompt(t("このURLをコピーしてください"), url) }
+  }
+
+  useLanguageDraft(keysReady ? `response-${shareId}` : null, {
+    name, sharedNote, answers, detailNotes, editingResponseId, pendingIdentity,
+    lastSetAllAnswers, answerPast, answerFuture, keepExistingAnswers, showPeerAnswers,
+  }, draft => {
+    setName(draft.name)
+    setSharedNote(draft.sharedNote)
+    setAnswers(draft.answers)
+    setDetailNotes(draft.detailNotes)
+    setEditingResponseId(draft.editingResponseId)
+    setPendingIdentity(draft.pendingIdentity)
+    setLastSetAllAnswers(draft.lastSetAllAnswers)
+    setAnswerPast(draft.answerPast)
+    setAnswerFuture(draft.answerFuture)
+    setKeepExistingAnswers(draft.keepExistingAnswers)
+    setShowPeerAnswers(draft.showPeerAnswers)
+  })
 
   async function handleCopyUrl() {
     const url = `${window.location.origin}${path(`/e/${shareId}`)}`
@@ -479,9 +497,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setResponsesError(null)
 
     try {
-      const { data, error } = await supabase
+      const { data, error } = await eventClient(shareId)
         .from('responses')
-        .select('id, event_id, name, note, created_at, answers(id, response_id, candidate_id, value, note)')
+        .select('id, event_id, name, note, created_at, edit_protected, answers(id, response_id, candidate_id, value, note)')
         .eq('event_id', event.id)
         .order('created_at')
 
@@ -494,7 +512,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     } finally {
       setIsLoadingResponses(false)
     }
-  }, [event.id, t])
+  }, [event.id, shareId, t])
 
   // 開いたイベントを端末内の「ページ表示履歴」に記録する（サーバーには送らない）
   useEffect(() => {
@@ -546,6 +564,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const allowed = answerValuesFor(event.answer_choices)
     return ANSWER_OPTIONS.filter((opt) => allowed.includes(opt.value))
   }, [event.answer_choices])
+  const countOptions = useMemo(() => {
+    const values = new Set(answerValuesFor(event.answer_choices))
+    for (const response of responseRows) for (const answer of response.answers) values.add(answer.value)
+    return ANSWER_OPTIONS.filter(option => values.has(option.value))
+  }, [event.answer_choices, responseRows])
   const viewedAt = useMemo(() => (infoMounted ? new Date() : null), [infoMounted])
   const localUpdatedAt =
     localUpdatedOverride ?? (infoMounted ? readLocalUpdatedAt(shareId) : null)
@@ -569,19 +592,32 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     answerScrollRef.current?.scrollTo({ left: 0, behavior: 'auto' })
   }, [showPeerAnswers, editingResponseId])
 
+  const openResponseEditLink = useEffectEvent(() => {
+    if (!requestedResponseId || !responseRows.length) return
+    const response = responseRows.find(r => r.id === requestedResponseId)
+    if (!response) return
+    setRequestedResponseId(null)
+    if (!canEditResponse(response)) { setError(t("編集用URLから開いてください。")); return }
+    handleEdit(response)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('response')
+    window.history.replaceState(null, '', url)
+  })
+  // Consume a recovery link once, after its response has loaded.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => openResponseEditLink(), [requestedResponseId, responseRows])
+
   function handleEdit(r: ResponseWithAnswers) {
+    if (!canEditResponse(r)) return
     setName(r.name)
     const newAnswers: Record<string, AnswerValue> = {}
     const newDetailNotes: Record<string, string> = {}
-    const newAnswerIds: Record<string, string> = {}
     for (const a of r.answers) {
       newAnswers[a.candidate_id] = a.value
-      newAnswerIds[a.candidate_id] = a.id
       if (a.note) newDetailNotes[a.candidate_id] = a.note
     }
     setAnswers(newAnswers)
     setDetailNotes(newDetailNotes)
-    setEditingAnswerIds(newAnswerIds)
     setSharedNote(r.note ?? '')
     setEditingResponseId(r.id)
     setLastSetAllAnswers(null)
@@ -595,7 +631,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setName('')
     setAnswers({})
     setDetailNotes({})
-    setEditingAnswerIds({})
     setSharedNote('')
     setEditingResponseId(null)
     setLastSetAllAnswers(null)
@@ -611,19 +646,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setError(null)
 
     try {
-      const { error: answersError } = await supabase
-        .from('answers')
-        .delete()
-        .eq('response_id', r.id)
-
-      if (answersError) throw answersError
-
-      const { error: responseError } = await supabase
-        .from('responses')
-        .delete()
-        .eq('id', r.id)
-
-      if (responseError) throw responseError
+      const { error: deleteError } = await eventClient(shareId).rpc('nittei_delete_response', {
+        p_id: r.id,
+        p_edit_token: readEditToken('response', r.id),
+      })
+      if (deleteError) throw deleteError
 
       if (editingResponseId === r.id) {
         handleCancelEdit()
@@ -638,51 +665,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
   }
 
-  // time_label（例: "19:00〜22:00" や "21:00〜"）をパースしてISO文字列のstart/endを返す
-  function parseCandidateTimeRange(date: string, timeLabel: string | null) {
-    const fallback = {
-      start: new Date(date + 'T00:00:00').toISOString(),
-      end:   new Date(date + 'T23:59:00').toISOString(),
-    }
-    if (!timeLabel) return fallback
-
-    const m = timeLabel.match(/(\d{1,2}):(\d{2})[〜~\-](?:(\d{1,2}):(\d{2}))?/)
-    if (!m) return fallback
-
-    const startDate = new Date(date + 'T00:00:00')
-    startDate.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0)
-
-    let endDate: Date
-    if (m[3] !== undefined) {
-      endDate = new Date(date + 'T00:00:00')
-      endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
-      // 21:00〜10:00 や 21:00〜00:59 のように終わりが始まりより前なら翌日とみなす
-      if (endDate.getTime() <= startDate.getTime()) {
-        endDate.setDate(endDate.getDate() + 1)
-      }
-    } else {
-      endDate = new Date(startDate)
-      endDate.setHours(endDate.getHours() + 3)
-    }
-
-    return { start: startDate.toISOString(), end: endDate.toISOString() }
-  }
-
   // ---- .ics ファイルから日程を読み取り ----
   const icsInputRef = useRef<HTMLInputElement>(null)
 
   function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
     const newAnswers: Record<string, AnswerValue | null> = {}
     for (const c of candidates) {
-      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
-      const csMs = new Date(cs).getTime()
-      const ceMs = new Date(ce).getTime()
-      const datePrefix = c.date
-
-      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-        if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
-        return start.getTime() < ceMs && end.getTime() > csMs
-      })
+      const isBusy = overlapsCalendar({ date: c.date, timeLabel: c.time_label }, busyPeriods)
 
       newAnswers[c.id] = isBusy ? icsBusyValue : icsFreeValue
     }
@@ -743,44 +732,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setIcsMessage('')
 
     try {
-      const ICAL = (await import('ical.js')).default
-      const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
-      // 範囲境界はタイムゾーン情報なしの時刻として比較され（UTC扱い）、実際の境界と
-      // 最大±14時間ずれるため、前後1日広げて定期予定の取りこぼしを防ぐ。
-      // 厳密な重なり判定は後段の busyPeriods チェックが行う。
-      const rangeStartDay = new Date(sortedDates[0].date + 'T00:00:00')
-      rangeStartDay.setDate(rangeStartDay.getDate() - 1)
-      const rangeEndDay = new Date(sortedDates[sortedDates.length - 1].date + 'T00:00:00')
-      rangeEndDay.setDate(rangeEndDay.getDate() + 1)
-      const rangeStart = ICAL.Time.fromDateTimeString(toDateStr(rangeStartDay) + 'T00:00:00')
-      const rangeEnd = ICAL.Time.fromDateTimeString(toDateStr(rangeEndDay) + 'T23:59:59')
-
-      const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
-
       const calendarFiles = await readCalendarFileTexts(file)
-      for (const { text } of calendarFiles.texts) {
-        const jcal = ICAL.parse(text)
-        const comp = new ICAL.Component(jcal)
-        const vevents = comp.getAllSubcomponents('vevent')
-
-        for (const vevent of vevents) {
-          const event = new ICAL.Event(vevent)
-          if (!isBlockingCalendarEvent(vevent)) continue
-          if (event.isRecurring()) {
-            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-            let count = 0
-            for (let next = expand.next(); next && count < MAX_RECURRING_OCCURRENCES; next = expand.next()) {
-              count++
-              const detail = event.getOccurrenceDetails(next)
-              if (detail.startDate.compare(rangeEnd) > 0) break
-              if (detail.endDate.compare(rangeStart) <= 0) continue
-              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            }
-          } else {
-            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
-          }
-        }
-      }
+      const busyPeriods = await calendarBusyPeriods(calendarFiles, candidates.map(c => ({ date: c.date, timeLabel: c.time_label })))
 
       applyBusyPeriodsToAnswers(
         busyPeriods,
@@ -1273,7 +1226,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (deletingResponseId) return
+    if (deletingResponseId || isSubmitting) return
 
     setIsSubmitting(true)
     setError(null)
@@ -1286,56 +1239,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         note: answers[c.id] === '-' ? (detailNotes[c.id] || null) : null,
       }))
 
-      if (editingResponseId) {
-        // 名前と共通メモを更新
-        const { error: updateErr } = await supabase
-          .from('responses')
-          .update({ name, note: sharedNote || null })
-          .eq('id', editingResponseId)
-
-        if (updateErr) throw updateErr
-
-        const rowsToUpdate = answerRows.filter((a) => editingAnswerIds[a.candidate_id])
-        const rowsToInsert = answerRows.filter((a) => !editingAnswerIds[a.candidate_id])
-
-        const updateResults = await Promise.all(
-          rowsToUpdate.map((a) =>
-            supabase
-              .from('answers')
-              .update({ value: a.value, note: a.note })
-              .eq('id', editingAnswerIds[a.candidate_id])
-          )
-        )
-        const answerUpdateError = updateResults.find((result) => result.error)?.error
-        if (answerUpdateError) throw answerUpdateError
-
-        if (rowsToInsert.length > 0) {
-          const { error: insError } = await supabase
-            .from('answers')
-            .insert(rowsToInsert.map((a) => ({ ...a, response_id: editingResponseId })))
-
-          if (insError) throw insError
-        }
-      } else {
-        const { data: response, error: responseError } = await supabase
-          .from('responses')
-          .insert({ event_id: event.id, name, note: sharedNote || null })
-          .select()
-          .single()
-
-        if (responseError) throw responseError
-
-        const { error: answersError } = await supabase
-          .from('answers')
-          .insert(answerRows.map((a) => ({ ...a, response_id: response.id })))
-
-        if (answersError) throw answersError
+      const identity = pendingIdentity ?? { id: crypto.randomUUID(), token: newEditToken() }
+      if (!editingResponseId) {
+        setPendingIdentity(identity)
+        storeEditToken('response', identity.id, identity.token)
       }
+      const { error: saveError } = await eventClient(shareId).rpc('nittei_save_response', {
+        p_id: editingResponseId ?? identity.id,
+        p_edit_token: editingResponseId ? readEditToken('response', editingResponseId) : identity.token,
+        p_name: name.trim(),
+        p_note: sharedNote || null,
+        p_answers: answerRows,
+      })
+      if (saveError) throw saveError
+      setPendingIdentity(null)
 
       setName('')
       setAnswers({})
       setDetailNotes({})
-      setEditingAnswerIds({})
       setSharedNote('')
       // editingResponseId はこの後クリアするので、新規か更新かを先に確定させる
       setSubmitSuccess(editingResponseId ? 'updated' : 'created')
@@ -1354,7 +1275,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setTimeout(() => setSubmitSuccess(null), 3000)
     } catch (err) {
       console.error(err)
-      setError(t("送信中にエラーが発生しました。もう一度試してください。"))
+      const message = err && typeof err === 'object' && 'message' in err ? String(err.message) : ''
+      setError(message.includes('EDIT_FORBIDDEN')
+        ? t("編集用URLから開いてください。")
+        : message.includes('INVALID_ANSWER') ? t("選択肢または候補日が更新されています。再読み込みして回答を確認してください。")
+        : t("送信中にエラーが発生しました。もう一度試してください。"))
     } finally {
       setIsSubmitting(false)
     }
@@ -1366,10 +1291,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         {/* サイトヘッダー */}
         <div className="mb-2 grid min-h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2">
-          <Link
+          {canEditEvent && <Link
             href={path(`/?edit=${shareId}`)}
             className="col-start-3 row-start-1 justify-self-end whitespace-nowrap text-xs text-stone-600 transition-colors hover:text-rose-700 sm:ml-8 sm:justify-self-start sm:text-sm"
-          >{t("日程を編集")}</Link>
+          >{t("日程を編集")}</Link>}
           <Link
             href={path("/")}
             aria-label={t("日程組で新しいイベントを作成")}
@@ -1406,6 +1331,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               onClick={scrollToResponses}
               className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
             >{t("↓ みんなの回答へ")}</button>
+            {keysReady && readEditToken('event', shareId) && (
+              <button type="button" onClick={() => handleCopyEditUrl('event', shareId)}
+                className="text-xs text-stone-600 hover:text-rose-700">
+                {t("管理用URLをコピー")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1447,6 +1378,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             )}
           </div>
 
+          {editingResponseId && keysReady && readEditToken('response', editingResponseId) && (
+            <button type="button" onClick={() => handleCopyEditUrl('response', editingResponseId)}
+              className="mb-2 text-xs text-stone-600 hover:text-rose-700">
+              {t("回答の編集用URLをコピー")}
+            </button>
+          )}
           {/* 名前 */}
           <div className="mb-3">
             <label className="mb-1 block text-sm font-medium text-stone-700">{t("お名前")}<span className="text-rose-700">*</span>
@@ -1454,6 +1391,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <input
               type="text"
               required
+              maxLength={200}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("例：山田")}
@@ -1978,10 +1916,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           id="responses-section"
           className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
-          {/* スマホでは見出しの下に操作を1行で置く。入りきらないときはその行だけ横に流す */}
+          {/* 操作が入りきらない幅では折り返す。表だけを横スクロールさせる */}
           <div className="mb-4 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
             <h2 className="shrink-0 font-serif text-xl text-stone-700">{t("みんなの回答")}</h2>
-            <div className="-mx-1 flex w-full shrink-0 items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:gap-2 sm:pb-0">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-1 pb-1 sm:w-auto sm:gap-2 sm:pb-0">
               <button
                 type="button"
                 onClick={scrollToAnswerForm}
@@ -2065,7 +2003,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {showAnswerCounts && answerOptions.map((option, index) => (
+                  {showAnswerCounts && countOptions.map((option, index) => (
                     <tr
                       key={`count-${option.value}`}
                       className={`border-t border-stone-300 ${
@@ -2124,6 +2062,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       <td className="border-l border-stone-500/50 py-0">
                         <button
                           type="button"
+                          hidden={!canEditResponse(r)}
                           onClick={() => handleEdit(r)}
                           className="text-xs text-stone-500 transition-colors hover:text-rose-700"
                         >{t("編集")}</button>
@@ -2142,7 +2081,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <thead>
                   <tr>
                     <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>{t("候補日")}</th>
-                    {showAnswerCounts && answerOptions.map((option) => (
+                    {showAnswerCounts && countOptions.map((option) => (
                       <th
                         key={`count-heading-${option.value}`}
                         title={t("{0}の人数", option.value === '-' ? '−' : option.value)}
@@ -2159,6 +2098,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         )}
                         <button
                           type="button"
+                          hidden={!canEditResponse(r)}
                           onClick={() => handleEdit(r)}
                           className="text-xs font-normal text-stone-500 transition-colors hover:text-rose-700"
                         >{t("編集")}</button>
@@ -2177,7 +2117,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <span className="ml-1 text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
                         )}
                       </td>
-                      {showAnswerCounts && answerOptions.map((option) => {
+                      {showAnswerCounts && countOptions.map((option) => {
                         const count = answerCountsByCandidate.get(c.id)?.[option.value] ?? 0
                         return (
                           <td
