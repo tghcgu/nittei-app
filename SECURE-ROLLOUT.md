@@ -4,6 +4,16 @@
 
 このリリースはアプリの更新とSupabaseのSQL変更がセットです。GitHubへのpushだけでは、DBにもCloudflare本番にも反映されません。
 
+### 準備済みバージョン / Prepared Version
+
+- App commit: `d468305` (`main`)
+- Prepared Worker: `0d03b5a2-69be-485b-b5cf-68d872d45b68`
+- Preview: https://reliability-nittei-app.qoj.workers.dev
+- Production remains: `db406392-8e35-41a7-98de-7cb4e92fa64a` (app `af7801c`)
+- 検証: テスト14件、lint、TypeScript、Next.js webpack build、OpenNext build成功。npm auditの検出0件。Cloudflareプレビューの日英トップは200・操作可能・横あふれなし。本番の既存イベントも200。
+- **DB未適用のためプレビューのイベント表示・保存はまだ利用できません。本番へは未配信です。** 共有ID別アクセス制限を含むDB変更は、本番では未適用です。
+- Verification: 14 tests plus lint, typecheck, webpack/OpenNext builds passed; npm audit reported zero findings. Preview home pages work in both languages. Event reads/writes on the preview await the migration; no production promotion or DB security rollout has occurred.
+
 ### 現在の前提
 
 - ローカルテストはPGlite上で実際のSQL・RLS・RPCを検証します。本番DBを変更しません。
