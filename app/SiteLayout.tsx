@@ -9,7 +9,6 @@ import {
 } from "@/lib/site";
 import { ThemeToggle } from "./ThemeToggle";
 import { LocaleProvider } from './LocaleProvider';
-import { LanguageSwitch } from './LanguageSwitch';
 import type { Locale } from '@/lib/i18n';
 import { englishDescription } from '@/lib/i18n/metadata';
 import "./globals.css";
@@ -123,7 +122,6 @@ export default function RootLayout({
           } : jsonLd) }}
         />
         <LocaleProvider locale={locale}>
-          <LanguageSwitch />
           {children}
           <ThemeToggle />
         </LocaleProvider>

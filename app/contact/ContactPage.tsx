@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { LanguageSwitch } from '../LanguageSwitch'
 import { getI18n, type Locale } from '@/lib/i18n'
 
 export const metadata: Metadata = {
@@ -69,6 +70,8 @@ export default function ContactPage({ locale = 'ja' }: { locale?: Locale }) {
               href={path("/privacy")}
               className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
             >{t("プライバシーポリシー")}</Link>
+            <span className="mx-1">·</span>
+            <LanguageSwitch />
           </p>
         </div>
       </div>

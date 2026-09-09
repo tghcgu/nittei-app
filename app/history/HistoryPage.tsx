@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { LanguageSwitch } from '../LanguageSwitch'
 import { HistoryList } from './HistoryList'
 import { getI18n, type Locale } from '@/lib/i18n'
 
@@ -19,11 +20,12 @@ export default function HistoryPage({ locale = 'ja' }: { locale?: Locale }) {
   return (
     <div className="min-h-screen px-4 py-8">
       <div className="mx-auto max-w-xl">
-        <div className="mb-3">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <Link
             href={path("/")}
             className="text-xs text-stone-600 transition-colors hover:text-rose-700"
           >{t("← 日程組 トップへ")}</Link>
+          <LanguageSwitch />
         </div>
 
         <div className="rounded-2xl bg-white/70 px-6 py-6 shadow-sm backdrop-blur">

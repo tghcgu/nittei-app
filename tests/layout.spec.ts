@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test'
 import { getI18n } from '../lib/i18n'
-import { DEFAULT_ANSWER_CHOICES } from '../lib/answer-choices'
+import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES } from '../lib/answer-choices'
 
 async function expectTextInsideCell(text: Locator, wrapped = false) {
   const geometry = await text.evaluate(element => {
@@ -20,6 +20,71 @@ async function expectTextInsideCell(text: Locator, wrapped = false) {
 }
 
 for (const locale of ['ja', 'en'] as const) {
+  test(`${locale}: language switch shares the existing footer without adding height`, async ({ page, request }) => {
+    const { t, path } = getI18n(locale)
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    const shareId = `header-${locale}`
+    const seeded = await request.post('http://127.0.0.1:54329/rest/v1/events', {
+      data: { share_id: shareId, name: 'Header layout', answer_choices: DEFAULT_ANSWER_CHOICES },
+    })
+    expect(seeded.ok()).toBe(true)
+
+    for (const route of ['/', `/e/${shareId}`]) {
+      await page.goto(path(route))
+      const brand = route === '/'
+        ? page.getByRole('heading', { level: 1 })
+        : page.getByRole('link', { name: t('\u65e5\u7a0b\u7d44\u3067\u65b0\u3057\u3044\u30a4\u30d9\u30f3\u30c8\u3092\u4f5c\u6210'), exact: true })
+      await expect(brand).toBeVisible()
+      const language = page.getByRole('link', { name: locale === 'ja' ? 'English' : '\u65e5\u672c\u8a9e', exact: true })
+      await expect(language).toHaveCount(1)
+      await expect(language.locator('..')).toHaveClass(/footer-links/)
+      await expect(page.locator('body > footer')).toHaveCount(0)
+      await expect(language).toHaveAttribute('href', getI18n(locale === 'ja' ? 'en' : 'ja').path(route))
+
+      for (const width of [320, 360, 390, 400, 1440]) {
+        await page.setViewportSize({ width, height: 900 })
+        await page.evaluate(() => window.scrollTo(0, 0))
+        const title = (await brand.boundingBox())!
+        const theme = (await page.locator('.theme-toggle').boundingBox())!
+        const footer = (await language.boundingBox())!
+        expect(title.y).toBeLessThan(30)
+        expect(Math.abs(title.x + title.width / 2 - width / 2)).toBeLessThan(1)
+        expect(theme.x + theme.width).toBeLessThanOrEqual(title.x)
+        expect(footer.y).toBeGreaterThan(title.y + title.height)
+        const footerGeometry = await language.evaluate(link => {
+          const row = link.parentElement!
+          const separator = link.previousElementSibling as HTMLElement
+          const height = row.getBoundingClientRect().height
+          const links = [...row.querySelectorAll('a')].map(item => item.getBoundingClientRect())
+          link.style.display = 'none'
+          separator.style.display = 'none'
+          row.classList.remove('footer-links')
+          const originalHeight = row.getBoundingClientRect().height
+          row.classList.add('footer-links')
+          link.removeAttribute('style')
+          separator.removeAttribute('style')
+          return { height, originalHeight, rows: new Set(links.map(item => item.y)).size }
+        })
+        expect(footerGeometry.height).toBeLessThanOrEqual(footerGeometry.originalHeight)
+        if (route === '/') expect(footerGeometry.rows).toBe(1)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+        if (route !== '/') {
+          const edit = (await page.getByRole('link', { name: t('\u65e5\u7a0b\u3092\u7de8\u96c6'), exact: true }).boundingBox())!
+          expect(edit.x).toBeGreaterThanOrEqual(title.x + title.width)
+          expect(edit.x + edit.width).toBeLessThanOrEqual(width)
+        }
+        await page.screenshot({ path: `test-results/header-${route === '/' ? 'home' : 'event'}-${locale}-${width}.png` })
+      }
+      await page.locator('.theme-toggle').click()
+      await expect(page.locator('html')).toHaveAttribute('data-theme', route === '/' ? 'dark' : 'light')
+      await language.scrollIntoViewIfNeeded()
+      expect(await page.locator('.theme-toggle').evaluate(element => getComputedStyle(element).position)).toBe('absolute')
+      await page.screenshot({ path: `test-results/language-footer-${route === '/' ? 'home' : 'event'}-${locale}.png` })
+    }
+    expect(errors).toEqual([])
+  })
+
   test(`${locale}: long Latin names and comments wrap without widening short names`, async ({ page, request }) => {
     const { t, path } = getI18n(locale)
     const shareId = `wrap-${locale}`
@@ -77,7 +142,7 @@ for (const locale of ['ja', 'en'] as const) {
     await page.goto(path('/'))
     await expect(page.locator('[data-calendar-date]').first()).toBeVisible()
     await page.locator('.theme-toggle').click()
-    for (const width of [320, 390, 500]) {
+    for (const width of [320, 360, 390, 500]) {
       await page.setViewportSize({ width, height: 1000 })
       const times = page.locator('.candidate-default-times')
       const panel = times.locator('..')
@@ -108,10 +173,22 @@ for (const locale of ['ja', 'en'] as const) {
       expect(geometry.contained).toBe(true)
       const choices = page.locator('button[aria-pressed]')
       await expect(choices).toHaveCount(3)
-      for (const choice of await choices.all()) {
-        expect(await choice.innerText()).not.toContain('\u304b\u3089\u9078\u629e')
+      for (const [index, choice] of (await choices.all()).entries()) {
+        await expect(choice).toHaveText(t(ANSWER_CHOICE_SETS[index].label))
+        const textFits = await choice.evaluate(button => {
+          const box = button.getBoundingClientRect()
+          const range = document.createRange()
+          range.selectNodeContents(button)
+          return [...range.getClientRects()].every(line => line.left >= box.left && line.right <= box.right)
+        })
+        expect(textFits).toBe(true)
+        const before = await choice.boundingBox()
+        await choice.click()
+        await expect(choice).toHaveAttribute('aria-pressed', 'true')
+        await expect(page.locator('.answer-choice-options [aria-pressed="true"]')).toHaveCount(1)
+        expect(await choice.boundingBox()).toEqual(before)
       }
-      if (width >= 390) {
+      if (locale === 'ja' || width >= 390) {
         const tops = await choices.evaluateAll(buttons => buttons.map(button => button.getBoundingClientRect().top))
         expect(new Set(tops).size).toBe(1)
       }
@@ -124,5 +201,6 @@ for (const locale of ['ja', 'en'] as const) {
     await expect(page.locator('.candidate-default-times input').first()).toHaveValue('21:00')
     await page.setViewportSize({ width: 1440, height: 900 })
     expect((await page.locator('.candidate-default-times input').first().boundingBox())!.width).toBe(112)
+    expect(await page.locator('.answer-choice-options button').first().evaluate(button => getComputedStyle(button).fontSize)).toBe('14px')
   })
 }
