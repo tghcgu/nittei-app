@@ -25,6 +25,17 @@ body {
   }
 }
 
+.candidate-default-times {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.candidate-default-times input {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+}
+
 @media (max-width: 640px) {
   html[lang="ja"] .answer-choice-options {
     flex-wrap: nowrap;
@@ -39,15 +50,7 @@ body {
     white-space: nowrap;
   }
 
-  .candidate-default-times {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
   .candidate-default-times input {
-    flex: 1;
-    width: 0;
-    min-width: 0;
     padding-inline: 4px;
   }
 

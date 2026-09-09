@@ -200,11 +200,11 @@ for (const locale of ['ja', 'en'] as const) {
     await page.getByRole('button', { name: t('↶ 戻す'), exact: true }).click()
     await expect(page.locator('.candidate-default-times input').first()).toHaveValue('21:00')
     await page.setViewportSize({ width: 1440, height: 900 })
-    expect((await page.locator('.candidate-default-times input').first().boundingBox())!.width).toBe(112)
+    expect((await page.locator('.candidate-default-times input').first().boundingBox())!.width).toBeGreaterThan(112)
     expect(await page.locator('.answer-choice-options button').first().evaluate(button => getComputedStyle(button).fontSize)).toBe('14px')
   })
 
-  test(`${locale}: desktop time controls keep the phone row order`, async ({ page }) => {
+  test(`${locale}: desktop time controls match the phone layout`, async ({ page }) => {
     const { path } = getI18n(locale)
     await page.goto(path('/'))
     await expect(page.locator('[data-calendar-date]').first()).toBeVisible()
@@ -215,9 +215,14 @@ for (const locale of ['ja', 'en'] as const) {
         const box = el.getBoundingClientRect()
         const style = getComputedStyle(el)
         const times = el.querySelector('.candidate-default-times')!.getBoundingClientRect()
+        const label = el.querySelector('span')!.getBoundingClientRect()
+        const inputs = [...el.querySelectorAll('input[type="time"]')].map(input => input.getBoundingClientRect())
         const buttons = [...el.querySelectorAll('button')].map(button => button.getBoundingClientRect())
         const row = (rects: DOMRect[]) => new Set(rects.map(rect => Math.round(rect.top))).size
         return {
+          timesFillRow: Math.abs(times.width - (box.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 2)) < 1,
+          equalInputs: Math.abs(inputs[0].width - inputs[1].width) < 1,
+          labelAbove: label.bottom <= times.top,
           actionsBelow: buttons.slice(0, 3).every(button => button.top >= times.bottom),
           actionsOnOneRow: row(buttons.slice(0, 3)) === 1,
           historyBelow: buttons.slice(3).every(button => button.top >= Math.max(...buttons.slice(0, 3).map(action => action.bottom))),
@@ -228,6 +233,9 @@ for (const locale of ['ja', 'en'] as const) {
       })
       expect({ width, ...geometry }).toEqual({
         width,
+        timesFillRow: true,
+        equalInputs: true,
+        labelAbove: true,
         actionsBelow: true,
         actionsOnOneRow: true,
         historyBelow: true,
