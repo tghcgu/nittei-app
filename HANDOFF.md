@@ -3,6 +3,16 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-10: 本番UIリリース / Production UI release
+
+このブランチ `release/ui-20260910` は、既存DBで動く `af7801c` にUI修正 `6568c72` とmainの依存更新を取り込んだ本番用です。アプリ `0bb7908` をWorker `bbdd0f78-0c0c-4a65-8170-390227e3219f` として100%配信しました。
+
+テスト11件・lint・TypeScript・webpack/OpenNextビルド成功。本番とプレビューの日英トップ・既存イベントを320/390/1440pxで確認済み。本番データの書き換えテストやSQL移行は行っていません。
+
+最新mainは別途SQL移行が必要です。旧保存処理をこのブランチからmainへ戻さないでください。[mainの切り替え手順と依存警告](https://github.com/tghcgu/nittei-app/blob/main/SECURE-ROLLOUT.md)を確認してください。
+
+This UI-only production backport preserves legacy storage. Main's secure persistence release remains pending a coordinated database migration. See the linked rollout notes before deployment; they also record the outstanding Miniflare/Sharp tooling audit warnings.
+
 ## 最初に貼る文章
 
 以下を新しいチャットの最初に貼ると、このプロジェクトの文脈をかなり引き継げます。
