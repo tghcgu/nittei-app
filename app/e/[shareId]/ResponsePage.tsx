@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/app/LocaleProvider'
+import { LanguageSwitch } from '@/app/LanguageSwitch'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
 import { recordHistory } from '@/lib/history'
@@ -2225,7 +2226,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
         )}
 
-        <p className="mt-6 text-center text-[11px] text-stone-600">
+        <p className="footer-links mt-6 text-center text-[11px] text-stone-600">
           <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>
           <span className="mx-2">·</span>
           <Link href={path("/privacy")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("プライバシーポリシー")}</Link>
@@ -2242,6 +2243,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
           >{t("支援")}<span aria-hidden="true">↗</span>
           </a>
+          <span className="mx-1">·</span>
+          <LanguageSwitch />
         </p>
       </div>
     </div>

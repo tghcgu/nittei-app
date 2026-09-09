@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useI18n } from './LocaleProvider'
+import { LanguageSwitch } from './LanguageSwitch'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
 import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES } from '@/lib/answer-choices'
@@ -1200,7 +1201,7 @@ export default function Home() {
           {/* 回答の選択肢 */}
           <div className="mt-3">
             <label className="mb-1 block text-sm font-medium text-stone-700">{t("回答の選択肢")}</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="answer-choice-options flex flex-wrap gap-2">
               {ANSWER_CHOICE_SETS.map((set) => (
                 <button
                   key={set.value}
@@ -1214,8 +1215,7 @@ export default function Home() {
                       : 'border-stone-300 text-stone-700 hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800'
                   }`}
                 >
-                  <span className="sm:hidden">{set.values.join(' / ')}</span>
-                  <span className="hidden sm:inline">{t(set.label)}</span>
+                  {t(set.label)}
                 </button>
               ))}
             </div>
@@ -1565,7 +1565,7 @@ export default function Home() {
         <p className="mt-1 text-center text-xs text-stone-600">{t("不具合・ご要望はこちら:")}{' '}
           <Link href={path("/contact")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("お問い合わせ")}</Link>
         </p>
-        <p className="mt-1 text-center text-[11px] text-stone-600">
+        <p className="footer-links mt-1 text-center text-[11px] text-stone-600">
           <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>
           <span className="mx-2">·</span>
           <Link href={path("/privacy")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("プライバシーポリシー")}</Link>
@@ -1580,6 +1580,8 @@ export default function Home() {
             className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
           >{t("支援")}<span aria-hidden="true">↗</span>
           </a>
+          <span className="mx-1">·</span>
+          <LanguageSwitch />
         </p>
       </div>
 
