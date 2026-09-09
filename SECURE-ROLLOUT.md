@@ -6,6 +6,15 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-10 (2回目): 候補日時バーの統一 / Date-options bar unified**
+
+- Current production Worker: `45745046-71e2-4172-8766-7f1b54e96129` (100%). Previous: `bbdd0f78-0c0c-4a65-8170-390227e3219f`.
+- Application commit: `80429b1`, branch `release/ui-20260910`, cherry-picked from `main` `9f79d8e` + `0f9583a`. Both branches carry the identical change.
+- 候補日時バーはPCでもスマホと同じ4段になりました。`sm:contents` / `sm:w-auto` を外し、全幅指定を `@media (max-width: 640px)` の外へ出しています。スマホ側に残したのは `padding-inline: 4px` だけです。
+- DB・保存処理・Cron設定は一切触っていません。SQL移行は未実施のままです。
+- Verification: 18 Playwright tests (2 new desktop layout cases), lint, TypeScript, webpack production build, and OpenNext build passed. Production `/`, `/en`, `/e/ohbcvs2j`, `/en/e/ohbcvs2j`, `/history`, `/terms` returned 200. Browser measurements at 390/640/768/1024/1440px in both locales show one identical 165px bar with no horizontal overflow. `reliability.spec.ts` (ja) failed once on an unrelated draft-timing race and passed on re-run.
+- Preview: https://phone-rows-nittei-app.qoj.workers.dev . Production: https://nittei-app.qoj.workers.dev/ .
+
 **2026-09-10: UIのみ本番反映 / UI-only production release**
 
 - Current production Worker: `bbdd0f78-0c0c-4a65-8170-390227e3219f` (100%).

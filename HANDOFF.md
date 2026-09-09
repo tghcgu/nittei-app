@@ -3,6 +3,14 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-10: 候補日時バーをスマホ配置に統一 / Time controls unified
+
+本番Workerは `45745046-71e2-4172-8766-7f1b54e96129`、アプリは `release/ui-20260910` の `80429b1`（`main` の `0f9583a` と同じ内容）です。候補日時バーが幅ごとに段組みを変えていたのをやめ、日英・全幅で同じ4段（ラベル／時刻入力／適用ボタン／戻す・進む）にしました。時刻入力は全幅で左右均等に伸びます。
+
+**DB更新は引き続き未適用です。** 反映先は今も `release/ui-20260910` で、`main` をそのままdeployしてはいけません。
+
+Production still runs the UI-only release branch. The date-options bar now uses one layout at every width in both languages; the phone breakpoint keeps only its tighter input padding.
+
 ## 2026-09-10: UI修正は本番反映済み / UI deployed
 
 本番Workerは `bbdd0f78-0c0c-4a65-8170-390227e3219f`、アプリは `release/ui-20260910` の `0bb7908` です。`main` のUI修正 `6568c72` を、既存DBで動く `af7801c` に移して公開しました。英語リンクは既存フッターと同じ行、日本語スマホの回答選択肢は説明付き一行表示です。
