@@ -6,10 +6,23 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-10: UIのみ本番反映 / UI-only production release**
+
+- Current production Worker: `bbdd0f78-0c0c-4a65-8170-390227e3219f` (100%).
+- Application commit: `0bb7908`, branch `release/ui-20260910`. This backports UI commit `6568c72` onto the production-compatible `af7801c` base and uses the dependency lockfile from main.
+- 日本語スマホの回答選択肢を説明付きで一行表示に戻し、言語切り替えを既存リンクと同じ行へ移しました。上部の追加行・余白は削除済みです。
+- DBのRPC確認は引き続き `404 / PGRST202`。保存処理・DB定義・Cron設定は旧本番と同一で、SQL移行は行っていません。**最新mainをそのまま本番へdeployしないでください。**
+- Verification: 11 tests, lint, TypeScript, webpack production build, and OpenNext build passed. Preview and production `/`, `/en`, `/e/ohbcvs2j`, and `/en/e/ohbcvs2j` returned 200; browser checks at 320/390/1440px passed without page errors or horizontal page overflow. Production checks were read-only; create/answer/edit tests used an isolated local fixture.
+- Preview: https://compact-ui-nittei-app.qoj.workers.dev . Production: https://nittei-app.qoj.workers.dev/ . Previous compatible Worker: `db406392-8e35-41a7-98de-7cb4e92fa64a`.
+- Before the database cutover, rebuild and upload **current main**. The older prepared secure Worker below does not contain these latest UI changes. Never merge legacy storage code back from the UI release branch into main.
+- Dependency audit: four high-severity entries remain on the `wrangler -> miniflare -> sharp@0.35.2` tooling chain. Next.js resolves `sharp@0.35.4`; do not report the entire dependency tree as audit-clean. Track a compatible tooling update separately instead of accepting the forced Wrangler downgrade suggested by npm. [Sharp advisory](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c).
+
+**2026-09-08: Prepared secure version (not production)**
+
 - App commit: `d468305` (`main`)
 - Prepared Worker: `0d03b5a2-69be-485b-b5cf-68d872d45b68`
 - Preview: https://reliability-nittei-app.qoj.workers.dev
-- Production remains: `db406392-8e35-41a7-98de-7cb4e92fa64a` (app `af7801c`)
+- Production at preparation time: `db406392-8e35-41a7-98de-7cb4e92fa64a` (app `af7801c`)
 - 検証: テスト14件、lint、TypeScript、Next.js webpack build、OpenNext build成功。npm auditの検出0件。Cloudflareプレビューの日英トップは200・操作可能・横あふれなし。本番の既存イベントも200。
 - **DB未適用のためプレビューのイベント表示・保存はまだ利用できません。本番へは未配信です。** 共有ID別アクセス制限を含むDB変更は、本番では未適用です。
 - Verification: 14 tests plus lint, typecheck, webpack/OpenNext builds passed; npm audit reported zero findings. Preview home pages work in both languages. Event reads/writes on the preview await the migration; no production promotion or DB security rollout has occurred.

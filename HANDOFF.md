@@ -3,6 +3,14 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-10: UI修正は本番反映済み / UI deployed
+
+本番Workerは `bbdd0f78-0c0c-4a65-8170-390227e3219f`、アプリは `release/ui-20260910` の `0bb7908` です。`main` のUI修正 `6568c72` を、既存DBで動く `af7801c` に移して公開しました。英語リンクは既存フッターと同じ行、日本語スマホの回答選択肢は説明付き一行表示です。
+
+**DB更新は未適用です。最新mainの保存・権限処理は本番へ出していません。** DB移行前はこのリリースブランチを基準にし、移行時は最新mainから新しいWorkerを準備してください。旧保存コードをmainへ戻さないでください。詳細・検証結果・依存警告は `SECURE-ROLLOUT.md` を参照。
+
+Production uses the UI-only backport, not the current main application. Existing storage behavior and data were preserved. Rebuild current main for the coordinated SQL cutover; do not promote the older prepared secure Worker, which lacks the latest UI changes.
+
 ## 2026-09-08: DB切り替え必須 / Database cutover required
 
 新しい保存・権限処理は `supabase/secure-scheduling.sql` が必須です。準備時点では本番RPCは未導入でした。現在の適用状況を確認し、`SECURE-ROLLOUT.md` の手順でDBと対応Workerをセットで切り替えてください。SQLなしで新クライアントを本番へ出すことや、旧公開ポリシーを実行し直すことは禁止です。
