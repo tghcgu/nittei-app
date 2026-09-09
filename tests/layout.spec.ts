@@ -203,4 +203,38 @@ for (const locale of ['ja', 'en'] as const) {
     expect((await page.locator('.candidate-default-times input').first().boundingBox())!.width).toBe(112)
     expect(await page.locator('.answer-choice-options button').first().evaluate(button => getComputedStyle(button).fontSize)).toBe('14px')
   })
+
+  test(`${locale}: desktop time controls keep the phone row order`, async ({ page }) => {
+    const { path } = getI18n(locale)
+    await page.goto(path('/'))
+    await expect(page.locator('[data-calendar-date]').first()).toBeVisible()
+    const panel = page.locator('.candidate-default-times').locator('..')
+    for (const width of [390, 640, 768, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 1000 })
+      const geometry = await panel.evaluate(el => {
+        const box = el.getBoundingClientRect()
+        const style = getComputedStyle(el)
+        const times = el.querySelector('.candidate-default-times')!.getBoundingClientRect()
+        const buttons = [...el.querySelectorAll('button')].map(button => button.getBoundingClientRect())
+        const row = (rects: DOMRect[]) => new Set(rects.map(rect => Math.round(rect.top))).size
+        return {
+          actionsBelow: buttons.slice(0, 3).every(button => button.top >= times.bottom),
+          actionsOnOneRow: row(buttons.slice(0, 3)) === 1,
+          historyBelow: buttons.slice(3).every(button => button.top >= Math.max(...buttons.slice(0, 3).map(action => action.bottom))),
+          historyOnOneRow: row(buttons.slice(3)) === 1,
+          historyRight: Math.abs(buttons.at(-1)!.right - (box.right - parseFloat(style.paddingRight) - 1)) < 1,
+          contained: buttons.every(button => button.left >= box.left && button.right <= box.right),
+        }
+      })
+      expect({ width, ...geometry }).toEqual({
+        width,
+        actionsBelow: true,
+        actionsOnOneRow: true,
+        historyBelow: true,
+        historyOnOneRow: true,
+        historyRight: true,
+        contained: true,
+      })
+    }
+  })
 }
