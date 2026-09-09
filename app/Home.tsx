@@ -1260,7 +1260,7 @@ export default function Home() {
                   className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
               </div>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:contents">
+              <div className="flex w-full flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={clearDefaultTime}
@@ -1293,7 +1293,7 @@ export default function Home() {
                 <span className="text-xs text-stone-600">
                   {selectedCandidateIds.size}{t("件選択中")}</span>
               )}
-              <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+              <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-1">
                 <button
                   type="button"
                   onClick={undoCandidateChange}
