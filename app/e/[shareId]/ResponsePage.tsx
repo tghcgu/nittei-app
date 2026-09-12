@@ -2139,7 +2139,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* 日時はサーバー(UTC)とブラウザ(現地時間)で食い違うため、マウント後に描画する */}
         {infoMounted && (
           <div className="mt-8 rounded-2xl bg-white/50 px-4 py-3 text-[11px] leading-relaxed text-stone-600">
-            <p className="mb-1 font-medium text-stone-700">{t("【このページについての情報】")}</p>
+            <p className="mb-1 font-medium text-stone-700">
+              {t("【このページについての情報】")}
+              <span className="mx-1">·</span>
+              <Link href={path("/updates")} className="font-normal underline underline-offset-2 transition-colors hover:text-rose-700">{t("更新履歴")}</Link>
+            </p>
             <p>{t("ページ表示日時：")}{formatDateTime(viewedAt)}</p>
             <p>{t("作成日時：")}{formatDateTime(event.created_at)}</p>
             <p>{t("最終更新日時：")}{formatDateTime(lastUpdatedAt)}</p>

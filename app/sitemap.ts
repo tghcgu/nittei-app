@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { siteUrl } from '@/lib/site'
+import { updates } from '@/lib/updates'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const pages: MetadataRoute.Sitemap = [
@@ -26,6 +27,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.3,
+    },
+    {
+      url: `${siteUrl}/updates`,
+      lastModified: new Date(`${updates[0].date}T00:00:00+09:00`),
+      changeFrequency: 'weekly',
+      priority: 0.4,
     },
   ]
   return pages.flatMap((page) => {
