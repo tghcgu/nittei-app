@@ -154,6 +154,8 @@ Tests start a separate Next.js server on port `3100` and a PostgREST-shaped endp
 
 旧Vercelプロジェクトは、Google Search Consoleのアドレス変更と既存リンクの維持に使っています。移行が完全に落ち着くまでは削除しないでください。
 
+Vercelの不要な自動ビルドと失敗通知を防ぐため、`vercel.json` の `git.deploymentEnabled` を `false` にしています。`main`・`develop`・`release/ui-20260910` に適用済みです。この設定はGit連携による新規デプロイを止めるもので、既存の旧URL転送やCloudflare本番を削除・変更しません。新しいブランチでも設定を引き継いでください。過去の失敗履歴や送信済みメールは消えません。手動CLIやDeploy HookによるVercel配信まで止める設定ではありません。[Vercel公式仕様](https://vercel.com/docs/project-configuration/git-configuration#turning-off-all-automatic-deployments)
+
 ### 構成
 
 ```mermaid
@@ -888,6 +890,8 @@ Calendar files are parsed entirely in the browser. The original `.ics` or `.zip`
 | Page view history | https://nittei-app.qoj.workers.dev/history | Per-device list, `noindex` |
 
 Do not remove the legacy Vercel project while old links and the Google Search Console address migration still depend on its redirect.
+
+`git.deploymentEnabled` is `false` in `vercel.json` on `main`, `develop`, and `release/ui-20260910` to stop obsolete Git-triggered Vercel builds and their failure notifications. Keep this setting in new branches. It does not remove existing redirects or change Cloudflare production, erase past failures or emails, or disable manual CLI/Deploy Hook deployments. [Vercel configuration reference](https://vercel.com/docs/project-configuration/git-configuration#turning-off-all-automatic-deployments)
 
 ### Architecture
 
