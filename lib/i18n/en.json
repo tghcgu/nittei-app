@@ -46,7 +46,7 @@
   "件選択中": " selected",
   "↶ 戻す": "↶ Undo",
   "↷ 進む": "↷ Redo",
-  "この月の今日以降を選択（{0}日）": "Select remaining dates this month ({0})",
+  "この月の今日以降を選択（{0}日）": "Select remaining days ({0})",
   "この月は追加できる日がありません": "No remaining dates this month",
   "日付を選んで、下の「追加」ボタンで確定（ドラッグや曜日ボタンでまとめて選択）": "Select dates, then choose Add. Drag or select weekdays to pick multiple dates.",
   "{0}日を追加": "Add dates ({0})",

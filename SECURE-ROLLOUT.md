@@ -6,6 +6,21 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-12 本番反映、09-13 最終確認 / Deployed and verified**
+
+- Current production Worker: `d1229529-9fbc-482c-a159-ce4c7e03787e` (100%). Application: `22f8e85`, branch `release/ui-20260910`. Previous compatible Worker: `45745046-71e2-4172-8766-7f1b54e96129`.
+- Preview: https://improvements-nittei-app.qoj.workers.dev . Production: https://nittei-app.qoj.workers.dev/ . 日英トップ・既存イベントを320/390/1440pxで確認し、横あふれとブラウザーエラーはありません。下書きの言語間引継ぎ、日またぎのICS判定、取り消し、テーマ切り替えも確認済みです。公開DBへの書き込みテストは行っていません。
+
+- DBを変えない修正を `nittei-app-ui-release` に移しました。日またぎ・終日・繰り返し例外の判定、カレンダーファイルの上限、言語切替時の下書きと履歴の保持に対応します。
+- 新規回答は再送時に同じ回答ID・回答明細IDを再利用します。保存前、保存後、回答者作成後の通信失敗と、言語切り替えを挟む再送をローカルテストで確認しました。これは再送の重複防止であり、旧DBでの複数テーブルの保存を原子的にするものではありません。ページ再読み込み後の再送は保証しません。
+- 英語の月まとめ選択は `Select remaining days (件数)` に短縮し、320pxでも一行に収まることを確認しました。
+- mainに `npm run check:database` を追加しました。公開キーでの読み取りのみで、必要な列・共有IDなしの読み取り制限・読み取り専用の権限確認RPCを検査します。`npm run deploy` はこのチェックから始まり、未移行ならビルド・配信前に停止します。DB管理画面での全SQL適用や保存テストの代わりではありません。
+- 現在の接続先はチェックでHTTP 400となり、未移行のままです。管理用Supabase認証情報は環境にありません。本番DBは変更していません。
+- 検証結果: 本番互換版は全22テスト・lint・TypeScript込みのwebpack/OpenNextビルドに成功。再送テストの待機条件を、途中保存でも現れる名前から送信完了メッセージへ修正しました。mainも最後の全22テスト、DB事前確認の単体テスト3件、lintが成功しました。mainの初回検証では2件のタイムアウトがありましたが、テストを弱める変更はしていません。
+- この作業開始時、mainの `.git/HEAD` と一部ファイルが欠けていました。Git管理情報をバックアップ後、mainのHEADとGitHubのリモート参照を復旧しました。`git fsck --no-dangling` は成功。元のコミットからアイコンと日英の既存テストを復元し、公開中のfavicon・icon.pngも元データとハッシュ一致しています。`.vscode/` は変更していません。
+
+The compatibility branch's calendar/draft fixes and stable IDs for retrying a new response are deployed as `22f8e85` on Worker `d1229529-9fbc-482c-a159-ce4c7e03787e` at 100%. Both locales, existing events, 320/390/1440px layouts, drafts, overnight imports and original icons passed read-only production checks. Its writes are still not transactional. The secure main deployment now has a read-only database preflight; this is not a migration or a complete security audit. Production database configuration/data were not changed. Git metadata and missing original files were recovered. Coordinate the SQL migration and matching main Worker as described below; never merge legacy writes back into main.
+
 **2026-09-10 (2回目): 候補日時バーの統一 / Date-options bar unified**
 
 - Current production Worker: `45745046-71e2-4172-8766-7f1b54e96129` (100%). Previous: `bbdd0f78-0c0c-4a65-8170-390227e3219f`.
@@ -49,7 +64,7 @@
 2. `npm ci`、`npm run lint`、`npx tsc --noEmit`、`npm test`、`npm run build -- --webpack` を通します。
 3. `npx opennextjs-cloudflare build --skipNextBuild` と `npx wrangler versions upload --preview-alias reliability --keep-vars` で新しいWorkerバージョンを準備します。この時点では本番へ100%配信しません。バージョンIDを控えます。
 4. 短い切り替え時間を確保し、Supabase SQL Editorで **`supabase/secure-scheduling.sql` 全体** を実行します。1トランザクションで適用され、既存イベント・回答の移行時削除は行いません。
-5. 続けて `npx wrangler versions deploy <新しいバージョンID>@100 --yes` で対応アプリを配信します。SQL適用から新アプリ配信まで旧クライアントは保存・読み取りに失敗します。開きっぱなしの旧タブには再読み込みが必要です。
+5. `npm run check:database` で読み取りの互換性を確認し、続けて `npx wrangler versions deploy <新しいバージョンID>@100 --yes` で対応アプリを配信します。SQL適用から新アプリ配信まで旧クライアントは保存・読み取りに失敗します。開きっぱなしの旧タブには再読み込みが必要です。
 6. 日本語と英語で、既存共有URLの表示、新規イベント作成、回答・編集、編集用URLによる別端末からの復旧を確認します。通常の共有URLにはキーを含めないでください。
 7. 公開キーで共有IDなしの `events?select=id` が空配列になること、正しい `x-nittei-share-id` 付きでそのイベントだけ読めること、直接のテーブル書き込みが拒否されることを確認します。
 
@@ -73,7 +88,7 @@ This release requires **both the matching application and the Supabase migration
 1. Back up the existing database. Ensure the four scheduling tables, answer-choice column, and update triggers exist. For a new database, follow the base schema setup in README first.
 2. Run install, lint, TypeScript, browser/database tests, and the webpack production build.
 3. Build OpenNext and upload a Worker version with `--preview-alias reliability --keep-vars`. Record its ID; do not promote it before migrating the DB.
-4. During a short coordinated cutover, run **all of `supabase/secure-scheduling.sql`** in Supabase SQL Editor, then immediately deploy the matching Worker version at 100%. The migration runs transactionally and does not delete existing data.
+4. During a short coordinated cutover, run **all of `supabase/secure-scheduling.sql`** in Supabase SQL Editor, verify read compatibility with `npm run check:database`, then immediately deploy the matching Worker version at 100%. The migration runs transactionally and does not delete existing data.
 5. Check old event URLs in both languages, new event/response creation and editing, private edit-link recovery, scoped reads, and rejection of direct writes. Previously opened tabs must reload.
 
 Supabase project administrator access is needed for SQL execution. A publishable key or Cloudflare deployment login is not sufficient. Do not expose secret credentials. The old client cannot operate after this migration; rolling back only the Worker breaks it. Fix forward with a matching client and do not restore permissive RLS.

@@ -136,7 +136,7 @@ test('calendar drag reversal, selection undo, theme, and edit-link locale', asyn
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2, { steps: 8 })
   await page.mouse.up()
   await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(0)
-  await page.getByRole('button', { name: /Select remaining dates this month/ }).click()
+  await page.getByRole('button', { name: /Select remaining days/ }).click()
   expect(await page.locator('[data-calendar-date].bg-rose-700').count()).toBeGreaterThan(0)
   await page.getByRole('button', { name: '↶ Undo', exact: true }).click()
   await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(0)

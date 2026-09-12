@@ -10,15 +10,17 @@
 
 > このリリースの本番反映にはSupabaseのSQL切り替えが必要です。[切り替え手順 / Required database rollout](SECURE-ROLLOUT.md) を先に確認してください。Do not deploy this client before applying its matching database migration.
 
+`npm run check:database` はDBを変更せずに配信前の互換性を確認します。`npm run deploy` でも最初に実行し、未移行のDBへの誤配信を止めます。確認処理のテストは `npm run test:deployment` です。The deployment preflight is read-only and fails closed when the database is incompatible; it does not apply SQL or replace the coordinated rollout.
+
 ### 英語版 / English UI
 
 - 日本語の `/` と `/e/[shareId]` はそのままです。英語版は `/en` と `/en/e/[shareId]` で開きます。
-- 右上の `English` / `日本語` で切り替えできます。既存のイベントも同じID・回答データで開けます。
+- フッターの `English` / `日本語` で切り替えできます。既存のイベントも同じID・回答データで開けます。
 - 作成・編集・回答・集計・履歴・カレンダー読み込み・お問い合わせ・利用規約・プライバシーポリシーに対応しています。
 - イベント名・説明・名前・コメントは自動翻訳しません。言語の切り替えで日付・時刻・回答値を変換することもありません。タイムゾーン変換機能ではありません。
 - 言語切り替え時はページを読み直しますが、作成・編集・回答の下書きと戻す/進むの履歴をタブ内に保持して復元します。カレンダーファイル自体は保存しません。
 
-The Japanese routes remain unchanged. The English interface is available at `/en`, with shared event pages at `/en/e/[shareId]`. Use the language link in the upper-right corner to switch. Both languages use the same event IDs and database; no database migration or separate Supabase project is required. User-entered content is not translated, and switching languages does not convert dates or time zones. Switching reloads the page while preserving creation/edit/response drafts and undo history in sessionStorage for that tab. Calendar files themselves are not retained.
+The Japanese routes remain unchanged. The English interface is available at `/en`, with shared event pages at `/en/e/[shareId]`. Use the language link in the footer to switch. Both languages use the same event IDs and database; localization alone needs no separate database. The secure storage changes in this branch do require the migration linked above. User-entered content is not translated, and switching languages does not convert dates or time zones. Switching reloads the page while preserving creation/edit/response drafts and undo history in sessionStorage for that tab. Calendar files themselves are not retained.
 
 Shared UI: `app/Home.tsx`, `app/e/[shareId]/ResponsePage.tsx`. Route entry points: `app/(ja)/` and `app/(en)/en/`. Translations and date formatting: `lib/i18n/`. Add new interface messages to `lib/i18n/en.json` and use `t(...)`; keep user data out of the translation function. Keep internal links localized with `path(...)`.
 

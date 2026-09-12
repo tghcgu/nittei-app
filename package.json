@@ -8,8 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",
+    "test:deployment": "node --test scripts/check-database.test.mjs",
+    "check:database": "node scripts/check-database.mjs",
     "preview": "next build --webpack && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare preview",
-    "deploy": "next build --webpack && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare deploy"
+    "deploy": "npm run check:database && next build --webpack && opennextjs-cloudflare build --skipNextBuild && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

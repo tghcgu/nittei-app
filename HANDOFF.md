@@ -3,6 +3,14 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-13: 改善版の本番確認 / Production improvements verified
+
+本番は `release/ui-20260910` の `22f8e85`、Worker `d1229529-9fbc-482c-a159-ce4c7e03787e` (100%) です。日またぎ・終日・繰り返し例外のICS判定、ファイル上限、言語切替時の下書きと履歴、新規回答の再送時の重複防止、英語の月選択ラベル短縮を反映しました。日英・320/390/1440pxで公開サイトを確認し、アイコンは元のデータと一致しています。
+
+本番互換版の22テスト・lint・TypeScript・webpack/OpenNextビルド、mainの22テスト・配信前確認の3テスト・lintは成功。Git管理情報と欠けていた元ファイルを復旧済みです。**SQL移行は未適用で、mainはまだ本番ではありません。** mainの `npm run deploy` は読み取り専用のDB事前確認から始まり、未移行なら停止します。詳細と切り替え手順は `SECURE-ROLLOUT.md` を参照してください。
+
+Production uses the compatibility branch's calendar, draft and retry fixes. Legacy writes remain non-transactional, and retry IDs do not survive reloads. The secure main code still needs its coordinated SQL migration; never deploy it to the legacy database or merge legacy storage back into main. Production verification was read-only.
+
 ## 2026-09-10: 候補日時バーをスマホ配置に統一 / Time controls unified
 
 本番Workerは `45745046-71e2-4172-8766-7f1b54e96129`、アプリは `release/ui-20260910` の `80429b1`（`main` の `0f9583a` と同じ内容）です。候補日時バーが幅ごとに段組みを変えていたのをやめ、日英・全幅で同じ4段（ラベル／時刻入力／適用ボタン／戻す・進む）にしました。時刻入力は全幅で左右均等に伸びます。
