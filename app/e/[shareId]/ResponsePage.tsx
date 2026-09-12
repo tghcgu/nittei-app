@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useState, useRef, useSyncExternalStore
 import Link from 'next/link'
 import { useI18n } from '@/app/LocaleProvider'
 import { LanguageSwitch } from '@/app/LanguageSwitch'
+import { useLanguageDraft } from '@/app/useLanguageDraft'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
 import { recordHistory } from '@/lib/history'
 import { answerValuesFor } from '@/lib/answer-choices'
 import { describeCalendarFileError, describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
+import { calendarBusyPeriods, overlapsCalendar, type BusyPeriod } from '@/lib/calendar'
 import type { Event, Candidate, Answer, AnswerValue } from '@/lib/database.types'
 
 // ---- 型定義 ----
@@ -56,18 +58,6 @@ const ANSWER_OPTIONS = [
   },
 ]
 
-const MAX_RECURRING_OCCURRENCES = 10000
-
-type CalendarComponent = {
-  getFirstPropertyValue: (name: string) => unknown
-}
-
-type BusyPeriod = {
-  start: Date
-  end: Date
-  isAllDay: boolean
-}
-
 type ClockRange = {
   start: number
   end: number | null
@@ -106,13 +96,6 @@ const ANSWER_PAINT_MOVE_THRESHOLD = 8
 const ANSWER_PAINT_EDGE_SCROLL_ZONE = 72
 const ANSWER_PAINT_EDGE_SCROLL_MIN_SPEED = 3
 const ANSWER_PAINT_EDGE_SCROLL_MAX_SPEED = 14
-
-function toDateStr(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 const emptySubscribe = () => () => {}
 
@@ -161,19 +144,6 @@ function answerColor(v: AnswerValue | undefined) {
   if (v === '✕') return 'text-stone-600'
   if (v === '-') return 'text-blue-600'
   return 'text-stone-500'
-}
-
-function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
-  const startDate = toDateStr(start)
-  const endDate = toDateStr(end)
-  if (startDate === endDate) return dateStr === startDate
-  return dateStr >= startDate && dateStr < endDate
-}
-
-function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
-  const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
-
-  return status !== 'CANCELLED'
 }
 
 function cloneLastSetAllAnswers(value: LastSetAllAnswers | null): LastSetAllAnswers | null {
@@ -301,6 +271,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // 共通メモ：常時表示、回答全体で1つ（responses.note に保存）
   const [sharedNote, setSharedNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pendingResponse, setPendingResponse] = useState<{ id: string; answerIds: Record<string, string> } | null>(null)
+  const submitInFlightRef = useRef(false)
   const [submitSuccess, setSubmitSuccess] = useState<'created' | 'updated' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tablePrefsOverride, setTablePrefsOverride] = useState<TablePrefs | null>(null)
@@ -347,6 +319,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
+
+  useLanguageDraft(`response-${shareId}`, {
+    name, sharedNote, answers, detailNotes, editingResponseId, editingAnswerIds, pendingResponse,
+    lastSetAllAnswers, answerPast, answerFuture, keepExistingAnswers, showPeerAnswers,
+  }, draft => {
+    setName(draft.name)
+    setSharedNote(draft.sharedNote)
+    setAnswers(draft.answers)
+    setDetailNotes(draft.detailNotes)
+    setEditingResponseId(draft.editingResponseId)
+    setEditingAnswerIds(draft.editingAnswerIds)
+    setPendingResponse(draft.pendingResponse)
+    setLastSetAllAnswers(draft.lastSetAllAnswers)
+    setAnswerPast(draft.answerPast)
+    setAnswerFuture(draft.answerFuture)
+    setKeepExistingAnswers(draft.keepExistingAnswers)
+    setShowPeerAnswers(draft.showPeerAnswers)
+  })
 
   async function handleCopyUrl() {
     const url = `${window.location.origin}${path(`/e/${shareId}`)}`
@@ -571,6 +561,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }, [showPeerAnswers, editingResponseId])
 
   function handleEdit(r: ResponseWithAnswers) {
+    setPendingResponse(null)
     setName(r.name)
     const newAnswers: Record<string, AnswerValue> = {}
     const newDetailNotes: Record<string, string> = {}
@@ -593,6 +584,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   function handleCancelEdit() {
+    setPendingResponse(null)
     setName('')
     setAnswers({})
     setDetailNotes({})
@@ -639,51 +631,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
   }
 
-  // time_label（例: "19:00〜22:00" や "21:00〜"）をパースしてISO文字列のstart/endを返す
-  function parseCandidateTimeRange(date: string, timeLabel: string | null) {
-    const fallback = {
-      start: new Date(date + 'T00:00:00').toISOString(),
-      end:   new Date(date + 'T23:59:00').toISOString(),
-    }
-    if (!timeLabel) return fallback
-
-    const m = timeLabel.match(/(\d{1,2}):(\d{2})[〜~\-](?:(\d{1,2}):(\d{2}))?/)
-    if (!m) return fallback
-
-    const startDate = new Date(date + 'T00:00:00')
-    startDate.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0)
-
-    let endDate: Date
-    if (m[3] !== undefined) {
-      endDate = new Date(date + 'T00:00:00')
-      endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
-      // 21:00〜10:00 や 21:00〜00:59 のように終わりが始まりより前なら翌日とみなす
-      if (endDate.getTime() <= startDate.getTime()) {
-        endDate.setDate(endDate.getDate() + 1)
-      }
-    } else {
-      endDate = new Date(startDate)
-      endDate.setHours(endDate.getHours() + 3)
-    }
-
-    return { start: startDate.toISOString(), end: endDate.toISOString() }
-  }
-
   // ---- .ics ファイルから日程を読み取り ----
   const icsInputRef = useRef<HTMLInputElement>(null)
 
   function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
     const newAnswers: Record<string, AnswerValue | null> = {}
     for (const c of candidates) {
-      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.time_label)
-      const csMs = new Date(cs).getTime()
-      const ceMs = new Date(ce).getTime()
-      const datePrefix = c.date
-
-      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-        if (isAllDay) return isDateInAllDayRange(datePrefix, start, end)
-        return start.getTime() < ceMs && end.getTime() > csMs
-      })
+      const isBusy = overlapsCalendar({ date: c.date, timeLabel: c.time_label }, busyPeriods)
 
       newAnswers[c.id] = isBusy ? icsBusyValue : icsFreeValue
     }
@@ -744,44 +698,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setIcsMessage('')
 
     try {
-      const ICAL = (await import('ical.js')).default
-      const sortedDates = [...candidates].sort((a, b) => a.date.localeCompare(b.date))
-      // 範囲境界はタイムゾーン情報なしの時刻として比較され（UTC扱い）、実際の境界と
-      // 最大±14時間ずれるため、前後1日広げて定期予定の取りこぼしを防ぐ。
-      // 厳密な重なり判定は後段の busyPeriods チェックが行う。
-      const rangeStartDay = new Date(sortedDates[0].date + 'T00:00:00')
-      rangeStartDay.setDate(rangeStartDay.getDate() - 1)
-      const rangeEndDay = new Date(sortedDates[sortedDates.length - 1].date + 'T00:00:00')
-      rangeEndDay.setDate(rangeEndDay.getDate() + 1)
-      const rangeStart = ICAL.Time.fromDateTimeString(toDateStr(rangeStartDay) + 'T00:00:00')
-      const rangeEnd = ICAL.Time.fromDateTimeString(toDateStr(rangeEndDay) + 'T23:59:59')
-
-      const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
-
       const calendarFiles = await readCalendarFileTexts(file)
-      for (const { text } of calendarFiles.texts) {
-        const jcal = ICAL.parse(text)
-        const comp = new ICAL.Component(jcal)
-        const vevents = comp.getAllSubcomponents('vevent')
-
-        for (const vevent of vevents) {
-          const event = new ICAL.Event(vevent)
-          if (!isBlockingCalendarEvent(vevent)) continue
-          if (event.isRecurring()) {
-            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-            let count = 0
-            for (let next = expand.next(); next && count < MAX_RECURRING_OCCURRENCES; next = expand.next()) {
-              count++
-              const detail = event.getOccurrenceDetails(next)
-              if (detail.startDate.compare(rangeEnd) > 0) break
-              if (detail.endDate.compare(rangeStart) <= 0) continue
-              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            }
-          } else {
-            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
-          }
-        }
-      }
+      const busyPeriods = await calendarBusyPeriods(calendarFiles, candidates.map(c => ({ date: c.date, timeLabel: c.time_label })))
 
       applyBusyPeriodsToAnswers(
         busyPeriods,
@@ -1274,8 +1192,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (deletingResponseId) return
+    if (deletingResponseId || submitInFlightRef.current) return
 
+    submitInFlightRef.current = true
     setIsSubmitting(true)
     setError(null)
 
@@ -1318,21 +1237,25 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           if (insError) throw insError
         }
       } else {
-        const { data: response, error: responseError } = await supabase
+        // Reuse primary keys when a write succeeds but its HTTP response is lost.
+        const pending = pendingResponse ?? { id: crypto.randomUUID(), answerIds: {} }
+        const answerIds = { ...pending.answerIds }
+        for (const row of answerRows) answerIds[row.candidate_id] ??= crypto.randomUUID()
+        setPendingResponse({ ...pending, answerIds })
+        const { error: responseError } = await supabase
           .from('responses')
-          .insert({ event_id: event.id, name, note: sharedNote || null })
-          .select()
-          .single()
+          .upsert({ id: pending.id, event_id: event.id, name, note: sharedNote || null }, { onConflict: 'id' })
 
         if (responseError) throw responseError
 
         const { error: answersError } = await supabase
           .from('answers')
-          .insert(answerRows.map((a) => ({ ...a, response_id: response.id })))
+          .upsert(answerRows.map((a) => ({ ...a, id: answerIds[a.candidate_id], response_id: pending.id })), { onConflict: 'id' })
 
         if (answersError) throw answersError
       }
 
+      setPendingResponse(null)
       setName('')
       setAnswers({})
       setDetailNotes({})
@@ -1357,6 +1280,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       console.error(err)
       setError(t("送信中にエラーが発生しました。もう一度試してください。"))
     } finally {
+      submitInFlightRef.current = false
       setIsSubmitting(false)
     }
   }

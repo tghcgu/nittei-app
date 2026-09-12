@@ -23,10 +23,19 @@ const api = createServer(async (req, res) => {
   })
   let rows = db[table].filter(matches)
   if (req.method === 'POST') {
-    rows = (Array.isArray(input) ? input : [input]).map(row => ({
-      id: randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...row,
-    }))
-    db[table].push(...rows)
+    const incoming = Array.isArray(input) ? input : [input]
+    const merging = req.headers.prefer?.includes('resolution=merge-duplicates')
+    if (!merging && incoming.some(row => row.id && db[table].some(saved => saved.id === row.id))) {
+      res.writeHead(409, { 'Content-Type': 'application/json' }).end(JSON.stringify({ code: '23505' }))
+      return
+    }
+    rows = incoming.map(row => {
+      const existing = row.id && db[table].find(saved => saved.id === row.id)
+      if (existing) return Object.assign(existing, row)
+      const created = { id: randomUUID(), created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...row }
+      db[table].push(created)
+      return created
+    })
   } else if (req.method === 'PATCH') {
     rows.forEach(row => Object.assign(row, input, { updated_at: new Date().toISOString() }))
   } else if (req.method === 'DELETE') {

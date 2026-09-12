@@ -1,5 +1,17 @@
 # 日程組 引き継ぎメモ
 
+## 2026-09-12: 改善版の検証 / Release Verification
+
+このフォルダーには、日またぎ・終日・繰り返し例外の判定、ファイル上限、日英切替時の下書き・履歴の保持、新規回答の再送時のID再利用、英語の月選択ラベル短縮を追加しました。22件のPlaywrightテスト、lint、TypeScript込みのwebpackビルド、OpenNextビルドが成功しました。再送テストは、途中で保存された名前ではなく送信完了を待ってからDBを検査します。
+
+DBと公開Workerは変更していません。新規回答の再送は重複を防ぎますが、旧DBへの複数回の書き込みは引き続き原子的ではありません。完全な保存・権限の更新はmainの `supabase/secure-scheduling.sql` と対応アプリの同時切り替えが必要です。旧保存処理をmainへ戻さないでください。
+
+Git管理情報をバックアップ後、失われたmainのHEAD参照を復旧し、GitHubからリモート参照を取得しました。`git fsck --no-dangling` は成功しています。欠けていたアイコンと日英の既存テストは元のコミットから復元しました。faviconとicon.pngは元データとハッシュ一致を確認済みです。ユーザーの `.vscode/` は変更していません。
+
+この検証時点では本番Workerは `45745046-71e2-4172-8766-7f1b54e96129` のままです。公開プレビューで日英・320/390/1440px・元のアイコン・下書き・日またぎ判定を確認してから切り替えます。本番DBへの書き込みテストは行いません。
+
+Client-only fixes and stable IDs for retrying a new response passed all 22 browser tests, lint, TypeScript, webpack and OpenNext builds. Git metadata and original assets were recovered without resetting working changes. This is not the secure DB rollout: multi-request writes can still be partial, and retry deduplication does not survive a page reload. Verify the uploaded preview before promotion; production remains on the previous Worker at this verification stage.
+
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 

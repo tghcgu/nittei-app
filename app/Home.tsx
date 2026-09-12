@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useEffectEvent, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useI18n } from './LocaleProvider'
 import { LanguageSwitch } from './LanguageSwitch'
+import { useLanguageDraft } from './useLanguageDraft'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
 import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES } from '@/lib/answer-choices'
@@ -27,6 +28,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { describeCalendarFileError, describeCalendarFileRead, readCalendarFileTexts } from '@/lib/calendar-files'
+import { calendarBusyPeriods, overlapsCalendar, type BusyPeriod } from '@/lib/calendar'
 
 type Candidate = {
   id: string
@@ -70,16 +72,6 @@ function areCandidatesEqual(a: Candidate[], b: Candidate[]) {
   })
 }
 
-type CalendarComponent = {
-  getFirstPropertyValue: (name: string) => unknown
-}
-
-type BusyPeriod = {
-  start: Date
-  end: Date
-  isAllDay: boolean
-}
-
 type CalendarPaintMode = 'add' | 'remove'
 
 type CalendarPaintSession = {
@@ -93,7 +85,6 @@ type CalendarPaintSession = {
 }
 
 const emptySubscribe = () => () => {}
-const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
 const CALENDAR_PAINT_MOVE_THRESHOLD = 8
 const SHARE_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -188,19 +179,6 @@ function getMonthDatesFromToday(year: number, month: number): string[] {
   return result
 }
 
-function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
-  const startDate = toDateStr(start)
-  const endDate = toDateStr(end)
-  if (startDate === endDate) return dateStr === startDate
-  return dateStr >= startDate && dateStr < endDate
-}
-
-function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
-  const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
-
-  return status !== 'CANCELLED'
-}
-
 // ---- ドラッグ可能な候補日行 ----
 function SortableCandidate({
   c,
@@ -293,6 +271,7 @@ export default function Home() {
   const { locale, t, path, weekdays: WEEKDAYS } = useI18n()
   const router = useRouter()
   const [eventName, setEventName] = useState('')
+  const [draftKey, setDraftKey] = useState<string | null>(null)
   const [description, setDescription] = useState('')
   // 回答の選択肢（伝助と同じ3種類。既定は「○△✕」）
   const [answerChoices, setAnswerChoices] = useState<AnswerChoiceSet>(DEFAULT_ANSWER_CHOICES)
@@ -379,10 +358,10 @@ export default function Home() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  useEffect(() => {
+  const loadEditRoute = useEffectEvent(() => {
     const params = new URLSearchParams(window.location.search)
     const shareId = params.get('edit')
-    if (!shareId) return
+    if (!shareId) { setDraftKey('event-new'); return }
     const editingShareId = shareId
 
     let cancelled = false
@@ -433,6 +412,7 @@ export default function Home() {
         // 時刻なしのイベントは時刻なしのまま開く（既定の21:00に戻さない）
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
         replaceDefaultTime(draftTime.start, draftTime.end)
+        setDraftKey(`event-${editingShareId}`)
       } catch (err) {
         console.error(err)
         if (!cancelled) setError(t("編集する日程を読み込めませんでした。"))
@@ -446,7 +426,34 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [t])
+  })
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => loadEditRoute(), [t])
+
+  useLanguageDraft(draftKey, {
+    eventName, description, answerChoices, candidates, nextId,
+    defaultStartTime, defaultEndTime, calYear, calMonth, calSelected: [...calSelected],
+    selectedCandidateIds: [...selectedCandidateIds], rangeOpen, rangeStart, rangeEnd,
+    candidatePast: candidatePast.map(entry => ({ ...entry, calSelected: [...entry.calSelected] })),
+    candidateFuture: candidateFuture.map(entry => ({ ...entry, calSelected: [...entry.calSelected] })),
+  }, draft => {
+    setEventName(draft.eventName)
+    setDescription(draft.description)
+    setAnswerChoices(draft.answerChoices)
+    candidatesRef.current = draft.candidates
+    setCandidates(draft.candidates)
+    setNextId(draft.nextId)
+    replaceDefaultTime(draft.defaultStartTime, draft.defaultEndTime)
+    setCalYear(draft.calYear)
+    setCalMonth(draft.calMonth)
+    replaceCalSelected(new Set(draft.calSelected))
+    setSelectedCandidateIds(new Set(draft.selectedCandidateIds))
+    setRangeOpen(draft.rangeOpen)
+    setRangeStart(draft.rangeStart)
+    setRangeEnd(draft.rangeEnd)
+    replaceCandidatePast(draft.candidatePast.map(entry => ({ ...entry, calSelected: new Set(entry.calSelected) })))
+    replaceCandidateFuture(draft.candidateFuture.map(entry => ({ ...entry, calSelected: new Set(entry.calSelected) })))
+  })
 
   function syncSelectedCandidates(nextCandidates: Candidate[]) {
     const ids = new Set(nextCandidates.map((candidate) => candidate.id))
@@ -643,26 +650,6 @@ export default function Home() {
   }
 
   // ---- .ics アップロード ----
-  function parseCandidateTimeRange(date: string, timeLabel: string) {
-    const fallback = {
-      start: new Date(date + 'T00:00:00').toISOString(),
-      end:   new Date(date + 'T23:59:00').toISOString(),
-    }
-    const m = timeLabel.match(/(\d{1,2}):(\d{2})[〜~\-](?:(\d{1,2}):(\d{2}))?/)
-    if (!m) return fallback
-    const startDate = new Date(date + 'T00:00:00')
-    startDate.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0)
-    let endDate: Date
-    if (m[3] !== undefined) {
-      endDate = new Date(date + 'T00:00:00')
-      endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
-    } else {
-      endDate = new Date(startDate)
-      endDate.setHours(endDate.getHours() + 3)
-    }
-    return { start: startDate.toISOString(), end: endDate.toISOString() }
-  }
-
   function removeBusyCandidates(
     busyPeriods: BusyPeriod[],
     datedCandidates: Candidate[],
@@ -670,13 +657,7 @@ export default function Home() {
   ) {
     const busyIds = new Set<string>()
     for (const c of datedCandidates) {
-      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
-      const csMs = new Date(cs).getTime()
-      const ceMs = new Date(ce).getTime()
-      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-        if (isAllDay) return isDateInAllDayRange(c.date, start, end)
-        return start.getTime() < ceMs && end.getTime() > csMs
-      })
+      const isBusy = overlapsCalendar(c, busyPeriods)
       if (isBusy) busyIds.add(c.id)
     }
 
@@ -741,43 +722,8 @@ export default function Home() {
         return
       }
 
-      const ICAL = (await import('ical.js')).default
-      const sorted = [...datedCandidates].sort((a, b) => a.date.localeCompare(b.date))
-      // 範囲境界はタイムゾーン情報なしの時刻として比較され（UTC扱い）、実際の境界と
-      // 最大±14時間ずれるため、前後1日広げて定期予定の取りこぼしを防ぐ。
-      // 厳密な重なり判定は後段の busyPeriods チェックが行う。
-      const rangeStartDay = new Date(sorted[0].date + 'T00:00:00')
-      rangeStartDay.setDate(rangeStartDay.getDate() - 1)
-      const rangeEndDay = new Date(sorted[sorted.length - 1].date + 'T00:00:00')
-      rangeEndDay.setDate(rangeEndDay.getDate() + 1)
-      const rangeStart = ICAL.Time.fromDateTimeString(toDateStr(rangeStartDay) + 'T00:00:00')
-      const rangeEnd = ICAL.Time.fromDateTimeString(toDateStr(rangeEndDay) + 'T23:59:59')
-
-      const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
-
       const calendarFiles = await readCalendarFileTexts(file)
-      for (const { text } of calendarFiles.texts) {
-        const jcal = ICAL.parse(text)
-        const comp = new ICAL.Component(jcal)
-        const vevents = comp.getAllSubcomponents('vevent')
-        for (const vevent of vevents) {
-          const event = new ICAL.Event(vevent)
-          if (!isBlockingCalendarEvent(vevent)) continue
-          if (event.isRecurring()) {
-            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-            let count = 0
-            for (let next = expand.next(); next && count < MAX_RECURRING_OCCURRENCES; next = expand.next()) {
-              count++
-              const detail = event.getOccurrenceDetails(next)
-              if (detail.startDate.compare(rangeEnd) > 0) break
-              if (detail.endDate.compare(rangeStart) <= 0) continue
-              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            }
-          } else {
-            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
-          }
-        }
-      }
+      const busyPeriods = await calendarBusyPeriods(calendarFiles, datedCandidates)
 
       removeBusyCandidates(busyPeriods, datedCandidates, describeCalendarFileRead(calendarFiles, locale))
     } catch (err) {

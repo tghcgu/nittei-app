@@ -46,7 +46,7 @@
   "件選択中": " selected",
   "↶ 戻す": "↶ Undo",
   "↷ 進む": "↷ Redo",
-  "この月の今日以降を選択（{0}日）": "Select remaining dates this month ({0})",
+  "この月の今日以降を選択（{0}日）": "Select remaining days ({0})",
   "この月は追加できる日がありません": "No remaining dates this month",
   "日付を選んで、下の「追加」ボタンで確定（ドラッグや曜日ボタンでまとめて選択）": "Select dates, then choose Add. Drag or select weekdays to pick multiple dates.",
   "{0}日を追加": "Add dates ({0})",
@@ -261,5 +261,8 @@
   "zip内に .ics ファイルが見つかりませんでした。カレンダーをエクスポートしたzipか確認してください。": "No .ics files were found in the ZIP. Please choose an exported calendar ZIP.",
   "zip内にあったのは誕生日カレンダーのみでした。予定の入ったカレンダーを書き出してください。": "The ZIP only contained birthday calendars. Please export a calendar containing your events.",
   "zip内の{0}件の .ics を解析しました。誕生日カレンダー{1}件は自動で除外しました。": "Processed {0} calendar files from the ZIP. Excluded {1} birthday calendars.",
-  "zip内の{0}件の .ics を解析しました。": "Processed {0} calendar files from the ZIP."
+  "zip内の{0}件の .ics を解析しました。": "Processed {0} calendar files from the ZIP.",
+  "下書きを保持できないため、言語を切り替えられません。入力内容を保存してから切り替えてください。": "Your draft could not be kept. Save your changes before switching languages.",
+  "ファイルは10MB、zip展開後は50MB・100カレンダーまでです。対象を分けて書き出してください。": "Use files up to 10 MB, or 50 MB and 100 calendars after ZIP extraction. Export smaller files.",
+  "繰り返し予定が多すぎます。対象期間を絞って書き出してください。": "Too many recurring events. Export a shorter date range."
 }

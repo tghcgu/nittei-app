@@ -26,6 +26,7 @@ function isBirthdayCalendarName(name: string) {
 }
 
 export async function readCalendarFileTexts(file: File): Promise<CalendarFileReadResult> {
+  if (file.size > 10 * 1024 * 1024) throw new Error('CALENDAR_FILE_TOO_LARGE')
   if (!isZipFile(file)) {
     return {
       isZip: false,
@@ -36,32 +37,42 @@ export async function readCalendarFileTexts(file: File): Promise<CalendarFileRea
   }
 
   const { strFromU8, unzipSync } = await import('fflate')
-  const entries = unzipSync(new Uint8Array(await file.arrayBuffer()))
+  let expandedSize = 0
+  let totalIcsCount = 0
+  const skippedBirthdayNames: string[] = []
+  const entries = unzipSync(new Uint8Array(await file.arrayBuffer()), {
+    filter(entry) {
+      if (!isIcsName(entry.name)) return false
+      if (++totalIcsCount > 100) throw new Error('CALENDAR_FILE_TOO_LARGE')
+      if (isBirthdayCalendarName(entry.name)) {
+        skippedBirthdayNames.push(entry.name)
+        return false
+      }
+      expandedSize += entry.originalSize
+      if (expandedSize > 50 * 1024 * 1024) throw new Error('CALENDAR_FILE_TOO_LARGE')
+      return true
+    },
+  })
   const icsEntries = Object.entries(entries)
     .filter(([name]) => isIcsName(name))
     .sort(([a], [b]) => a.localeCompare(b))
 
-  if (icsEntries.length === 0) {
+  if (totalIcsCount === 0) {
     throw new Error('NO_ICS_IN_ZIP')
   }
 
-  const usableEntries = icsEntries.filter(([name]) => !isBirthdayCalendarName(name))
-  const skippedBirthdayNames = icsEntries
-    .filter(([name]) => isBirthdayCalendarName(name))
-    .map(([name]) => name)
-
-  if (usableEntries.length === 0) {
+  if (icsEntries.length === 0) {
     throw new Error('ONLY_BIRTHDAY_ICS_IN_ZIP')
   }
 
   return {
     isZip: true,
-    texts: usableEntries.map(([name, data]) => ({
+    texts: icsEntries.map(([name, data]) => ({
       name,
       text: strFromU8(data),
     })),
     skippedBirthdayNames,
-    totalIcsCount: icsEntries.length,
+    totalIcsCount,
   }
 }
 
@@ -70,6 +81,12 @@ export async function readCalendarFileTexts(file: File): Promise<CalendarFileRea
 export function describeCalendarFileError(error: unknown, locale: Locale = 'ja'): string | null {
   const { t } = getI18n(locale)
   if (!(error instanceof Error)) return null
+  if (error.message === 'CALENDAR_FILE_TOO_LARGE') {
+    return t("ファイルは10MB、zip展開後は50MB・100カレンダーまでです。対象を分けて書き出してください。")
+  }
+  if (error.message === 'CALENDAR_TOO_COMPLEX') {
+    return t("繰り返し予定が多すぎます。対象期間を絞って書き出してください。")
+  }
 
   if (error.message === 'NO_ICS_IN_ZIP') {
     return t("zip内に .ics ファイルが見つかりませんでした。カレンダーをエクスポートしたzipか確認してください。")
