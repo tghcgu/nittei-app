@@ -12,9 +12,9 @@
 
 公開ページは [更新履歴](https://nittei-app.qoj.workers.dev/updates) と [Updates](https://nittei-app.qoj.workers.dev/en/updates) です。トップのお問い合わせ行と、イベントページ下部の情報欄から開けます。
 
-内容は `lib/updates.ts` で新しい日付から並べ、英訳は `lib/i18n/en.json` に追加します。日付は本番へ反映した日本時間の日付です。公開していない変更やDB移行待ちの機能は載せないでください。表示は `app/updates/UpdatesPage.tsx`、検証は `tests/updates.spec.ts` にあります。
+内容は `lib/updates.ts` で新しい日付から並べ、英訳は `lib/i18n/en.json` に追加します。新しい履歴には本番へ反映した日本時間の日付を使います。2026年9月6日以前は公開ブランチのGit履歴から再構成し、コメントに根拠コミットを記載しています。この部分は変更日であり、公開日とは異なる場合があることをページにも明記しています。最古の記録は2026年4月20日の基本機能実装です。公開していない変更やDB移行待ちの機能は載せないでください。表示は `app/updates/UpdatesPage.tsx`、検証は `tests/updates.spec.ts` にあります。
 
-The public release history is available at `/updates` (Japanese) and `/en/updates` (English). Add entries to `lib/updates.ts` in newest-first order and their translations to `lib/i18n/en.json`. Use the production release date in Japan; do not list unshipped work or pending database migrations. Tests cover translations, dates, metadata, navigation, themes, and compact footer links.
+The public release history is available at `/updates` (Japanese) and `/en/updates` (English). Add entries to `lib/updates.ts` in newest-first order and their translations to `lib/i18n/en.json`. Use the production release date in Japan for new entries. The archive before September 7, 2026 was reconstructed from production-branch Git history, with source commits recorded in comments. These are change dates rather than verified deployment dates, as noted on the page. The earliest entry is the initial scheduling implementation on April 20, 2026. Do not list unshipped work or pending database migrations. Tests cover translations, dates, metadata, navigation, themes, and compact footer links.
 
 > このリリースの本番反映にはSupabaseのSQL切り替えが必要です。[切り替え手順 / Required database rollout](SECURE-ROLLOUT.md) を先に確認してください。Do not deploy this client before applying its matching database migration.
 
