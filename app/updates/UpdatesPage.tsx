@@ -30,6 +30,9 @@ export default function UpdatesPage({ locale = 'ja' }: { locale?: Locale }) {
           <Image src="/icon.png" alt="" width={28} height={28} unoptimized className="h-7 w-7 shrink-0" />
           <h1 className="font-serif text-2xl text-rose-800">{t('更新履歴')}</h1>
         </header>
+        <p className="mb-4 text-xs leading-relaxed text-stone-600">
+          {t('2026年9月6日以前はGitの変更記録から再構成しています。日付は日本時間の変更日で、実際の公開日とは異なる場合があります。')}
+        </p>
         {updates.map(entry => (
           <article key={entry.date} id={`update-${entry.date}`} aria-labelledby={`title-${entry.date}`}
             className="border-t border-stone-300 py-5 [overflow-wrap:anywhere]">

@@ -6,6 +6,10 @@ test('release notes are dated, newest first, and translated', () => {
   const dates = updates.map(entry => entry.date)
   expect(dates).toEqual([...dates].sort().reverse())
   expect(new Set(dates).size).toBe(dates.length)
+  expect(dates.at(-1)).toBe('2026-04-20')
+  expect(new Set(dates.filter(date => date < '2026-09-07').map(date => date.slice(0, 7)))).toEqual(
+    new Set(['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']),
+  )
   for (const entry of updates) {
     expect(new Date(entry.date).toISOString().slice(0, 10)).toBe(entry.date)
     expect(entry.changes.length).toBeGreaterThan(0)
@@ -29,6 +33,7 @@ for (const locale of ['ja', 'en'] as const) {
     await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', 'https://nittei-app.qoj.workers.dev' + path('/updates'))
     await expect(page.locator('link[rel=alternate][hreflang=en]')).toHaveAttribute('href', /\/en\/updates$/)
     await expect(page.locator('article')).toHaveCount(updates.length)
+    await expect(page.getByText(t('2026年9月6日以前はGitの変更記録から再構成しています。日付は日本時間の変更日で、実際の公開日とは異なる場合があります。'), { exact: true })).toBeVisible()
     expect(await page.locator('time').evaluateAll(nodes => nodes.map(node => node.getAttribute('datetime')))).toEqual(updates.map(entry => entry.date))
     for (const entry of updates) {
       const article = page.locator(`#update-${entry.date}`)
@@ -46,6 +51,10 @@ for (const locale of ['ja', 'en'] as const) {
       await page.screenshot({ path: `test-results/updates-${locale}-${width}.png`, fullPage: true })
     }
     await page.setViewportSize({ width: 390, height: 900 })
+    const oldest = page.locator('#update-2026-04-20')
+    await oldest.scrollIntoViewIfNeeded()
+    await expect(oldest.getByRole('heading', { level: 2 })).toHaveText(t('日程調整の基本機能を実装'))
+    await page.screenshot({ path: `test-results/updates-${locale}-earliest.png` })
     await page.locator('.theme-toggle').click()
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
     await page.screenshot({ path: `test-results/updates-${locale}-dark.png`, fullPage: true, animations: 'disabled' })
