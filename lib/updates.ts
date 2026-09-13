@@ -3,7 +3,7 @@ import type { MessageKey } from './i18n'
 // Record production releases here, not changes awaiting the secure DB rollout.
 export const updates = [
   {
-    date: '2026-09-13',
+    date: '2026-09-14',
     title: '更新履歴を公開',
     changes: ['更新履歴を日本語と英語で確認できるページを追加しました。'],
   },

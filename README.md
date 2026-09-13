@@ -8,6 +8,14 @@
 
 [日本語](#japanese) | [English](#english)
 
+### 更新履歴 / Release History
+
+公開ページは [更新履歴](https://nittei-app.qoj.workers.dev/updates) と [Updates](https://nittei-app.qoj.workers.dev/en/updates) です。トップのお問い合わせ行と、イベントページ下部の情報欄から開けます。
+
+内容は `lib/updates.ts` で新しい日付から並べ、英訳は `lib/i18n/en.json` に追加します。日付は本番へ反映した日本時間の日付です。公開していない変更やDB移行待ちの機能は載せないでください。表示は `app/updates/UpdatesPage.tsx`、検証は `tests/updates.spec.ts` にあります。
+
+The public release history is available at `/updates` (Japanese) and `/en/updates` (English). Add entries to `lib/updates.ts` in newest-first order and their translations to `lib/i18n/en.json`. Use the production release date in Japan; do not list unshipped work or pending database migrations. Tests cover translations, dates, metadata, navigation, themes, and compact footer links.
+
 ### 英語版 / English UI
 
 - 日本語の `/` と `/e/[shareId]` はそのままです。英語版は `/en` と `/en/e/[shareId]` で開きます。
