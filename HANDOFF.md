@@ -3,6 +3,16 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-14: 更新履歴を公開 / Release History
+
+本番は `release/ui-20260910` の `0b83b03`、Worker `5fafb566-b927-4a54-8908-ff196e6d4223` (100%) です。直前の互換Workerは `d1229529-9fbc-482c-a159-ce4c7e03787e`。同じ更新履歴機能をmainの `396d947` にも反映しました。
+
+公開ページは `/updates` と `/en/updates`。トップのお問い合わせ行とイベント下部の情報欄にリンクを追加し、既存フッターの縦幅は増やしていません。履歴は `lib/updates.ts`、英訳は `lib/i18n/en.json` に追加します。本番公開済みの変更だけを日本時間の日付で記録してください。READMEにも日英で手順を記載しています。
+
+本番互換版は全27テスト、mainは関連13テストが成功。両ブランチのlint、mainのTypeScript、本番用webpack/OpenNextビルドが成功しました。main初回は開発サーバーのルーター初期化エラーが1件出ましたが、テストを変更しない再実行ですべて成功しています。プレビューと本番の日英ページ・既存イベントを320/390/1440pxで確認し、テーマ・言語切替・サイトマップ・アイコン・リンク・横あふれを検証しました。旧Vercelの `/updates` は本番へ301転送されます。
+
+Production release history is live in both languages. Preview and production browser checks passed without page errors or database writes. **The secure SQL migration is still pending: do not deploy main to the legacy database or merge legacy storage back into main.** Vercel Git auto-deploy remains disabled; Cloudflare was deployed separately. See `SECURE-ROLLOUT.md` for the database cutover.
+
 ## 2026-09-13: 改善版の本番確認 / Production improvements verified
 
 本番は `release/ui-20260910` の `22f8e85`、Worker `d1229529-9fbc-482c-a159-ce4c7e03787e` (100%) です。日またぎ・終日・繰り返し例外のICS判定、ファイル上限、言語切替時の下書きと履歴、新規回答の再送時の重複防止、英語の月選択ラベル短縮を反映しました。日英・320/390/1440pxで公開サイトを確認し、アイコンは元のデータと一致しています。

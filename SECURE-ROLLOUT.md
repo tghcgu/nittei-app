@@ -6,6 +6,14 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-14: 更新履歴を本番公開 / Release history deployed**
+
+- Current production Worker: `5fafb566-b927-4a54-8908-ff196e6d4223` (100%). Application: `0b83b03`, branch `release/ui-20260910`. Previous compatible Worker: `d1229529-9fbc-482c-a159-ce4c7e03787e`. The same release-history changes are on main at `396d947`.
+- Added `/updates` and `/en/updates`, localized sitemap entries, and compact navigation links on the home and response pages. Release notes are static in `lib/updates.ts`; no DB or save behavior changed.
+- Verification: compatibility suite 27 passed; main's 13 layout/history checks passed on rerun after one development-router initialization error. Both lints, main TypeScript, and the compatibility webpack/OpenNext build passed. Preview and production checks covered both locales at 320/390/1440px, themes, language navigation, existing event reads, icons and sitemap, with zero browser errors and zero production DB writes. The legacy Vercel `/updates` URL redirects with HTTP 301.
+- Preview: https://updates-nittei-app.qoj.workers.dev . Production: https://nittei-app.qoj.workers.dev/updates . GitHub main and the compatibility branch contain the feature. Vercel Git auto-deploy is disabled; the Cloudflare upload used `--keep-vars`, followed by a verified 100% promotion.
+- **SQL移行は未適用のままです。mainを旧DBへ配信しないでください。** Only the compatibility branch was deployed. The secure main application still requires the coordinated database cutover below.
+
 **2026-09-12 本番反映、09-13 最終確認 / Deployed and verified**
 
 - Current production Worker: `d1229529-9fbc-482c-a159-ce4c7e03787e` (100%). Application: `22f8e85`, branch `release/ui-20260910`. Previous compatible Worker: `45745046-71e2-4172-8766-7f1b54e96129`.
