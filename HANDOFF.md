@@ -1,5 +1,15 @@
 # 日程組 引き継ぎメモ
 
+## 2026-09-14: 更新履歴を公開 / Release History
+
+本番Workerは `5fafb566-b927-4a54-8908-ff196e6d4223` (100%)、アプリはこのブランチの `0b83b03` です。直前の互換Workerは `d1229529-9fbc-482c-a159-ce4c7e03787e`。更新履歴機能はmainの `396d947` にもあります。
+
+`/updates` と `/en/updates` を追加しました。トップのお問い合わせ行とイベント下部の情報欄から開け、既存フッターの縦幅は増えていません。内容は `lib/updates.ts`、英訳は `lib/i18n/en.json` で管理します。公開済みの変更だけを日本時間の日付で記載してください。READMEに日英の保守手順があります。
+
+本番互換版の全27テスト、mainの関連13テスト、両lint、mainのTypeScript、本番用webpack/OpenNextビルドが成功。main初回の開発ルーター初期化エラー1件は、テストを変更しない再実行では出ませんでした。プレビュー https://updates-nittei-app.qoj.workers.dev と本番の日英ページ・既存イベントを320/390/1440pxで読み取り専用検証し、ブラウザーエラー・横あふれ・DB書き込みはありません。旧Vercelの `/updates` も本番へ301転送されます。
+
+Release history is deployed in both languages, including compact links, themes and sitemap entries. **No database migration or save-behavior changes were deployed.** The secure main app still requires its coordinated SQL cutover. Never merge legacy storage back into main. Vercel Git auto-deploy stays disabled; Cloudflare was promoted separately with existing variables preserved.
+
 ## 2026-09-12 反映・09-13 確認: 改善版 / Production Improvements
 
 このフォルダーには、日またぎ・終日・繰り返し例外の判定、ファイル上限、日英切替時の下書き・履歴の保持、新規回答の再送時のID再利用、英語の月選択ラベル短縮を追加しました。22件のPlaywrightテスト、lint、TypeScript込みのwebpackビルド、OpenNextビルドが成功しました。再送テストは、途中で保存された名前ではなく送信完了を待ってからDBを検査します。
