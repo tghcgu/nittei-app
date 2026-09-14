@@ -6,6 +6,14 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-15: 共有リンクと過去の更新履歴 / Optional sharing and archive deployed**
+
+- Current production Worker: `ae285d74-730a-42c3-b51f-4d3fcd105d31` (100%). Application: `1e303ef`, branch `release/ui-20260910`. Previous compatible Worker: `5fafb566-b927-4a54-8908-ff196e6d4223`. Matching main changes: `289c0d8` and `ade2753`.
+- Added discreet X composer links to existing home, event and updates rows without increasing their height. Only localized service introduction text and the production homepage are included, not event details or keys; no external widget or automatic posting is used.
+- Added 34 historical entries back to April 20, 2026, bringing the total to 39 including this release. Entries before September 7 are explicitly labeled as Git change dates, not verified deployment dates, with source commits recorded in code.
+- Verification: 15 compatibility layout/history/share tests and 7 main history/share tests passed, plus both lints, main TypeScript and compatibility webpack/OpenNext builds. Preview and production read-only checks passed for both locales at 320/390/1440px, with zero DB writes or browser errors. Sharing parameters, unchanged row heights, themes, oldest entries and sitemap were checked. No real X posts were submitted; the new-tab test intercepted its destination.
+- Preview: https://updates-nittei-app.qoj.workers.dev . Production: https://nittei-app.qoj.workers.dev/ . Uploaded with `--keep-vars` and promoted at 100% after verification. **DB・保存方式・Cron設定は変更していません。SQL移行は依然未適用です。mainを旧DBへ配信しないでください。**
+
 **2026-09-14: 更新履歴を本番公開 / Release history deployed**
 
 - Current production Worker: `5fafb566-b927-4a54-8908-ff196e6d4223` (100%). Application: `0b83b03`, branch `release/ui-20260910`. Previous compatible Worker: `d1229529-9fbc-482c-a159-ce4c7e03787e`. The same release-history changes are on main at `396d947`.

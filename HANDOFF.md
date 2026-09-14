@@ -3,6 +3,18 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-15: 任意の共有リンクと初期履歴 / Optional Sharing and Archive
+
+本番は `release/ui-20260910` の `1e303ef`、Worker `ae285d74-730a-42c3-b51f-4d3fcd105d31` (100%) です。直前の互換Workerは `5fafb566-b927-4a54-8908-ff196e6d4223`。mainにも同じ表示変更が `289c0d8` と `ade2753` にあります。
+
+トップ・回答ページ・更新履歴の既存行に「よければXでシェア」を追加しました。`app/ServiceShareLink.tsx` は固定の紹介文と日英の公開トップURLだけを使用し、イベント情報・編集キーを含めません。Xの埋め込みスクリプトや自動投稿は使わず、別タブの投稿画面へ進む通常のリンクです。
+
+更新履歴は2026年4月20日まで34件をさかのぼって追加し、今回の共有リンクの記録を含め全39件です。2026年9月6日以前は公開ブランチのGit変更日から再構成した記録で、実際の公開日とは異なる場合があることをページに明記しました。根拠コミットは `lib/updates.ts` のコメントにあります。
+
+本番互換版の関連15テスト、mainの関連7テスト、両lint、mainのTypeScript、本番用webpack/OpenNextビルドが成功しました。プレビューと本番の日英トップ・既存イベント・更新履歴を320/390/1440pxで確認し、共有先・縦幅・横あふれ・テーマ・古い履歴・サイトマップを検証済みです。公開DBへの書き込み・ブラウザーエラーは0。実際のX投稿は行わず、別タブ動作のテストでは行き先をローカルで代替しました。
+
+Both features are deployed from the compatibility branch, with localized service-only sharing and a dated archive. **The secure SQL migration remains pending; do not deploy main to the legacy DB or merge legacy storage back into main.** Production was checked read-only. Vercel Git auto-deploy remains disabled.
+
 ## 2026-09-14: 更新履歴を公開 / Release History
 
 本番は `release/ui-20260910` の `0b83b03`、Worker `5fafb566-b927-4a54-8908-ff196e6d4223` (100%) です。直前の互換Workerは `d1229529-9fbc-482c-a159-ce4c7e03787e`。同じ更新履歴機能をmainの `396d947` にも反映しました。
