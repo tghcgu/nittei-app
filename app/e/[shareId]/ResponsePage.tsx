@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useRef, useSyncExternalStore
 import Link from 'next/link'
 import { useI18n } from '@/app/LocaleProvider'
 import { LanguageSwitch } from '@/app/LanguageSwitch'
+import { ServiceShareLink } from '@/app/ServiceShareLink'
 import { useLanguageDraft } from '@/app/useLanguageDraft'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
@@ -2150,7 +2151,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             {localUpdatedAt && (
               <p>{t("この端末からの最終更新日時：")}{formatDateTime(localUpdatedAt)}</p>
             )}
-            <p>{t("回答人数：")}{responseRows.length}{t("人")}</p>
+            <p>
+              {t("回答人数：")}{responseRows.length}{t("人")}
+              <span className="mx-1">·</span>
+              <ServiceShareLink locale={locale} />
+            </p>
           </div>
         )}
 

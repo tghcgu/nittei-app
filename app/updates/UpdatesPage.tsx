@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { LanguageSwitch } from '../LanguageSwitch'
+import { ServiceShareLink } from '../ServiceShareLink'
 import { getI18n, type Locale } from '@/lib/i18n'
 import { updates } from '@/lib/updates'
 
@@ -49,6 +50,8 @@ export default function UpdatesPage({ locale = 'ja' }: { locale?: Locale }) {
           <Link href={path('/contact')} className="underline-offset-2 hover:text-rose-700 hover:underline">{t('お問い合わせ')}</Link>
           <span className="mx-1">·</span>
           <LanguageSwitch />
+          <span className="mx-1">·</span>
+          <ServiceShareLink locale={locale} />
         </nav>
       </div>
     </main>
