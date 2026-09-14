@@ -57,7 +57,7 @@ test('English create, answer, edit, history, language switch, and mobile layout'
   await page.getByRole('button', { name: 'Create event', exact: true }).first().click()
   await page.waitForURL(/\/en\/e\/[a-z0-9]+$/)
   const englishUrl = page.url()
-  await expect(page.getByRole('heading', { name: 'English test 日本語' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'English test 日本語' })).toBeVisible()
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
   await page.getByPlaceholder('e.g. Alex').fill('Alex')
   const firstAnswer = page.locator('[data-answer-candidate-id][data-answer-value="○"]').first()
