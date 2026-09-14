@@ -1311,7 +1311,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         {/* イベントヘッダー */}
         <div className="mb-1 max-w-2xl">
-          <h1 className="font-serif text-3xl text-rose-800">{event.name}</h1>
+          <h1 className="font-serif text-3xl text-rose-800 [overflow-wrap:anywhere]">{event.name}</h1>
           {event.description && (
             <p className="mt-1 whitespace-pre-wrap break-words text-stone-700">{event.description}</p>
           )}
@@ -1905,7 +1905,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
           {/* スマホでは見出しの下に操作を1行で置く。入りきらないときはその行だけ横に流す */}
-          <div className="mb-4 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
+          <div className="mb-2 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
             <h2 className="shrink-0 font-serif text-xl text-stone-700">{t("みんなの回答")}</h2>
             <div className="-mx-1 flex w-full shrink-0 items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:gap-2 sm:pb-0">
               <button
@@ -1956,6 +1956,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Keep the description from determining the content-sized table width. */}
+          <div className="response-event-details mb-3 min-w-0 max-w-2xl [contain:inline-size] [overflow-wrap:anywhere]">
+            <h3 className="font-serif text-base leading-snug text-rose-800">{event.name}</h3>
+            {event.description?.trim() && (
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">{event.description}</p>
+            )}
           </div>
 
           {responsesError && (
