@@ -1,4 +1,10 @@
 {
+  "日程組は、ログイン不要の日程調整・出欠管理ツールです。候補日を作ってURLを共有するだけ。": "Nitteigumi is a scheduling and RSVP tool with no login required. Pick date options and share a link.",
+  "日程組の紹介文をXの投稿画面で開く": "Open a Nitteigumi introduction in the X post composer",
+  "よければXでシェア": "Share on X, if you like",
+  "共有リンクと初期の更新履歴": "Sharing and early update history",
+  "日程組を紹介する投稿画面を開く、控えめな共有リンクを追加しました。": "Added a small link to open a post introducing Nitteigumi.",
+  "2026年4月の初期実装まで、過去の主な変更記録を追記しました。": "Expanded the update history back to the initial implementation in April 2026.",
   "2026年9月6日以前はGitの変更記録から再構成しています。日付は日本時間の変更日で、実際の公開日とは異なる場合があります。": "Entries before September 7, 2026 were reconstructed from Git history. Dates are change dates in Japan and may differ from actual release dates.",
   "カレンダーファイルのドラッグ＆ドロップ": "Calendar file drag and drop",
   ".ics ファイルをドラッグ＆ドロップで読み込めるようにしました。": "Added drag-and-drop import for .ics files.",

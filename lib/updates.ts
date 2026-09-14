@@ -3,6 +3,14 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-09-15',
+    title: '共有リンクと初期の更新履歴',
+    changes: [
+      '日程組を紹介する投稿画面を開く、控えめな共有リンクを追加しました。',
+      '2026年4月の初期実装まで、過去の主な変更記録を追記しました。',
+    ],
+  },
+  {
     date: '2026-09-14',
     title: '更新履歴を公開',
     changes: ['更新履歴を日本語と英語で確認できるページを追加しました。'],

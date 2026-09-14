@@ -8,6 +8,12 @@
 
 [日本語](#japanese) | [English](#english)
 
+### 任意の共有リンク / Optional Sharing
+
+トップ・回答ページ・更新履歴ページの既存行に「よければXでシェア」を表示します。`app/ServiceShareLink.tsx` が、日英の紹介文と公開トップのURLから [X Web Intent](https://docs.x.com/x-for-websites/web-intents/overview) を作ります。イベント名・回答・共有ID・編集キー・プレビューURLは含めません。自動投稿・Xの埋め込みスクリプト・アクセス時のXへの通信はありません。投稿には利用者自身によるX側での操作が必要です。
+
+The small optional X share link uses fixed introduction text and the localized production homepage, never event data or edit keys. It opens a separate tab with `noopener noreferrer`; no X SDK or auto-posting is used. `tests/service-share.spec.ts` checks both locales, compact layouts, destination parameters, and new-tab behavior using an intercepted destination rather than a real social post.
+
 ### 更新履歴 / Release History
 
 公開ページは [更新履歴](https://nittei-app.qoj.workers.dev/updates) と [Updates](https://nittei-app.qoj.workers.dev/en/updates) です。トップのお問い合わせ行と、イベントページ下部の情報欄から開けます。
