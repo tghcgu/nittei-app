@@ -1,5 +1,15 @@
 # 日程組 引き継ぎメモ
 
+## 2026-09-15: 任意の共有リンクと初期履歴 / Optional Sharing and Archive
+
+本番はこのブランチの `1e303ef`、Worker `ae285d74-730a-42c3-b51f-4d3fcd105d31` (100%) です。直前の互換Workerは `5fafb566-b927-4a54-8908-ff196e6d4223`。mainにも同じ表示変更が `289c0d8` と `ade2753` にあります。
+
+トップ・回答ページ・更新履歴の既存行に「よければXでシェア」を追加しました。日英の固定紹介文と公開トップURLだけを使い、個別イベント・回答・編集キーは共有しません。別タブへ進む通常のリンクで、Xの埋め込みや自動投稿はありません。履歴には4月20日までの34件を追加し、今回の更新を含め全39件です。9月6日以前の履歴はGit変更日からの再構成で、公開日とは異なる場合があることを明記しています。根拠コミットは `lib/updates.ts` を参照してください。
+
+関連15テスト、mainの関連7テスト、両lint、mainのTypeScript、webpack/OpenNextビルドが成功。プレビューと本番の日英トップ・既存イベント・履歴を320/390/1440pxで読み取り専用検証し、共有先・既存行の高さ・横あふれ・テーマ・古い履歴・サイトマップを確認しました。DB書き込みとブラウザーエラーは0。Xへの実投稿はしておらず、別タブ動作は行き先を代替するテストで確認しています。
+
+Sharing and the archive are live; existing storage and Cron settings were not changed. **The secure main application still requires its coordinated SQL migration. Never merge legacy storage back into main or deploy main to the legacy DB.** Vercel Git auto-deploy stays disabled; Cloudflare was uploaded with existing variables preserved and promoted after read-only checks.
+
 ## 2026-09-14: 更新履歴を公開 / Release History
 
 本番Workerは `5fafb566-b927-4a54-8908-ff196e6d4223` (100%)、アプリはこのブランチの `0b83b03` です。直前の互換Workerは `d1229529-9fbc-482c-a159-ce4c7e03787e`。更新履歴機能はmainの `396d947` にもあります。
