@@ -6,6 +6,13 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-15: 回答一覧にイベント情報 / Event details in results deployed**
+
+- Current production Worker: `11f80fc3-256a-4f6e-bcfd-4631579f817d` (100%). Application: `b9cbc9e`, branch `release/ui-20260910`. Previous compatible Worker: `ae285d74-730a-42c3-b51f-4d3fcd105d31`. Matching main change: `5531f36`.
+- The results section repeats the existing event name and description, preserving line breaks and omitting blank descriptions. Long text wraps without determining the compact table width. Details remain outside the table's horizontal scroller. The original page title also wraps unbroken text. These are read-only display changes.
+- Verification: all 33 compatibility tests, 12 related main tests, both lints, main TypeScript and compatibility webpack/OpenNext builds passed. Read-only preview and production browser checks passed for both locales, 320/390/1440px, both table orientations and themes. Tests cover long and empty details, stable table width, no page overflow and stationary details during horizontal scrolling. Production home, sharing, release history and sitemap checks also passed, with zero DB writes or page errors.
+- Preview: https://results-details-nittei-app.qoj.workers.dev . Production: https://nittei-app.qoj.workers.dev/ . Uploaded with `--keep-vars`, verified, then promoted at 100%. **DB・保存方式・Cron設定は変更していません。SQL移行は未適用です。mainを旧DBへ配信しないでください。**
+
 **2026-09-15: 共有リンクと過去の更新履歴 / Optional sharing and archive deployed**
 
 - Current production Worker: `ae285d74-730a-42c3-b51f-4d3fcd105d31` (100%). Application: `1e303ef`, branch `release/ui-20260910`. Previous compatible Worker: `5fafb566-b927-4a54-8908-ff196e6d4223`. Matching main changes: `289c0d8` and `ade2753`.

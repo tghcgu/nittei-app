@@ -3,6 +3,16 @@
 このファイルは、新しいAIチャットや別の開発環境にこのプロジェクトを引き継ぐためのメモです。
 秘密情報は書かないでください。
 
+## 2026-09-15: 回答一覧にイベント情報 / Event Details in Results
+
+本番は `release/ui-20260910` の `b9cbc9e`、Worker `11f80fc3-256a-4f6e-bcfd-4631579f817d` (100%) です。直前の互換Workerは `ae285d74-730a-42c3-b51f-4d3fcd105d31`。同じ表示変更はmainの `5531f36` にもあります。
+
+「みんなの回答」の操作行と表の間に、既存イベント名と説明を読み取り専用で表示します。説明の改行を保持し、空欄は非表示。長い文字列は折り返し、情報欄が表の横幅を広げないようにしています。情報欄は横スクロール領域の外にあり、表だけを動かせます。上部のイベント名も長い英数字を折り返します。新しい入力欄・保存処理・DB変更はありません。
+
+本番互換版は全33テスト、mainは関連12テストが成功。両lint、mainのTypeScript、本番用webpack/OpenNextビルドも成功しました。プレビューと本番の既存イベントを日英・320/390/1440px・縦横表示で確認し、長文・改行・空欄・表幅の維持・横スクロールを検証済み。本番トップ・共有リンク・更新履歴・サイトマップも確認し、公開DBへの書き込みとブラウザーエラーは0です。
+
+Event details are repeated above the results in both locales without affecting the compact table width. Preview: https://results-details-nittei-app.qoj.workers.dev . Existing variables were preserved with `--keep-vars`; no storage, SQL or Cron changes were deployed. **The secure SQL migration remains pending. Do not deploy main to the legacy DB or merge legacy storage back into main.** Vercel Git auto-deploy remains disabled.
+
 ## 2026-09-15: 任意の共有リンクと初期履歴 / Optional Sharing and Archive
 
 本番は `release/ui-20260910` の `1e303ef`、Worker `ae285d74-730a-42c3-b51f-4d3fcd105d31` (100%) です。直前の互換Workerは `5fafb566-b927-4a54-8908-ff196e6d4223`。mainにも同じ表示変更が `289c0d8` と `ade2753` にあります。
