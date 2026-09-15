@@ -30,7 +30,7 @@ for (const locale of ['ja', 'en'] as const) {
     await expect(modal).toHaveCSS('padding-top', '12px')
     expect((await modal.boundingBox())!.height).toBeLessThan(250)
     await modal.screenshot({ path: `test-results/spacing-range-modal-${locale}.png` })
-    await modal.getByRole('button', { name: t('キャンセル'), exact: true }).click()
+    await modal.getByRole('button', { name: t('閉じる'), exact: true }).click()
 
     const api = 'http://127.0.0.1:54329/rest/v1'
     const shareId = `spacing-${locale}`
