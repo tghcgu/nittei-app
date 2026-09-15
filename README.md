@@ -10,13 +10,13 @@
 
 ### 任意の共有リンク / Optional Sharing
 
-トップ・回答ページ・更新履歴ページの既存行に「よければXでシェア」を表示します。`app/ServiceShareLink.tsx` が、日英の紹介文と公開トップのURLから [X Web Intent](https://docs.x.com/x-for-websites/web-intents/overview) を作ります。イベント名・回答・共有ID・編集キー・プレビューURLは含めません。自動投稿・Xの埋め込みスクリプト・アクセス時のXへの通信はありません。投稿には利用者自身によるX側での操作が必要です。
+トップ・回答ページの最下部に、更新履歴と「よければXでシェア」を小さく横並びで表示します。イベント情報の欄には置きません。更新履歴ページの共有リンクも最下部にあります。`app/ServiceShareLink.tsx` が「これめっちゃつかいやすい！！」（英語版は "This is so easy to use!!"）と公開トップのURLから [X Web Intent](https://docs.x.com/x-for-websites/web-intents/overview) を作ります。イベント名・回答・共有ID・編集キー・プレビューURLは含めません。自動投稿・Xの埋め込みスクリプト・アクセス時のXへの通信はありません。投稿には利用者自身によるX側での操作が必要です。
 
-The small optional X share link uses fixed introduction text and the localized production homepage, never event data or edit keys. It opens a separate tab with `noopener noreferrer`; no X SDK or auto-posting is used. `tests/service-share.spec.ts` checks both locales, compact layouts, destination parameters, and new-tab behavior using an intercepted destination rather than a real social post.
+Updates and the optional X share link sit together at the very bottom of home and event pages, below the legal links and outside event information. The updates page also keeps sharing at the bottom. The share link suggests "This is so easy to use!!" in English and includes only the localized production homepage, never event data or edit keys. It opens a separate tab with `noopener noreferrer`; no X SDK or auto-posting is used. `tests/service-share.spec.ts` checks both locales, compact layouts, destination parameters, and new-tab behavior using an intercepted destination rather than a real social post.
 
 ### 更新履歴 / Release History
 
-公開ページは [更新履歴](https://nittei-app.qoj.workers.dev/updates) と [Updates](https://nittei-app.qoj.workers.dev/en/updates) です。トップのお問い合わせ行と、イベントページ下部の情報欄から開けます。
+公開ページは [更新履歴](https://nittei-app.qoj.workers.dev/updates) と [Updates](https://nittei-app.qoj.workers.dev/en/updates) です。トップ・イベントページの最下部から開けます。
 
 内容は `lib/updates.ts` で新しい日付から並べ、英訳は `lib/i18n/en.json` に追加します。新しい履歴には本番へ反映した日本時間の日付を使います。2026年9月6日以前は公開ブランチのGit履歴から再構成し、コメントに根拠コミットを記載しています。この部分は変更日であり、公開日とは異なる場合があることをページにも明記しています。最古の記録は2026年4月20日の基本機能実装です。公開していない変更やDB移行待ちの機能は載せないでください。表示は `app/updates/UpdatesPage.tsx`、検証は `tests/updates.spec.ts` にあります。
 

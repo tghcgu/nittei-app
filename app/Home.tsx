@@ -1492,10 +1492,6 @@ export default function Home() {
         <p className="mt-2 text-center text-[11px] text-stone-600">{t("※ 最後の更新から1年が経過したイベントは自動的に削除されます")}</p>
         <p className="mt-1 text-center text-xs text-stone-600">
           <Link href={path("/contact")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("お問い合わせ")}</Link>
-          <span className="mx-1">·</span>
-          <Link href={path("/updates")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("更新履歴")}</Link>
-          <span className="mx-1">·</span>
-          <ServiceShareLink locale={locale} />
         </p>
         <p className="footer-links mt-1 text-center text-[11px] text-stone-600">
           <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>
@@ -1514,6 +1510,11 @@ export default function Home() {
           </a>
           <span className="mx-1">·</span>
           <LanguageSwitch />
+        </p>
+        <p className="site-secondary-links mt-1 text-center text-[11px] text-stone-600">
+          <Link href={path("/updates")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("更新履歴")}</Link>
+          <span className="mx-1">·</span>
+          <ServiceShareLink locale={locale} />
         </p>
       </div>
 
