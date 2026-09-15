@@ -6,6 +6,15 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-15: 全画面の余白縮小 / Compact spacing deployed**
+
+- Current production Worker: `b1fc098d-b307-434b-8446-40666255f56f` (100%). Application: `c055bf9`, branch `release/ui-20260910`; main equivalent: `3393456`. Previous compatible Worker: `e396e93a-295a-48ea-89f4-66f1c3e4ce2f`. Test-only follow-ups: release `46348d1`, main `9049093`.
+- Reduced vertical spacing across creation/editing, responses, history, contact, terms and privacy. Calendar/answer hit areas and font sizes are unchanged. The initial description field is two resizable lines. Large section gaps changed from 32px to 8px, results vertical padding from 24px to 8px, and updates-entry padding from 20px to 8px.
+- Both locales across 320/390/1440px, 14 public pages and 42 measurements passed on preview and production, with no page overflow, browser errors or DB writes during those runs. Japanese 390px reductions: creation 154px, responses 234px, updates 1,357px, history 45px, contact 100px, terms 205px and privacy 157px.
+- The 37-case compatibility run passed 36 cases; one new spacing assertion observed a transient fractional height immediately after resizing. After changing the test to await computed CSS height, all four new spacing cases passed. Main's related existing cases and four new spacing cases, both lints, main TypeScript, and compatibility webpack/OpenNext builds passed.
+- **Production runtime issue remains unresolved.** An initial home load showed the error boundary. A subsequent 12-load diagnostic across both locales on production and preview passed, but supplementary sharing/history checks encountered an English updates 503 and later a networkidle timeout. Cloudflare tail reported CPU-limit errors on `/icon.png` and an English-home RSC request, plus a lost connection and a hung-request cancellation. The initial error's exact cause was not established. Do not claim every production check passed; no runtime-limit or billing changes were made.
+- Preview: https://compact-spacing-nittei-app.qoj.workers.dev . Uploaded with `--keep-vars` and promoted after preview verification. **SQL移行は未適用。DB・保存方式・Cron設定は変更していません。mainを旧DBへ配信しないでください。**
+
 **2026-09-15: 共有リンクを最下部へ / Bottom links deployed**
 
 - Current production Worker: `e396e93a-295a-48ea-89f4-66f1c3e4ce2f` (100%). Application: `ec3259f`, branch `release/ui-20260910`; main equivalent: `23fff29`. Previous compatible Worker: `11f80fc3-256a-4f6e-bcfd-4631579f817d`.
