@@ -1078,10 +1078,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-3">
+    <div className="min-h-screen px-4 py-2">
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
-        <div className="mb-2 text-center">
+        <div className="mb-1 text-center">
           <h1 className="inline-flex items-baseline gap-1.5 font-serif text-3xl text-rose-800">
             <span>{t("日程組")}</span>
             {locale === 'ja' && <span className="font-sans text-xs font-normal text-stone-600">略して {siteShortName}</span>}
@@ -1106,12 +1106,12 @@ export default function Home() {
           onDragOver={handleIcsDragOver}
           onDragLeave={handleIcsDragLeave}
           onDrop={handleIcsDrop}
-          className={`rounded-2xl bg-white/70 px-6 pb-3 pt-4 shadow-sm backdrop-blur transition-shadow ${
+          className={`rounded-2xl bg-white/70 px-6 py-2 shadow-sm backdrop-blur transition-shadow ${
             isIcsDragOver ? 'ring-2 ring-rose-400' : ''
           }`}
         >
           {/* イベント名 */}
-          <div className="mb-2">
+          <div className="mb-1">
             <div className="mb-1 flex items-center justify-between gap-3">
               <label className="block text-sm font-medium text-stone-700">{t("イベント名")}<span className="text-rose-700">*</span>
               </label>
@@ -1129,7 +1129,7 @@ export default function Home() {
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               placeholder={t("例：みんなでご飯")}
-              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
@@ -1140,13 +1140,13 @@ export default function Home() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("場所や詳細など")}
-              rows={3}
-              className="block w-full resize rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              rows={2}
+              className="block w-full resize rounded-lg border border-stone-300 bg-white px-4 py-2 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
           {/* 回答の選択肢 */}
-          <div className="mt-3">
+          <div className="mt-1">
             <label className="mb-1 block text-sm font-medium text-stone-700">{t("回答の選択肢")}</label>
             <div className="answer-choice-options flex flex-wrap gap-2">
               {ANSWER_CHOICE_SETS.map((set) => (
@@ -1169,12 +1169,12 @@ export default function Home() {
           </div>
 
           {/* 候補日時 */}
-          <div className="mb-8">
+          <div className="mb-2">
             <label className="mb-1 block text-sm font-medium text-stone-700">{t("候補日時")}<span className="text-rose-700">*</span>
             </label>
 
             {/* 時間帯バー */}
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3">
+            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
               <span className="shrink-0 text-sm text-stone-600">{t("時間帯：")}</span>
               <div className="candidate-default-times flex items-center gap-1">
                 <input
@@ -1257,7 +1257,7 @@ export default function Home() {
             </div>
 
             {/* カレンダー（日付を選択してから候補日に追加） */}
-            <div className="mb-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2.5">
+            <div className="mb-1.5 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
               {!calendarMounted && <div className="h-80" aria-hidden="true" />}
               {calendarMounted && (
               <div className="mx-auto max-w-sm">
@@ -1380,7 +1380,7 @@ export default function Home() {
                   type="button"
                   onClick={handleAddFromCalendar}
                   disabled={calSelected.size === 0}
-                  className="mt-2 w-full rounded-full bg-rose-800 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-1 w-full rounded-full bg-rose-800 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {calSelected.size > 0 ? t("{0}日を追加", calSelected.size) : t("日付を選んでください")}
                 </button>
@@ -1389,7 +1389,7 @@ export default function Home() {
             </div>
 
             {/* 追加ボタン群 */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-x-2 gap-y-1">
               <button
                 type="button"
                 onClick={() => setRangeOpen(true)}
@@ -1423,7 +1423,7 @@ export default function Home() {
             >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
             </button>
             {icsGuideOpen && (
-              <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
+              <div className="mt-1 space-y-2 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2 text-xs text-stone-700">
                 <p className="text-stone-600">{t("ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
                 <div>
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Google カレンダーを開く")}<span aria-hidden="true">↗</span>
@@ -1465,7 +1465,7 @@ export default function Home() {
                   items={candidates.map((c) => c.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-1.5 space-y-1">
                     {candidates.map((c) => (
                       <SortableCandidate
                         key={c.id}
@@ -1480,13 +1480,13 @@ export default function Home() {
                 </SortableContext>
               </DndContext>
             ) : (
-              <p className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-3 text-sm text-stone-600">{t("候補日はまだありません")}</p>
+              <p className="mt-1.5 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-2 text-sm text-stone-600">{t("候補日はまだありません")}</p>
             )}
           </div>
 
           {/* エラーメッセージ */}
           {error && (
-            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+            <p className="mb-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
               {error}
             </p>
           )}
@@ -1495,7 +1495,7 @@ export default function Home() {
           <button
             type="submit"
             disabled={isSubmitting || isLoadingEdit || !hasDatedCandidates}
-            className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-full bg-rose-800 py-2.5 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? submittingLabel : submitLabel}
           </button>
@@ -1508,7 +1508,7 @@ export default function Home() {
             className="rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
           >{t("↑ 最上部へ")}</button>
         </div>
-        <p className="mt-2 text-center text-[11px] text-stone-600">{t("※ 最後の更新から1年が経過したイベントは自動的に削除されます")}</p>
+        <p className="mt-1 text-center text-[11px] text-stone-600">{t("※ 最後の更新から1年が経過したイベントは自動的に削除されます")}</p>
         <p className="mt-1 text-center text-xs text-stone-600">
           <Link href={path("/contact")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("お問い合わせ")}</Link>
         </p>
@@ -1543,9 +1543,9 @@ export default function Home() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) setRangeOpen(false) }}
         >
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-3 shadow-2xl">
             <p className="mb-1 text-center font-serif text-lg text-stone-700">{t("範囲で追加")}</p>
-            <p className="mb-5 text-center text-xs text-stone-600">{t("開始日〜終了日を選ぶと、その間の日程をまとめて追加できます")}</p>
+            <p className="mb-2 text-center text-xs text-stone-600">{t("開始日〜終了日を選ぶと、その間の日程をまとめて追加できます")}</p>
             <div className="flex items-center gap-2">
               <input
                 type="date"
@@ -1562,7 +1562,7 @@ export default function Home() {
                 className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
               />
             </div>
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-2 flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleAddRange}

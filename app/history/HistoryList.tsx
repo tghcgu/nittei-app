@@ -15,20 +15,20 @@ export function HistoryList() {
   const entries = edited ?? (mounted ? readHistory() : [])
 
   if (!mounted) {
-    return <p className="mt-4 text-sm text-stone-600">{t("読み込み中...")}</p>
+    return <p className="mt-2 text-sm text-stone-600">{t("読み込み中...")}</p>
   }
 
   if (entries.length === 0) {
     return (
-      <p className="mt-4 text-sm text-stone-600">{t("この端末で開いたイベントはまだありません。イベントのページを開くとここに残ります。")}</p>
+      <p className="mt-2 text-sm text-stone-600">{t("この端末で開いたイベントはまだありません。イベントのページを開くとここに残ります。")}</p>
     )
   }
 
   return (
     <>
-      <ul className="mt-4 divide-y divide-stone-300">
+      <ul className="mt-2 divide-y divide-stone-300">
         {entries.map((entry) => (
-          <li key={entry.shareId} className="flex items-center gap-3 py-2">
+          <li key={entry.shareId} className="flex items-center gap-3 py-1.5">
             <div className="min-w-0 flex-1">
               <Link
                 href={path(`/e/${entry.shareId}`)}
@@ -54,7 +54,7 @@ export function HistoryList() {
           clearHistory()
           setEdited([])
         }}
-        className="mt-4 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
+        className="mt-2 rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700"
       >{t("履歴をすべて消す")}</button>
     </>
   )

@@ -47,7 +47,7 @@ for (const locale of ['ja', 'en'] as const) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
       const theme = (await page.locator('.theme-toggle').boundingBox())!
       const back = (await page.getByRole('link', { name: t('← 日程組 トップへ'), exact: true }).boundingBox())!
-      expect(back.y).toBeGreaterThanOrEqual(theme.y + theme.height)
+      expect(back.x).toBeGreaterThanOrEqual(theme.x + theme.width)
       await page.screenshot({ path: `test-results/updates-${locale}-${width}.png`, fullPage: true })
     }
     await page.setViewportSize({ width: 390, height: 900 })

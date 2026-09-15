@@ -15,9 +15,9 @@ export const metadata: Metadata = {
 export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
   const { t, path } = getI18n(locale)
   return (
-    <div className="min-h-screen px-4 py-8">
+    <div className="min-h-screen px-4 py-2">
       <div className="mx-auto max-w-xl">
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-1 flex min-h-10 items-center justify-between gap-2 pl-10">
           <Link
             href={path("/")}
             className="text-xs text-stone-400 transition-colors hover:text-rose-700"
@@ -25,54 +25,54 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <LanguageSwitch />
         </div>
 
-        <div className="rounded-2xl bg-white/70 px-6 py-6 shadow-sm backdrop-blur">
+        <div className="rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur">
           <h1 className="font-serif text-2xl text-rose-800">{t("プライバシーポリシー")}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-stone-600">{t("日程組（以下「本サービス」）は、個人が運営する日程調整・出欠管理サービスです。 本サービスにおける利用者情報の取り扱いを、以下のとおり定めます。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("日程組（以下「本サービス」）は、個人が運営する日程調整・出欠管理サービスです。 本サービスにおける利用者情報の取り扱いを、以下のとおり定めます。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("1. 収集する情報")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("1. 収集する情報")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答とコメント")}</li>
             <li>{t("自動的に収集する情報: アクセス状況の統計（Cloudflare Web Analytics による閲覧ページ・ブラウザ種別など）。個人を特定する情報は含まれず、Cookieも使用していません。")}</li>
           </ul>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("2. カレンダーファイル（.ics）の扱い")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("2. カレンダーファイル（.ics）の扱い")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("空き日程の読み込みに使うカレンダーファイル（.ics / zip）は、お使いのブラウザの中だけで処理され、 サーバーに送信・保存されることはありません。保存されるのは、その結果として入力された出欠（○や✕）のみです。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("3. 端末内に保存する情報")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("3. 端末内に保存する情報")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("開いたイベントの一覧（ページ表示履歴）、表示テーマ、回答一覧の表示設定、 その端末で最後に回答した日時を、お使いのブラウザの中だけに保存します。 サーバーには送信されません。 履歴は「")}<Link href={path("/history")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("ページ表示履歴")}</Link>{t("」からいつでも削除できます。ブラウザのデータを消せば、これらはまとめて消えます。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("4. 利用目的")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("4. 利用目的")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("日程調整機能の提供（回答の保存・集計・表示）")}</li>
             <li>{t("不具合の調査・対応、サービスの改善")}</li>
           </ul>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("上記以外の目的には使用しません。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("5. 保存期間と削除")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("5. 保存期間と削除")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("最後の更新から1年が経過したイベントは、候補日・回答を含め自動的に削除されます。")}</li>
             <li>{t("回答（名前・出欠・コメント）は、イベントページの回答一覧からいつでも編集・削除できます。")}</li>
           </ul>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("6. 第三者への提供")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("6. 第三者への提供")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("法令に基づく場合を除き、収集した情報を第三者に提供しません。広告目的での利用・提供も行っていません。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("7. 外部サービスの利用")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("7. 外部サービスの利用")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("8. イベントページの公開範囲")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("8. イベントページの公開範囲")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("イベントページは、URLを知っている人なら誰でも閲覧・回答できます。 ログインの仕組みがないため、URLを知っている人はイベントの内容の編集や、 他の人の回答の編集・削除も行えます。検索エンジンに登録されない設定にしていますが、 URLの共有範囲にはご注意ください。本名を知られたくない場合は、ニックネームでの回答をおすすめします。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("9. ポリシーの変更")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("9. ポリシーの変更")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("必要に応じて本ポリシーを改定することがあります。重要な変更を行う場合は、本サービス上でお知らせします。")}</p>
 
-          <h2 className="mt-6 font-serif text-base text-rose-800">{t("10. お問い合わせ")}</h2>
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("10. お問い合わせ")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("本ポリシーに関するお問い合わせは、")}<Link
               href={path("/contact")}
               className="underline underline-offset-2 transition-colors hover:text-rose-700"
             >{t("お問い合わせページ")}</Link>{t("からお送りください。")}</p>
 
-          <p className="mt-6 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月3日")}</p>
+          <p className="mt-3 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月3日")}</p>
         </div>
       </div>
     </div>
