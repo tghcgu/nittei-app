@@ -6,6 +6,14 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-15: 共有リンクを最下部へ / Bottom links deployed**
+
+- Current production Worker: `e396e93a-295a-48ea-89f4-66f1c3e4ce2f` (100%). Application: `ec3259f`, branch `release/ui-20260910`; main equivalent: `23fff29`. Previous compatible Worker: `11f80fc3-256a-4f6e-bcfd-4631579f817d`.
+- Updates and sharing now form one small bottom row below the legal footer on home and event pages. Neither appears inside event information. The suggested post is "これめっちゃつかいやすい！！" / "This is so easy to use!!", plus only the localized production homepage.
+- Verification: 7 related main tests, 11 compatibility tests, both lints, main TypeScript, webpack/OpenNext builds, and read-only preview/production checks at 320/390/1440px in both locales passed. Production initially showed the updates-page error boundary immediately after promotion; a fresh diagnostic and subsequent full verification passed without browser errors or DB writes. The initial cause was not established.
+- A repeated production run also hit one five-second English link-navigation assertion timeout. Full verification subsequently passed with an explicit URL wait (15-second limit); six separate event-to-updates navigations, three per locale, completed in 0.5-1.1 seconds without browser errors or failed requests. No further application changes were made to obtain these results.
+- Preview: https://footer-links-nittei-app.qoj.workers.dev . Uploaded with `--keep-vars`, then verified and promoted at 100%. **SQL移行は未適用。DB・保存方式・Cron設定は変更していません。mainを旧DBへ配信しないでください。**
+
 **2026-09-15: 回答一覧にイベント情報 / Event details in results deployed**
 
 - Current production Worker: `11f80fc3-256a-4f6e-bcfd-4631579f817d` (100%). Application: `b9cbc9e`, branch `release/ui-20260910`. Previous compatible Worker: `ae285d74-730a-42c3-b51f-4d3fcd105d31`. Matching main change: `5531f36`.
