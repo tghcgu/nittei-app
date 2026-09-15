@@ -1288,11 +1288,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   }
 
   return (
-    <div className="min-h-screen px-4 py-4">
+    <div className="min-h-screen px-4 py-2">
       <div className="w-full">
 
         {/* サイトヘッダー */}
-        <div className="mb-2 grid min-h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2">
+        <div className="mb-1 grid min-h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2">
           {canEditEvent && <Link
             href={path(`/?edit=${shareId}`)}
             className="col-start-3 row-start-1 justify-self-end whitespace-nowrap text-xs text-stone-600 transition-colors hover:text-rose-700 sm:ml-8 sm:justify-self-start sm:text-sm"
@@ -1349,7 +1349,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           onDragOver={handleIcsDragOver}
           onDragLeave={handleIcsDragLeave}
           onDrop={handleIcsDrop}
-          className={`mb-8 scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-3 shadow-sm backdrop-blur transition-shadow lg:mx-0 lg:px-6 ${
+          className={`mb-2 scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-2 shadow-sm backdrop-blur transition-shadow lg:mx-0 lg:px-6 ${
             hasVisiblePeerAnswers
               ? 'lg:w-fit lg:max-w-full'
               : 'lg:max-w-2xl'
@@ -1387,7 +1387,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </button>
           )}
           {/* 名前 */}
-          <div className="mb-3">
+          <div className="mb-1.5">
             <label className="mb-1 block text-sm font-medium text-stone-700">{t("お名前")}<span className="text-rose-700">*</span>
             </label>
             <input
@@ -1397,7 +1397,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("例：山田")}
-              className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-600"
+              className="w-full max-w-xs rounded-lg border border-stone-300 bg-white px-4 py-2 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:bg-stone-50 disabled:text-stone-600"
             />
           </div>
 
@@ -1410,7 +1410,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               className="hidden"
               onChange={handleIcsUpload}
             />
-            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <button
                 type="button"
                 onClick={() => icsInputRef.current?.click()}
@@ -1427,26 +1427,26 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </svg>{t(".ics / zip から自動入力")}</>
                 )}
               </button>
-              {/* スマホでは「設定」以降を次の行へ折り返す */}
-              <div className="h-0 basis-full sm:hidden" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={() => setIcsOptionsOpen((v) => !v)}
-                aria-expanded={icsOptionsOpen}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-              >{t("設定")}{icsOptionsOpen ? '▲' : '▼'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIcsGuideOpen((v) => !v)}
-                aria-expanded={icsGuideOpen}
-                className="shrink-0 whitespace-nowrap text-[11px] text-stone-600 underline hover:text-rose-700"
-              >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIcsOptionsOpen((v) => !v)}
+                  aria-expanded={icsOptionsOpen}
+                  className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                >{t("設定")}{icsOptionsOpen ? '▲' : '▼'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIcsGuideOpen((v) => !v)}
+                  aria-expanded={icsGuideOpen}
+                  className="shrink-0 whitespace-nowrap text-[11px] text-stone-600 underline hover:text-rose-700"
+                >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
+                </button>
+              </div>
             </div>
-            <p className="mt-1.5 hidden text-[11px] text-stone-600 sm:block">{t(".ics / zip ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
+            <p className="mt-1 hidden text-[11px] text-stone-600 sm:block">{t(".ics / zip ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
             {icsOptionsOpen && (
-              <div className="mt-2 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2.5">
+              <div className="mt-1 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-none text-stone-600">
                   <div className="flex items-center gap-1.5">
                     <span className="shrink-0">{t("予定あり：")}</span>
@@ -1489,7 +1489,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               </div>
             )}
             {icsGuideOpen && (
-              <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
+              <div className="mt-1 space-y-2 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2 text-xs text-stone-700">
                 <div>
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Google カレンダーを開く")}<span aria-hidden="true">↗</span>
                   </a>
@@ -1532,7 +1532,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
           {/* 一括回答ボタン群 */}
           <div className="mb-2">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <button
                 type="button"
                 onClick={toggleBulkOpen}
@@ -1591,7 +1591,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </div>
 
             {bulkOpen && (
-              <div className="mt-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3">
+              <div className="mt-1.5 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-medium text-stone-600">{t("日程範囲と回答を選択して「適用」")}</p>
                   <button
@@ -1674,7 +1674,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   disabled={!bulkStart || !bulkEnd || bulkStart > bulkEnd}
                   className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
                 >{t("適用")}</button>
-                <div className="mt-3 border-t border-stone-300 pt-2.5">
+                <div className="mt-2 border-t border-stone-300 pt-1.5">
                   <p className="mb-1.5 text-xs font-medium text-stone-600">{t("日付範囲 + 時間帯で一括回答")}</p>
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     <input
@@ -1750,7 +1750,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             </div>
             <p className="mt-0.5 text-[10px] leading-tight text-stone-600">{t("長押し・ドラッグでまとめて入力できます")}</p>
           </div>
-          <div className="mb-6 flex min-w-0 overflow-hidden">
+          <div className="mb-2 flex min-w-0 overflow-hidden">
             {/* 日付と自分の回答は、他の人の回答とは別の固定領域に置く。 */}
             <div
               className={`relative z-10 grid shrink-0 gap-y-0.5 ${
@@ -1880,7 +1880,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
 
           {/* 共通メモ：常時表示 */}
-          <div className="mb-8">
+          <div className="mb-2">
             <input
               type="text"
               value={sharedNote}
@@ -1893,12 +1893,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           <div id="answer-submit-area">
             {/* エラー・成功メッセージ */}
             {error && (
-              <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+              <p className="mb-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
                 {error}
               </p>
             )}
             {submitSuccess && (
-              <p className="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
+              <p className="mb-2 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
                 {submitSuccess === 'updated' ? t("回答を更新しました！") : t("回答を送信しました！ありがとうございます。")}
               </p>
             )}
@@ -1906,7 +1906,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <button
               type="submit"
               disabled={isSubmitting || Boolean(deletingResponseId)}
-              className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-full bg-rose-800 py-2.5 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? t("送信中...") : editingResponseId ? t("回答を更新") : t("回答を送信")}
             </button>
@@ -1916,7 +1916,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* 集計テーブル */}
         <div
           id="responses-section"
-          className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-6 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
+          className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-2 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
           {/* 操作が入りきらない幅では折り返す。表だけを横スクロールさせる */}
           <div className="mb-2 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
@@ -1973,7 +1973,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
 
           {/* Keep the description from determining the content-sized table width. */}
-          <div className="response-event-details mb-3 min-w-0 max-w-2xl [contain:inline-size] [overflow-wrap:anywhere]">
+          <div className="response-event-details mb-1.5 min-w-0 max-w-2xl [contain:inline-size] [overflow-wrap:anywhere]">
             <h3 className="font-serif text-base leading-snug text-rose-800">{event.name}</h3>
             {event.description?.trim() && (
               <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">{event.description}</p>
@@ -2163,7 +2163,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         {/* 日時はサーバー(UTC)とブラウザ(現地時間)で食い違うため、マウント後に描画する */}
         {infoMounted && (
-          <div className="mt-8 rounded-2xl bg-white/50 px-4 py-3 text-[11px] leading-relaxed text-stone-600">
+          <div className="mt-2 rounded-2xl bg-white/50 px-4 py-2 text-[11px] leading-relaxed text-stone-600">
             <p className="mb-1 font-medium text-stone-700">{t("【このページについての情報】")}</p>
             <p>{t("ページ表示日時：")}{formatDateTime(viewedAt)}</p>
             <p>{t("作成日時：")}{formatDateTime(event.created_at)}</p>
@@ -2175,7 +2175,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </div>
         )}
 
-        <p className="footer-links mt-6 text-center text-[11px] text-stone-600">
+        <p className="footer-links mt-2 text-center text-[11px] text-stone-600">
           <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>
           <span className="mx-2">·</span>
           <Link href={path("/privacy")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("プライバシーポリシー")}</Link>
