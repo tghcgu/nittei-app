@@ -70,7 +70,7 @@ for (const locale of ['ja', 'en'] as const) {
     expect(errors).toEqual([])
   })
 
-  test(`${locale}: home and response links add no footer height`, async ({ page, request }) => {
+  test(`${locale}: updates and sharing are one compact row below the legal footer`, async ({ page, request }) => {
     const { t, path } = getI18n(locale)
     const shareId = `updates-${locale}`
     const seeded = await request.post('http://127.0.0.1:54329/rest/v1/events', {
@@ -82,20 +82,29 @@ for (const locale of ['ja', 'en'] as const) {
       const link = page.getByRole('link', { name: t('更新履歴'), exact: true })
       await expect(link).toHaveCount(1)
       await expect(link).toHaveAttribute('href', path('/updates'))
+      const row = page.locator('.site-secondary-links')
+      await expect(row.getByRole('link')).toHaveCount(2)
+      await expect(row.getByRole('link', { name: t('よければXでシェア'), exact: true })).toBeVisible()
       for (const width of [320, 390, 1440]) {
         await page.setViewportSize({ width, height: 900 })
+        await link.scrollIntoViewIfNeeded()
         const geometry = await link.evaluate(anchor => {
           const row = anchor.parentElement!
-          const separator = anchor.previousElementSibling as HTMLElement
-          const height = row.getBoundingClientRect().height
-          anchor.style.display = 'none'
-          separator.style.display = 'none'
-          const before = row.getBoundingClientRect().height
-          anchor.removeAttribute('style')
-          separator.removeAttribute('style')
-          return { height, before, scroll: document.documentElement.scrollWidth }
+          const legal = row.previousElementSibling!
+          const rect = row.getBoundingClientRect()
+          const links = [...row.querySelectorAll('a')].map(link => link.getBoundingClientRect())
+          return {
+            height: rect.height,
+            isLast: row.nextElementSibling === null,
+            belowLegal: legal.matches('.footer-links') && rect.top >= legal.getBoundingClientRect().bottom,
+            sameLine: Math.abs(links[0].top - links[1].top) < 1,
+            scroll: document.documentElement.scrollWidth,
+          }
         })
-        expect(geometry.height).toBeLessThanOrEqual(geometry.before)
+        expect(geometry.height).toBeLessThanOrEqual(17)
+        expect(geometry.isLast).toBe(true)
+        expect(geometry.belowLegal).toBe(true)
+        expect(geometry.sameLine).toBe(true)
         expect(geometry.scroll).toBeLessThanOrEqual(width)
       }
       await link.click()

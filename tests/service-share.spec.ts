@@ -27,13 +27,20 @@ for (const locale of ['ja', 'en'] as const) {
       const intent = new URL(href)
       expect(intent.origin + intent.pathname).toBe('https://x.com/intent/tweet')
       expect(intent.searchParams.get('url')).toBe(siteUrl + path('/'))
-      expect(intent.searchParams.get('text')).toBe(t('日程組は、ログイン不要の日程調整・出欠管理ツールです。候補日を作ってURLを共有するだけ。'))
+      expect(intent.searchParams.get('text')).toBe(locale === 'ja' ? 'これめっちゃつかいやすい！！' : 'This is so easy to use!!')
       expect(intent.searchParams.get('lang')).toBe(locale)
       expect([...intent.searchParams.keys()].sort()).toEqual(['lang', 'text', 'url'])
       expect(decodeURIComponent(href)).not.toContain(shareId)
       expect(decodeURIComponent(href)).not.toContain(eventName)
       await expect(link).toHaveAttribute('target', '_blank')
       await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+      await expect(link).toHaveAttribute('title', t('Xの投稿画面を開く'))
+      expect(await link.evaluate(anchor => anchor.parentElement!.nextElementSibling)).toBeNull()
+      if (route.startsWith('/e/')) {
+        const info = page.getByText(t('【このページについての情報】'), { exact: true }).locator('..')
+        await expect(info).toBeVisible()
+        await expect(info.locator('a')).toHaveCount(0)
+      }
       for (const width of [320, 390, 1440]) {
         await page.setViewportSize({ width, height: 900 })
         await link.scrollIntoViewIfNeeded()

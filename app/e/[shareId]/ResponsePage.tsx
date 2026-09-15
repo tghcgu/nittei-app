@@ -2148,22 +2148,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {/* 日時はサーバー(UTC)とブラウザ(現地時間)で食い違うため、マウント後に描画する */}
         {infoMounted && (
           <div className="mt-8 rounded-2xl bg-white/50 px-4 py-3 text-[11px] leading-relaxed text-stone-600">
-            <p className="mb-1 font-medium text-stone-700">
-              {t("【このページについての情報】")}
-              <span className="mx-1">·</span>
-              <Link href={path("/updates")} className="font-normal underline underline-offset-2 transition-colors hover:text-rose-700">{t("更新履歴")}</Link>
-            </p>
+            <p className="mb-1 font-medium text-stone-700">{t("【このページについての情報】")}</p>
             <p>{t("ページ表示日時：")}{formatDateTime(viewedAt)}</p>
             <p>{t("作成日時：")}{formatDateTime(event.created_at)}</p>
             <p>{t("最終更新日時：")}{formatDateTime(lastUpdatedAt)}</p>
             {localUpdatedAt && (
               <p>{t("この端末からの最終更新日時：")}{formatDateTime(localUpdatedAt)}</p>
             )}
-            <p>
-              {t("回答人数：")}{responseRows.length}{t("人")}
-              <span className="mx-1">·</span>
-              <ServiceShareLink locale={locale} />
-            </p>
+            <p>{t("回答人数：")}{responseRows.length}{t("人")}</p>
           </div>
         )}
 
@@ -2186,6 +2178,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </a>
           <span className="mx-1">·</span>
           <LanguageSwitch />
+        </p>
+        <p className="site-secondary-links mt-1 text-center text-[11px] text-stone-600">
+          <Link href={path("/updates")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("更新履歴")}</Link>
+          <span className="mx-1">·</span>
+          <ServiceShareLink locale={locale} />
         </p>
       </div>
     </div>
