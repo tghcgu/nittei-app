@@ -6,6 +6,14 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-18: ドラッグ選択の1日・0日 / Calendar drag reversal deployed**
+
+- Current production Worker: `73d53d34-ea4c-41e2-81bd-195e2ac78c37` (100%). Application: `cf6ca1c`, branch `release/ui-20260910`; main equivalents: `ccc9914`, `34c5d8d`. Previous compatible Worker: `b1fc098d-b307-434b-8446-40666255f56f`.
+- Returning to the starting date keeps one selected date; moving more than 8px past its center against the last drag direction restores the pre-drag selection. This permits zero without skipping one. Existing selections, removal strokes and single-entry undo/redo remain intact. No layout or persistence changes.
+- Main's related 20 tests and the final compatibility version's related 20 tests passed, including 12 calendar cases, English workflows and update-history checks. Relevant lints, main TypeScript and compatibility webpack/OpenNext builds passed. Preview and production each passed eight read-only mouse/touch gestures across both locales and directions with no page errors or DB writes during the successful runs.
+- Immediately after promotion, the first production check failed loading the previous `75-60567a61fe663758.js` chunk. A fresh-context run passed all eight cases without application or timeout changes; the old HTML's delivery cause was not established. The CPU-limit errors recorded on September 15 have not been addressed by this change.
+- Preview: https://calendar-drag-nittei-app.qoj.workers.dev . Uploaded with `--keep-vars`; existing variables, SQL, storage, Cron and runtime limits are unchanged. **SQL移行は未適用。mainを旧DBへ配信しないでください。**
+
 **2026-09-15: 全画面の余白縮小 / Compact spacing deployed**
 
 - Current production Worker: `b1fc098d-b307-434b-8446-40666255f56f` (100%). Application: `c055bf9`, branch `release/ui-20260910`; main equivalent: `3393456`. Previous compatible Worker: `e396e93a-295a-48ea-89f4-66f1c3e4ce2f`. Test-only follow-ups: release `46348d1`, main `9049093`.
