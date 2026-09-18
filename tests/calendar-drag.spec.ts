@@ -95,7 +95,7 @@ for (const locale of ['ja', 'en'] as const) {
           const start = await point(startDate)
           const middle = await point(11)
           const end = await point(endDate)
-          await pointer.start(start)
+          await pointer.start({ x: start.x + (reverse ? -12 : 12), y: start.y })
           await pointer.move(middle)
           await expect(selected).toHaveCount(2)
           await pointer.move(end)

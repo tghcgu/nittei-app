@@ -813,12 +813,13 @@ export default function Home() {
   function handleCalendarPaintStart(e: React.PointerEvent<HTMLButtonElement>, dateStr: string) {
     if (e.button !== 0) return
 
+    const bounds = e.currentTarget.getBoundingClientRect()
     calendarPaintRef.current = {
       pointerId: e.pointerId,
       mode: calSelectedRef.current.has(dateStr) ? 'remove' : 'add',
       startDate: dateStr,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: bounds.left + bounds.width / 2,
+      startY: bounds.top + bounds.height / 2,
       direction: null,
       didPaint: false,
       initialSelected: new Set(calSelectedRef.current),
