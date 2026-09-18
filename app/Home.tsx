@@ -81,6 +81,7 @@ type CalendarPaintSession = {
   startDate: string
   startX: number
   startY: number
+  direction: { x: number; y: number } | null
   didPaint: boolean
   initialSelected: Set<string>
 }
@@ -780,15 +781,24 @@ export default function Home() {
     return element?.closest<HTMLElement>('[data-calendar-date]')?.dataset.calendarDate ?? null
   }
 
-  function applyCalendarPaintRange(dateStr: string) {
+  function applyCalendarPaintRange(dateStr: string | null, clientX: number, clientY: number) {
     const session = calendarPaintRef.current
     if (!session) return
 
-    // 別の日までドラッグしたあと開始日に引き返した場合は、
-    // 開始日だけを残さずドラッグ開始前の状態へ完全に戻す。
-    if (dateStr === session.startDate) {
-      if (session.didPaint) replaceCalSelected(session.initialSelected)
-      return
+    const dx = clientX - session.startX
+    const dy = clientY - session.startY
+    if (!dateStr || dateStr === session.startDate) {
+      if (!session.didPaint) return
+      // Keep one day at the start; undo the stroke only after moving past it.
+      const progress = session.direction ? dx * session.direction.x + dy * session.direction.y : 0
+      if (progress < -CALENDAR_PAINT_MOVE_THRESHOLD) {
+        replaceCalSelected(session.initialSelected)
+        return
+      }
+      if (!dateStr) return
+    } else {
+      const distance = Math.hypot(dx, dy)
+      if (distance > 0) session.direction = { x: dx / distance, y: dy / distance }
     }
 
     session.didPaint = true
@@ -809,6 +819,7 @@ export default function Home() {
       startDate: dateStr,
       startX: e.clientX,
       startY: e.clientY,
+      direction: null,
       didPaint: false,
       initialSelected: new Set(calSelectedRef.current),
     }
@@ -823,10 +834,9 @@ export default function Home() {
     if (!session.didPaint && distance < CALENDAR_PAINT_MOVE_THRESHOLD) return
 
     const dateStr = getCalendarDateAtPoint(e.clientX, e.clientY)
-    if (!dateStr) return
 
     e.preventDefault()
-    applyCalendarPaintRange(dateStr)
+    applyCalendarPaintRange(dateStr, e.clientX, e.clientY)
   }
 
   function handleCalendarPaintEnd(e: React.PointerEvent<HTMLButtonElement>) {

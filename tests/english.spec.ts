@@ -123,9 +123,10 @@ test('English create, answer, edit, history, language switch, and mobile layout'
 })
 
 test('calendar drag reversal, selection undo, theme, and edit-link locale', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-15T12:00:00'))
   await page.goto('/en')
-  const first = page.locator('[data-calendar-date]').nth(10)
-  const last = page.locator('[data-calendar-date]').nth(12)
+  const first = page.locator('[data-calendar-date]').nth(7)
+  const last = page.locator('[data-calendar-date]').nth(9)
   await first.scrollIntoViewIfNeeded()
   const a = (await first.boundingBox())!
   const b = (await last.boundingBox())!
@@ -134,6 +135,8 @@ test('calendar drag reversal, selection undo, theme, and edit-link locale', asyn
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 })
   await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(3)
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2, { steps: 8 })
+  await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(1)
+  await page.mouse.move(a.x + a.width / 2 - 12, a.y + a.height / 2)
   await page.mouse.up()
   await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(0)
   await page.getByRole('button', { name: /Select remaining days/ }).click()

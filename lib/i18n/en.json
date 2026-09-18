@@ -1,4 +1,6 @@
 {
+  "カレンダーのドラッグ選択を修正": "Calendar drag selection fix",
+  "ドラッグを戻すときに1日だけ残せるようにし、開始位置を越えて戻すと選択前の状態に戻せるようにしました。": "Dragging back can now leave just one date selected. Moving past the starting point restores the selection from before the drag.",
   "作成・回答・履歴など全画面の上下の余白を縮め、スマホの操作列も詰めました。": "Reduced vertical spacing across creation, responses, history and other pages, including tighter mobile toolbars.",
   "「みんなの回答」にもイベント名と説明を表示するようにしました。": "The results section now also shows the event name and description.",
   "これめっちゃつかいやすい！！": "This is so easy to use!!",
