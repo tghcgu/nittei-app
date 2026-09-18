@@ -3,6 +3,11 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-09-18',
+    title: 'カレンダーのドラッグ選択を修正',
+    changes: ['ドラッグを戻すときに1日だけ残せるようにし、開始位置を越えて戻すと選択前の状態に戻せるようにしました。'],
+  },
+  {
     date: '2026-09-15',
     title: '共有リンクと初期の更新履歴',
     changes: [
