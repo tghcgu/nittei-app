@@ -118,6 +118,23 @@ body {
   }
 }
 
+.event-title {
+  border-block: 1px solid #b8b8b8;
+  border-inline-start: 3px solid #666;
+  padding-inline: 8px;
+  background-color: #fafafa;
+  color: #111;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+html[data-theme="dark"] .event-title {
+  border-block-color: #555;
+  border-inline-start-color: #a3a3a3;
+  background-color: #111;
+  color: #fff;
+}
+
 .response-sticky-cell {
   background-color: #fbfaf8;
   background-clip: padding-box;

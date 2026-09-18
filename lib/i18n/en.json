@@ -1,4 +1,5 @@
 {
+  "イベント名を白黒の太字にし、コンパクトな枠付きの見出しに変更しました。": "Event titles now use bold black or white text in a compact bordered heading.",
   "カレンダーのドラッグ選択を修正": "Calendar drag selection fix",
   "ドラッグを戻すときに1日だけ残せるようにし、開始位置を越えて戻すと選択前の状態に戻せるようにしました。": "Dragging back can now leave just one date selected. Moving past the starting point restores the selection from before the drag.",
   "作成・回答・履歴など全画面の上下の余白を縮め、スマホの操作列も詰めました。": "Reduced vertical spacing across creation, responses, history and other pages, including tighter mobile toolbars.",
