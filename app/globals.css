@@ -36,6 +36,13 @@ body {
   min-width: 0;
 }
 
+.home-details,
+.home-date-tools,
+.home-candidate-list,
+.home-submit {
+  display: contents;
+}
+
 @media (max-width: 640px) {
   html[lang="ja"] .answer-choice-options {
     flex-wrap: nowrap;
@@ -460,4 +467,88 @@ html[data-theme="dark"] .focus\:ring-blue-100:focus {
    レイアウトに影響しない text-stroke だけで太くする */
 .answer-mark-strong {
   -webkit-text-stroke: 0.045em currentColor;
+}
+
+@media (min-width: 1024px) {
+  body:has(.home-desktop-layout) {
+    background: #f7f7f7;
+  }
+
+  html[data-theme="dark"] body:has(.home-desktop-layout) {
+    background: #000;
+  }
+
+  .home-desktop-layout {
+    max-width: 960px;
+  }
+
+  html .home-desktop-layout .home-form {
+    display: grid;
+    grid-template-columns: 384px minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    grid-template-areas:
+      "dates details"
+      "dates label"
+      "dates candidates"
+      "dates submit";
+    column-gap: 24px;
+    align-items: start;
+    padding-inline: 0;
+    border-radius: 0;
+    background-color: transparent !important;
+    backdrop-filter: none;
+  }
+
+  .home-desktop-layout .home-form:not(.ring-2) {
+    box-shadow: none;
+  }
+
+  .home-desktop-layout .home-candidates {
+    display: contents;
+  }
+
+  .home-desktop-layout .home-details,
+  .home-desktop-layout .home-date-tools,
+  .home-desktop-layout .home-candidate-list,
+  .home-desktop-layout .home-submit {
+    display: block;
+    min-width: 0;
+  }
+
+  .home-desktop-layout .home-details {
+    grid-area: details;
+  }
+
+  .home-desktop-layout .home-date-tools {
+    grid-area: dates;
+  }
+
+  .home-desktop-layout .home-date-tools > div {
+    border-radius: 8px;
+  }
+
+  .home-desktop-layout .home-candidate-label {
+    grid-area: label;
+  }
+
+  .home-desktop-layout .home-candidate-list {
+    grid-area: candidates;
+    margin-bottom: 8px;
+  }
+
+  .home-desktop-layout .home-submit {
+    grid-area: submit;
+  }
+
+  .home-desktop-layout textarea {
+    max-width: 100%;
+  }
+
+  .home-desktop-layout .candidate-row input[type="time"] {
+    width: 8rem;
+  }
+
+  body:has(.home-desktop-layout) .theme-toggle {
+    left: max(1rem, calc(50% - 30rem));
+  }
 }
