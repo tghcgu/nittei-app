@@ -6,6 +6,14 @@
 
 ### 準備済みバージョン / Prepared Version
 
+**2026-09-19: Monochrome event titles and best-date highlights deployed**
+
+- Current production Worker: `6c578af4-d8c3-442a-b632-dd01f23f0ea9` (100%). Application: `fb8372c`, branch `release/ui-20260910`; main equivalents: `7633713`, `0c6f977`. Previous compatible Worker: `73d53d34-ea4c-41e2-81bd-195e2ac78c37`.
+- Event names use compact bold black/white bordered bands. Results highlight dates with the highest combined total of ◎ and ○, including ties but excluding all-zero totals. Date highlighting remains when counts are hidden, and supports both layouts/themes and sticky cells. No persistence changes.
+- Main's related 19 cases were verified across the initial run and corrected eight-case rerun (the initial English tests incorrectly expected Japanese date formatting). Compatibility's 16 related cases passed. Both relevant lints, main TypeScript, and webpack/OpenNext builds passed.
+- Preview and production each passed 24 read-only layout/highlight checks. Production also passed eight calendar-drag checks and both latest-history pages (41 dated entries). No page errors or DB writes occurred during these public checks. Previously recorded CPU-limit problems are not addressed by this UI change.
+- Preview: https://candidate-highlight-nittei-app.qoj.workers.dev . Uploaded with `--keep-vars`; SQL, storage, Cron and runtime limits are unchanged. **SQL移行は未適用。mainを旧DBへ配信しないでください。**
+
 **2026-09-18: ドラッグ選択の1日・0日 / Calendar drag reversal deployed**
 
 - Current production Worker: `73d53d34-ea4c-41e2-81bd-195e2ac78c37` (100%). Application: `cf6ca1c`, branch `release/ui-20260910`; main equivalents: `ccc9914`, `34c5d8d`. Previous compatible Worker: `b1fc098d-b307-434b-8446-40666255f56f`.
