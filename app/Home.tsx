@@ -1068,7 +1068,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen px-4 py-2">
-      <div className="mx-auto max-w-xl">
+      <div className="home-desktop-layout mx-auto max-w-xl">
         {/* ヘッダー */}
         <div className="mb-1 text-center">
           <h1 className="inline-flex items-baseline gap-1.5 font-serif text-3xl text-rose-800">
@@ -1095,10 +1095,11 @@ export default function Home() {
           onDragOver={handleIcsDragOver}
           onDragLeave={handleIcsDragLeave}
           onDrop={handleIcsDrop}
-          className={`rounded-2xl bg-white/70 px-6 py-2 shadow-sm backdrop-blur transition-shadow ${
+          className={`home-form rounded-2xl bg-white/70 px-6 py-2 shadow-sm backdrop-blur transition-shadow ${
             isIcsDragOver ? 'ring-2 ring-rose-400' : ''
           }`}
         >
+          <div className="home-details">
           {/* イベント名 */}
           <div className="mb-1">
             <div className="mb-1 flex items-center justify-between gap-3">
@@ -1160,11 +1161,14 @@ export default function Home() {
             </div>
           </div>
 
+          </div>
+
           {/* 候補日時 */}
-          <div className="mb-2">
-            <label className="mb-1 block text-sm font-medium text-stone-700">{t("候補日時")}<span className="text-rose-700">*</span>
+          <div className="home-candidates mb-2">
+            <label className="home-candidate-label mb-1 block text-sm font-medium text-stone-700">{t("候補日時")}<span className="text-rose-700">*</span>
             </label>
 
+            <div className="home-date-tools">
             {/* 時間帯バー */}
             <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
               <span className="shrink-0 text-sm text-stone-600">{t("時間帯：")}</span>
@@ -1249,7 +1253,7 @@ export default function Home() {
             </div>
 
             {/* カレンダー（日付を選択してから候補日に追加） */}
-            <div className="mb-1.5 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
+            <div className="home-calendar mb-1.5 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
               {!calendarMounted && <div className="h-80" aria-hidden="true" />}
               {calendarMounted && (
               <div className="mx-auto max-w-sm">
@@ -1380,6 +1384,9 @@ export default function Home() {
               )}
             </div>
 
+            </div>
+
+            <div className="home-candidate-list">
             {/* 追加ボタン群 */}
             <div className="flex flex-wrap gap-x-2 gap-y-1">
               <button
@@ -1474,8 +1481,10 @@ export default function Home() {
             ) : (
               <p className="mt-1.5 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-2 text-sm text-stone-600">{t("候補日はまだありません")}</p>
             )}
+            </div>
           </div>
 
+          <div className="home-submit">
           {/* エラーメッセージ */}
           {error && (
             <p className="mb-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
@@ -1491,6 +1500,7 @@ export default function Home() {
           >
             {isSubmitting ? submittingLabel : submitLabel}
           </button>
+          </div>
         </form>
 
         <div className="mt-1 text-center">
