@@ -557,6 +557,19 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
     return counts
   }, [candidates, responseRows, event.answer_choices])
+  const bestCandidateIds = useMemo(() => {
+    let max = 0
+    const best = new Set<string>()
+    for (const [id, counts] of answerCountsByCandidate) {
+      const available = (counts['◎'] ?? 0) + (counts['○'] ?? 0)
+      if (available > max) {
+        max = available
+        best.clear()
+      }
+      if (available > 0 && available === max) best.add(id)
+    }
+    return best
+  }, [answerCountsByCandidate])
   const editingResponse = editingResponseId
     ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
@@ -2001,7 +2014,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {candidates.map((c) => (
                       <th
                         key={c.id}
-                        className="border-l border-stone-500/50 px-1.5 pb-1 font-normal text-stone-600 whitespace-nowrap"
+                        className={`border-l border-stone-500/50 px-1.5 pb-1 font-normal text-stone-600 whitespace-nowrap ${bestCandidateIds.has(c.id) ? 'response-best-candidate' : ''}`}
                       >
                         <div className="font-serif text-sm">{formatDate(c.date)}</div>
                         {c.time_label && (
@@ -2027,11 +2040,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       </th>
                       {candidates.map((candidate) => {
                         const count = answerCountsByCandidate.get(candidate.id)?.[option.value] ?? 0
+                        const isBest = bestCandidateIds.has(candidate.id) && count > 0 && (option.value === '◎' || option.value === '○')
                         return (
                           <td
                             key={candidate.id}
                             title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
-                            className="border-l border-stone-500/50 px-1.5 py-0 font-medium text-stone-700"
+                            className={`border-l border-stone-500/50 px-1.5 py-0 ${isBest ? 'response-best-candidate response-best-count' : 'font-medium text-stone-700'}`}
                           >
                             {count || ''}
                           </td>
@@ -2119,7 +2133,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <tbody>
                   {candidates.map((c) => (
                     <tr key={c.id} className="border-t border-stone-300 even:bg-stone-500/20">
-                      <td className={`${stickyHeadClass('z-10')}py-0 pr-0.5 text-left whitespace-nowrap`}>
+                      <td className={`${stickyHeadClass('z-10')}py-0 pr-0.5 text-left whitespace-nowrap ${bestCandidateIds.has(c.id) ? 'response-best-candidate' : ''}`}>
                         <span className="font-serif text-stone-700">
                           {formatDate(c.date)}
                         </span>
@@ -2129,11 +2143,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       </td>
                       {showAnswerCounts && countOptions.map((option) => {
                         const count = answerCountsByCandidate.get(c.id)?.[option.value] ?? 0
+                        const isBest = bestCandidateIds.has(c.id) && count > 0 && (option.value === '◎' || option.value === '○')
                         return (
                           <td
                             key={`count-${option.value}`}
                             title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
-                            className="min-w-7 border-l border-stone-500/50 px-1 py-0 font-medium text-stone-700"
+                            className={`min-w-7 border-l border-stone-500/50 px-1 py-0 ${isBest ? 'response-best-candidate response-best-count' : 'font-medium text-stone-700'}`}
                           >
                             {count || ''}
                           </td>

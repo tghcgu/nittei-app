@@ -3,11 +3,18 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-09-19',
+    title: 'イベント名と候補日の見やすさを改善',
+    changes: [
+      'イベント名を白黒の太字にし、コンパクトな枠付きの見出しに変更しました。',
+      '「みんなの回答」で◎と○の合計が最多の候補日を自動で色付けするようにしました。同数の日も強調し、全日0人の場合は色を付けません。',
+    ],
+  },
+  {
     date: '2026-09-18',
     title: 'カレンダーのドラッグ選択を修正',
     changes: [
       'ドラッグを戻すときに1日だけ残せるようにし、開始位置を越えて戻すと選択前の状態に戻せるようにしました。',
-      'イベント名を白黒の太字にし、コンパクトな枠付きの見出しに変更しました。',
     ],
   },
   {

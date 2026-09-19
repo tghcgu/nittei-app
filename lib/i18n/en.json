@@ -1,4 +1,6 @@
 {
+  "イベント名と候補日の見やすさを改善": "Clearer event titles and date options",
+  "「みんなの回答」で◎と○の合計が最多の候補日を自動で色付けするようにしました。同数の日も強調し、全日0人の場合は色を付けません。": "Results now highlight the dates with the highest combined total of ◎ and ○ answers, including ties. No dates are highlighted when all totals are zero.",
   "イベント名を白黒の太字にし、コンパクトな枠付きの見出しに変更しました。": "Event titles now use bold black or white text in a compact bordered heading.",
   "カレンダーのドラッグ選択を修正": "Calendar drag selection fix",
   "ドラッグを戻すときに1日だけ残せるようにし、開始位置を越えて戻すと選択前の状態に戻せるようにしました。": "Dragging back can now leave just one date selected. Moving past the starting point restores the selection from before the drag.",

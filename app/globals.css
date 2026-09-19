@@ -175,6 +175,23 @@ html[data-theme="dark"] tbody tr:nth-child(even) > .response-sticky-cell {
   background-color: #1e1e1d;
 }
 
+.response-results-table tr > :is(th, td).response-best-candidate {
+  background-color: #fff4b8;
+}
+
+.response-best-count {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+html[data-theme="dark"] .response-results-table tr > :is(th, td).response-best-candidate {
+  background-color: #443b16;
+}
+
+html[data-theme="dark"] .response-best-count {
+  color: #fca5a5;
+}
+
 .theme-toggle {
   position: absolute;
   top: 0.75rem;
