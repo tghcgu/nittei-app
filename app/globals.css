@@ -461,3 +461,50 @@ html[data-theme="dark"] .focus\:ring-blue-100:focus {
 .answer-mark-strong {
   -webkit-text-stroke: 0.045em currentColor;
 }
+
+.home-brand-name {
+  color: #1c1917;
+}
+
+.home-header-action,
+body:has(.home-brand-header) .theme-toggle {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d6d3d1;
+  background: transparent;
+  color: #57534e;
+  box-shadow: none;
+  transform: none;
+}
+
+body:has(.home-brand-header) .theme-toggle {
+  top: 8px;
+}
+
+.home-header-action:hover,
+body:has(.home-brand-header) .theme-toggle:hover {
+  border-color: #a8a29e;
+  background: #f5f5f4;
+}
+
+html[data-theme="dark"] .home-brand-name {
+  color: #f5f5f4;
+}
+
+html[data-theme="dark"] .home-header-action,
+html[data-theme="dark"] body:has(.home-brand-header) .theme-toggle {
+  border-color: #44403c;
+  color: #d6d3d1;
+}
+
+html[data-theme="dark"] .home-header-action:hover,
+html[data-theme="dark"] body:has(.home-brand-header) .theme-toggle:hover {
+  border-color: #78716c;
+  background: #1c1917;
+}
+
+@media (min-width: 640px) {
+  body:has(.home-brand-header) .theme-toggle {
+    top: 12px;
+  }
+}

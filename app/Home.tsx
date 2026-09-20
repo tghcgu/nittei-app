@@ -1092,24 +1092,28 @@ export default function Home() {
     <div className="min-h-screen px-4 py-2">
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
-        <div className="mb-1 text-center">
-          <h1 className="inline-flex items-baseline gap-1.5 font-serif text-3xl text-rose-800">
-            <span>{t("日程組")}</span>
-            {locale === 'ja' && <span className="font-sans text-xs font-normal text-stone-600">略して {siteShortName}</span>}
-          </h1>
-          <p className="text-sm text-stone-600">
-            {isLoadingEdit
-              ? t("日程を読み込んでいます...")
-              : isEditMode
-              ? t("日程を編集して、共有ページに戻りましょう")
-              : t("候補日を入力して、参加者に共有しましょう")}
-          </p>
-          <button
-            type="button"
-            onClick={scrollToPageBottom}
-            className="mt-1 rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-          >{t("↓ 最下部へ")}</button>
-        </div>
+        <header className="home-brand-header mb-1 text-center sm:pt-1">
+          <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2">
+            <h1 className="home-brand-name col-start-2 inline-flex items-baseline justify-center gap-2 whitespace-nowrap font-sans text-[26px] font-bold leading-8">
+              <span>{t("日程組")}</span>
+              {locale === 'ja' && (
+                <span className="text-xs font-normal text-stone-600">略して <span className="font-medium">{siteShortName}</span></span>
+              )}
+            </h1>
+            <button
+              type="button"
+              onClick={scrollToPageBottom}
+              aria-label={t("↓ 最下部へ")}
+              title={t("↓ 最下部へ")}
+              className="home-header-action inline-flex items-center justify-center rounded-full text-xl transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            ><span aria-hidden="true">↓</span></button>
+          </div>
+          {(isLoadingEdit || isEditMode) && (
+            <p className="mt-0.5 text-xs leading-4 text-stone-600">
+              {isLoadingEdit ? t("日程を読み込んでいます...") : t("日程を編集して、共有ページに戻りましょう")}
+            </p>
+          )}
+        </header>
 
         {/* フォームカード */}
         <form
