@@ -2,25 +2,30 @@
 
 # デプロイとブランチ運用ルール
 
-## 構成（2026-07-09 に Vercel から Cloudflare へ移行済み）
+作業前に `HANDOFF.md`（先頭が最新）と `SECURE-ROLLOUT.md` を読み、本番の状態を確認すること。
+
+## 構成
 
 | 場所 | 役割 |
 |---|---|
 | 本番 | Cloudflare Workers: https://nittei-app.qoj.workers.dev |
-| 旧URL | https://nittei-app-five.vercel.app は Vercel が新URLへ308転送（vercel.json で設定） |
-| `main` | ソースの正本。**push しても本番は変わらない**（Vercel の転送設定のみ反映される） |
-| `develop` | 開発用。ここで実装・テストを行う |
+| 旧URL | https://nittei-app-five.vercel.app は Vercel が新URLへ301転送（vercel.json で設定。Vercel の Git デプロイは無効化済み） |
+| `release/ui-20260910` | **本番で動いているコード**（今のDBで動く版）。作業ツリーは `C:\Users\tkt01\Desktop\nittei-app-ui-release` |
+| `main` | ソースの正本。未適用のDB移行（`supabase/secure-scheduling.sql`）が前提の保存処理を含むため、**DB移行が済むまで本番へ deploy してはいけない** |
+| `develop` | 旧来の開発用ブランチ。今は使っていない（2026-09-24 に main と同じ内容へ揃えた） |
 
-## 本番反映の手順
+## 作業の流れ
 
-1. **必ず `develop` ブランチで作業する**（作業前に `git branch` で確認）
-2. lint / typecheck / build を通す
+1. main から作業ブランチ（例 `fix/…`、`ui/…`）を作って実装する
+2. 本番に出す変更は、release から `preview/…` ブランチを作って同じ変更を入れる（release の旧保存処理を main に戻さない）
+3. lint / typecheck / テスト / build を通す
    - `npm run lint`
    - `.\node_modules\.bin\tsc.cmd --noEmit`
-   - `npm run build`
-3. 見た目の確認が必要なら `npm run preview`（ローカルの Cloudflare 実行環境 workerd で起動、http://localhost:8787）
-4. **本番反映はユーザーの指示があったとき、`npm run deploy` を実行**（ローカルから Cloudflare へ直接デプロイ。git push ではデプロイされない）
-5. main へのマージもユーザーの指示があったとき（ソースの同期のため）
+   - `npm test`（Playwright。専用ブラウザーが未導入なら `PLAYWRIGHT_CHROMIUM_EXECUTABLE` に既存の Chromium を指定）
+   - `npx next build --webpack`
+4. 確認用URLは preview ブランチで `npx next build --webpack` → `npx opennextjs-cloudflare build --skipNextBuild` → `npx opennextjs-cloudflare upload -- --preview-alias 名前`。確認用イベントは `/e/ohbcvs2j`（プレビューも本番DBにつながるので、手で保存すると本物のデータになる）
+5. **本番反映とマージはユーザーの指示（「マージ」）があったときだけ**。作業ブランチを main へ、preview ブランチを release へ fast-forward して push し、**release の作業ツリーで `npm run deploy`**、公開サイトで動作確認まで行う。Worker の Version ID を `HANDOFF.md` に記録する
+6. deploy の成否は必ず確かめる（パイプで終了コードを隠さない。`npx wrangler deployments status` で本番のバージョンを確認する）
 
 ## Cloudflare まわりの注意
 
