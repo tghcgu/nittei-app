@@ -103,9 +103,9 @@ const ANSWER_PAINT_EDGE_SCROLL_MAX_SPEED = 14
 const emptySubscribe = () => () => {}
 
 // 「みんなの回答」の表示設定。端末内に覚えておく
-type TablePrefs = { counts: boolean; sticky: boolean; layout: 'h' | 'v' }
+type TablePrefs = { counts: boolean; sticky: boolean; layout: 'h' | 'v'; notes: 'name' | 'bottom' }
 const TABLE_PREFS_KEY = 'nittei-table-prefs'
-const DEFAULT_TABLE_PREFS: TablePrefs = { counts: true, sticky: true, layout: 'v' }
+const DEFAULT_TABLE_PREFS: TablePrefs = { counts: true, sticky: true, layout: 'v', notes: 'name' }
 
 function readTablePrefs(): TablePrefs | null {
   try {
@@ -116,6 +116,7 @@ function readTablePrefs(): TablePrefs | null {
       counts: typeof parsed.counts === 'boolean' ? parsed.counts : DEFAULT_TABLE_PREFS.counts,
       sticky: typeof parsed.sticky === 'boolean' ? parsed.sticky : DEFAULT_TABLE_PREFS.sticky,
       layout: parsed.layout === 'h' || parsed.layout === 'v' ? parsed.layout : DEFAULT_TABLE_PREFS.layout,
+      notes: parsed.notes === 'name' || parsed.notes === 'bottom' ? parsed.notes : DEFAULT_TABLE_PREFS.notes,
     }
   } catch {
     // localStorage が使えない環境では既定値のまま
@@ -283,7 +284,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // 表示設定は端末に覚えさせる。サーバーでは読めないのでマウント後に反映する
   const tablePrefs =
     tablePrefsOverride ?? (infoMounted ? readTablePrefs() : null) ?? DEFAULT_TABLE_PREFS
-  const { counts: showAnswerCounts, sticky: stickyHeadColumn, layout: tableLayout } = tablePrefs
+  const { counts: showAnswerCounts, sticky: stickyHeadColumn, layout: tableLayout, notes: notePosition } = tablePrefs
   const updateTablePrefs = (patch: Partial<TablePrefs>) => {
     const next = { ...tablePrefs, ...patch }
     setTablePrefsOverride(next)
@@ -574,6 +575,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     ? responseRows.find((response) => response.id === editingResponseId) ?? null
     : null
   const hasResponses = responseRows.length > 0
+  const responsesWithNotes = useMemo(() => responseRows.filter(response => response.note?.trim()), [responseRows])
   // このイベントで使える選択肢（主催者が作成時に選んだセット）
   const answerOptions = useMemo(() => {
     const allowed = answerValuesFor(event.answer_choices)
@@ -1982,6 +1984,25 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   >{t("縦 ╦")}</button>
                 </div>
               )}
+              {hasResponses && (
+                <div role="group" aria-label={t("全体メモの表示位置")} className="flex shrink-0 items-center gap-1 text-xs text-stone-600">
+                  <span>{t("全体メモ")}</span>
+                  <div className="flex overflow-hidden rounded-full border border-stone-300">
+                    <button
+                      type="button"
+                      aria-pressed={notePosition === 'name'}
+                      onClick={() => updateTablePrefs({ notes: 'name' })}
+                      className={`whitespace-nowrap px-2 py-1.5 transition-colors ${notePosition === 'name' ? 'bg-rose-800 text-white' : 'hover:bg-stone-50'}`}
+                    >{t("名前の下")}</button>
+                    <button
+                      type="button"
+                      aria-pressed={notePosition === 'bottom'}
+                      onClick={() => updateTablePrefs({ notes: 'bottom' })}
+                      className={`whitespace-nowrap border-l border-stone-300 px-2 py-1.5 transition-colors ${notePosition === 'bottom' ? 'bg-rose-800 text-white' : 'hover:bg-stone-50'}`}
+                    >{t("表の下")}</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2063,8 +2084,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     >
                       <td className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left text-stone-700`}>
                         <div className="[overflow-wrap:anywhere]">{r.name}</div>
-                        {r.note?.trim() && (
-                          <div className="[overflow-wrap:anywhere] text-xs text-stone-600">{r.note.trim()}</div>
+                        {notePosition === 'name' && r.note?.trim() && (
+                          <div className="response-general-note whitespace-pre-wrap [overflow-wrap:anywhere] text-xs text-stone-600">{r.note.trim()}</div>
                         )}
                       </td>
                       {candidates.map((c) => {
@@ -2117,8 +2138,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {responseRows.map((r) => (
                       <th key={r.id} className="max-w-44 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
                         <div className="mx-auto max-w-44 [overflow-wrap:anywhere]">{r.name}</div>
-                        {r.note?.trim() && (
-                          <div className="mx-auto max-w-44 [overflow-wrap:anywhere] text-xs font-normal text-stone-600">{r.note.trim()}</div>
+                        {notePosition === 'name' && r.note?.trim() && (
+                          <div className="response-general-note mx-auto max-w-44 whitespace-pre-wrap [overflow-wrap:anywhere] text-xs font-normal text-stone-600">{r.note.trim()}</div>
                         )}
                         <button
                           type="button"
@@ -2173,6 +2194,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               </table>
             </div>
 
+          )}
+          {notePosition === 'bottom' && responsesWithNotes.length > 0 && (
+            <section aria-labelledby="response-notes-heading" className="response-general-notes mt-1.5 min-w-0 [contain:inline-size] [overflow-wrap:anywhere]">
+              <h3 id="response-notes-heading" className="text-xs font-medium text-stone-700">{t("全体メモ")}</h3>
+              <ul className="max-w-2xl list-disc pl-4 text-xs leading-relaxed text-stone-600">
+                {responsesWithNotes.map(response => (
+                  <li key={response.id} className="whitespace-pre-wrap">
+                    <span className="font-medium text-stone-700">{response.name}</span>{': '}{response.note?.trim()}
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </div>
 
