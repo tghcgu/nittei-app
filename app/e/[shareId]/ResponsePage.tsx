@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useState, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useI18n } from '@/app/LocaleProvider'
 import { LanguageSwitch } from '@/app/LanguageSwitch'
@@ -290,6 +290,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     setTablePrefsOverride(next)
     writeTablePrefs(next)
   }
+  const resultsTableRef = useRef<HTMLTableElement>(null)
+  useLayoutEffect(() => {
+    const labels = Array.from(resultsTableRef.current?.querySelectorAll<HTMLElement>('.response-name') ?? [])
+    labels.forEach(element => { element.style.width = '' })
+    // Measure centered lines before resizing any columns, avoiding repeated table layout.
+    const widths = labels.map(element => {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      return Math.ceil(range.getBoundingClientRect().width)
+    })
+    labels.forEach((element, index) => { element.style.width = `${widths[index]}px` })
+  }, [responseRows, tableLayout])
   // 送信直後にその場で反映するための上書き値
   const [localUpdatedOverride, setLocalUpdatedOverride] = useState<string | null>(null)
   const [showPeerAnswers, setShowPeerAnswers] = useState(true)
@@ -2122,7 +2134,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
             /* ── 縦向きテーブル：行=候補日、列=回答者 ── */
             <div className="relative isolate overflow-x-auto">
-              <table className="response-results-table w-max text-center text-sm leading-tight">
+              <table ref={resultsTableRef} className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
                     <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>{t("候補日")}</th>
@@ -2136,8 +2148,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       </th>
                     ))}
                     {responseRows.map((r) => (
-                      <th key={r.id} className="max-w-44 border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
-                        <div className="mx-auto max-w-44 [overflow-wrap:anywhere]">{r.name}</div>
+                      <th key={r.id} className="border-l border-stone-500/50 px-0 pb-1 font-normal text-stone-600">
+                        <div className="response-name mx-auto w-max max-w-44 text-center [overflow-wrap:anywhere]">{r.name}</div>
                         {notePosition === 'name' && r.note?.trim() && (
                           <div className="response-general-note mx-auto max-w-44 whitespace-pre-wrap [overflow-wrap:anywhere] text-xs font-normal text-stone-600">{r.note.trim()}</div>
                         )}
