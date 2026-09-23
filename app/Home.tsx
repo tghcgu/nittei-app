@@ -1,13 +1,18 @@
 'use client'
 
-import { useEffect, useState, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useEffectEvent, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useI18n } from './LocaleProvider'
-import { supabase } from '@/lib/supabase'
+import { LanguageSwitch } from './LanguageSwitch'
+import { ServiceShareLink } from './ServiceShareLink'
+import { eventClient } from '@/lib/supabase'
+import { newEditToken, readEditToken, storeEditToken, consumeEditKey } from '@/lib/edit-keys'
+import { useLanguageDraft } from './useLanguageDraft'
+import { calendarBusyPeriods, overlapsCalendar, type BusyPeriod } from '@/lib/calendar'
 import { siteShortName } from '@/lib/site'
-import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES } from '@/lib/answer-choices'
-import type { AnswerChoiceSet } from '@/lib/database.types'
+import { ANSWER_CHOICE_SETS, DEFAULT_ANSWER_CHOICES, answerValuesFor } from '@/lib/answer-choices'
+import type { AnswerChoiceSet, Answer } from '@/lib/database.types'
 import {
   DndContext,
   closestCenter,
@@ -69,16 +74,6 @@ function areCandidatesEqual(a: Candidate[], b: Candidate[]) {
   })
 }
 
-type CalendarComponent = {
-  getFirstPropertyValue: (name: string) => unknown
-}
-
-type BusyPeriod = {
-  start: Date
-  end: Date
-  isAllDay: boolean
-}
-
 type CalendarPaintMode = 'add' | 'remove'
 
 type CalendarPaintSession = {
@@ -87,12 +82,12 @@ type CalendarPaintSession = {
   startDate: string
   startX: number
   startY: number
+  direction: { x: number; y: number } | null
   didPaint: boolean
   initialSelected: Set<string>
 }
 
 const emptySubscribe = () => () => {}
-const MAX_RECURRING_OCCURRENCES = 10000
 const DEFAULT_CLOCK_TIME = '21:00'
 const CALENDAR_PAINT_MOVE_THRESHOLD = 8
 const SHARE_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -187,19 +182,6 @@ function getMonthDatesFromToday(year: number, month: number): string[] {
   return result
 }
 
-function isDateInAllDayRange(dateStr: string, start: Date, end: Date): boolean {
-  const startDate = toDateStr(start)
-  const endDate = toDateStr(end)
-  if (startDate === endDate) return dateStr === startDate
-  return dateStr >= startDate && dateStr < endDate
-}
-
-function isBlockingCalendarEvent(vevent: CalendarComponent): boolean {
-  const status = String(vevent.getFirstPropertyValue('status') ?? '').toUpperCase()
-
-  return status !== 'CANCELLED'
-}
-
 // ---- ドラッグ可能な候補日行 ----
 function SortableCandidate({
   c,
@@ -291,6 +273,11 @@ function SortableCandidate({
 export default function Home() {
   const { locale, t, path, weekdays: WEEKDAYS } = useI18n()
   const router = useRouter()
+  const [draftKey, setDraftKey] = useState<string | null>(null)
+  const [editAllowed, setEditAllowed] = useState(true)
+  const [existingAnswers, setExistingAnswers] = useState<Pick<Answer, 'candidate_id' | 'value'>[]>([])
+  const [pendingIdentity, setPendingIdentity] = useState<{id: string; shareId: string; token: string} | null>(null)
+  const [pendingCandidateIds, setPendingCandidateIds] = useState<Record<string, string>>({})
   const [eventName, setEventName] = useState('')
   const [description, setDescription] = useState('')
   // 回答の選択肢（伝助と同じ3種類。既定は「○△✕」）
@@ -378,10 +365,14 @@ export default function Home() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  useEffect(() => {
+  const loadEditRoute = useEffectEvent(() => {
     const params = new URLSearchParams(window.location.search)
     const shareId = params.get('edit')
-    if (!shareId) return
+    if (!shareId) { setDraftKey('event-new'); return }
+    setEditShareId(shareId)
+    setEditAllowed(false)
+    consumeEditKey('event', shareId)
+    const supabase = eventClient(shareId)
     const editingShareId = shareId
 
     let cancelled = false
@@ -393,7 +384,7 @@ export default function Home() {
       try {
         const { data: event, error: eventError } = await supabase
           .from('events')
-          .select('*')
+          .select('id, share_id, name, description, answer_choices, created_at, updated_at, edit_protected')
           .eq('share_id', editingShareId)
           .single()
 
@@ -406,7 +397,14 @@ export default function Home() {
           .order('sort_order')
 
         if (candidatesError) throw candidatesError
+        const { data: savedAnswers, error: answersError } = await supabase.from('answers').select('candidate_id, value')
+        if (answersError) throw answersError
+        const { data: allowed, error: permissionError } = await supabase.rpc('nittei_can_edit_event', { target_id: event.id })
+        if (permissionError) throw permissionError
         if (cancelled) return
+        setExistingAnswers(savedAnswers ?? [])
+        setEditAllowed(Boolean(allowed))
+        if (!allowed) setError(t("編集用URLから開いてください。"))
 
         const drafts = (loadedCandidates ?? []).map((candidate) => ({
           id: candidate.id,
@@ -432,6 +430,7 @@ export default function Home() {
         // 時刻なしのイベントは時刻なしのまま開く（既定の21:00に戻さない）
         const draftTime = parseTimeLabel(drafts.find((candidate) => candidate.timeLabel)?.timeLabel ?? '')
         replaceDefaultTime(draftTime.start, draftTime.end)
+        setDraftKey(`event-${editingShareId}`)
       } catch (err) {
         console.error(err)
         if (!cancelled) setError(t("編集する日程を読み込めませんでした。"))
@@ -445,7 +444,43 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [t])
+  })
+  // Restore browser-only URL state after SSR; loading is guarded by the route.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => loadEditRoute(), [t])
+
+  useLanguageDraft(draftKey, {
+    eventName, description, answerChoices, candidates, nextId, pendingIdentity, pendingCandidateIds,
+    defaultStartTime, defaultEndTime, calYear, calMonth, calSelected: [...calSelected],
+    selectedCandidateIds: [...selectedCandidateIds], rangeOpen, rangeStart, rangeEnd,
+    candidatePast: candidatePast.map(entry => ({ ...entry, calSelected: [...entry.calSelected] })),
+    candidateFuture: candidateFuture.map(entry => ({ ...entry, calSelected: [...entry.calSelected] })),
+  }, draft => {
+    setEventName(draft.eventName)
+    setDescription(draft.description)
+    setAnswerChoices(draft.answerChoices)
+    candidatesRef.current = draft.candidates
+    setCandidates(draft.candidates)
+    setNextId(draft.nextId)
+    setPendingIdentity(draft.pendingIdentity)
+    setPendingCandidateIds(draft.pendingCandidateIds)
+    replaceDefaultTime(draft.defaultStartTime, draft.defaultEndTime)
+    setCalYear(draft.calYear)
+    setCalMonth(draft.calMonth)
+    replaceCalSelected(new Set(draft.calSelected))
+    setSelectedCandidateIds(new Set(draft.selectedCandidateIds))
+    setRangeOpen(draft.rangeOpen)
+    setRangeStart(draft.rangeStart)
+    setRangeEnd(draft.rangeEnd)
+    replaceCandidatePast(draft.candidatePast.map(entry => ({ ...entry, calSelected: new Set(entry.calSelected) })))
+    replaceCandidateFuture(draft.candidateFuture.map(entry => ({ ...entry, calSelected: new Set(entry.calSelected) })))
+  })
+
+  function choiceSetAvailable(value: AnswerChoiceSet) {
+    const kept = new Set(candidates.map(c => c.dbId))
+    const allowed = answerValuesFor(value)
+    return existingAnswers.every(a => !kept.has(a.candidate_id) || allowed.includes(a.value))
+  }
 
   function syncSelectedCandidates(nextCandidates: Candidate[]) {
     const ids = new Set(nextCandidates.map((candidate) => candidate.id))
@@ -642,26 +677,6 @@ export default function Home() {
   }
 
   // ---- .ics アップロード ----
-  function parseCandidateTimeRange(date: string, timeLabel: string) {
-    const fallback = {
-      start: new Date(date + 'T00:00:00').toISOString(),
-      end:   new Date(date + 'T23:59:00').toISOString(),
-    }
-    const m = timeLabel.match(/(\d{1,2}):(\d{2})[〜~\-](?:(\d{1,2}):(\d{2}))?/)
-    if (!m) return fallback
-    const startDate = new Date(date + 'T00:00:00')
-    startDate.setHours(parseInt(m[1]), parseInt(m[2]), 0, 0)
-    let endDate: Date
-    if (m[3] !== undefined) {
-      endDate = new Date(date + 'T00:00:00')
-      endDate.setHours(parseInt(m[3]), parseInt(m[4] ?? '00'), 0, 0)
-    } else {
-      endDate = new Date(startDate)
-      endDate.setHours(endDate.getHours() + 3)
-    }
-    return { start: startDate.toISOString(), end: endDate.toISOString() }
-  }
-
   function removeBusyCandidates(
     busyPeriods: BusyPeriod[],
     datedCandidates: Candidate[],
@@ -669,13 +684,7 @@ export default function Home() {
   ) {
     const busyIds = new Set<string>()
     for (const c of datedCandidates) {
-      const { start: cs, end: ce } = parseCandidateTimeRange(c.date, c.timeLabel)
-      const csMs = new Date(cs).getTime()
-      const ceMs = new Date(ce).getTime()
-      const isBusy = busyPeriods.some(({ start, end, isAllDay }) => {
-        if (isAllDay) return isDateInAllDayRange(c.date, start, end)
-        return start.getTime() < ceMs && end.getTime() > csMs
-      })
+      const isBusy = overlapsCalendar(c, busyPeriods)
       if (isBusy) busyIds.add(c.id)
     }
 
@@ -740,43 +749,8 @@ export default function Home() {
         return
       }
 
-      const ICAL = (await import('ical.js')).default
-      const sorted = [...datedCandidates].sort((a, b) => a.date.localeCompare(b.date))
-      // 範囲境界はタイムゾーン情報なしの時刻として比較され（UTC扱い）、実際の境界と
-      // 最大±14時間ずれるため、前後1日広げて定期予定の取りこぼしを防ぐ。
-      // 厳密な重なり判定は後段の busyPeriods チェックが行う。
-      const rangeStartDay = new Date(sorted[0].date + 'T00:00:00')
-      rangeStartDay.setDate(rangeStartDay.getDate() - 1)
-      const rangeEndDay = new Date(sorted[sorted.length - 1].date + 'T00:00:00')
-      rangeEndDay.setDate(rangeEndDay.getDate() + 1)
-      const rangeStart = ICAL.Time.fromDateTimeString(toDateStr(rangeStartDay) + 'T00:00:00')
-      const rangeEnd = ICAL.Time.fromDateTimeString(toDateStr(rangeEndDay) + 'T23:59:59')
-
-      const busyPeriods: { start: Date; end: Date; isAllDay: boolean }[] = []
-
       const calendarFiles = await readCalendarFileTexts(file)
-      for (const { text } of calendarFiles.texts) {
-        const jcal = ICAL.parse(text)
-        const comp = new ICAL.Component(jcal)
-        const vevents = comp.getAllSubcomponents('vevent')
-        for (const vevent of vevents) {
-          const event = new ICAL.Event(vevent)
-          if (!isBlockingCalendarEvent(vevent)) continue
-          if (event.isRecurring()) {
-            const expand = new ICAL.RecurExpansion({ component: vevent, dtstart: event.startDate })
-            let count = 0
-            for (let next = expand.next(); next && count < MAX_RECURRING_OCCURRENCES; next = expand.next()) {
-              count++
-              const detail = event.getOccurrenceDetails(next)
-              if (detail.startDate.compare(rangeEnd) > 0) break
-              if (detail.endDate.compare(rangeStart) <= 0) continue
-              busyPeriods.push({ start: detail.startDate.toJSDate(), end: detail.endDate.toJSDate(), isAllDay: detail.startDate.isDate })
-            }
-          } else {
-            busyPeriods.push({ start: event.startDate.toJSDate(), end: event.endDate.toJSDate(), isAllDay: event.startDate.isDate })
-          }
-        }
-      }
+      const busyPeriods = await calendarBusyPeriods(calendarFiles, datedCandidates)
 
       removeBusyCandidates(busyPeriods, datedCandidates, describeCalendarFileRead(calendarFiles, locale))
     } catch (err) {
@@ -832,15 +806,24 @@ export default function Home() {
     return element?.closest<HTMLElement>('[data-calendar-date]')?.dataset.calendarDate ?? null
   }
 
-  function applyCalendarPaintRange(dateStr: string) {
+  function applyCalendarPaintRange(dateStr: string | null, clientX: number, clientY: number) {
     const session = calendarPaintRef.current
     if (!session) return
 
-    // 別の日までドラッグしたあと開始日に引き返した場合は、
-    // 開始日だけを残さずドラッグ開始前の状態へ完全に戻す。
-    if (dateStr === session.startDate) {
-      if (session.didPaint) replaceCalSelected(session.initialSelected)
-      return
+    const dx = clientX - session.startX
+    const dy = clientY - session.startY
+    if (!dateStr || dateStr === session.startDate) {
+      if (!session.didPaint) return
+      // Keep one day at the start; undo the stroke only after moving past it.
+      const progress = session.direction ? dx * session.direction.x + dy * session.direction.y : 0
+      if (progress < -CALENDAR_PAINT_MOVE_THRESHOLD) {
+        replaceCalSelected(session.initialSelected)
+        return
+      }
+      if (!dateStr) return
+    } else {
+      const distance = Math.hypot(dx, dy)
+      if (distance > 0) session.direction = { x: dx / distance, y: dy / distance }
     }
 
     session.didPaint = true
@@ -855,12 +838,14 @@ export default function Home() {
   function handleCalendarPaintStart(e: React.PointerEvent<HTMLButtonElement>, dateStr: string) {
     if (e.button !== 0) return
 
+    const bounds = e.currentTarget.getBoundingClientRect()
     calendarPaintRef.current = {
       pointerId: e.pointerId,
       mode: calSelectedRef.current.has(dateStr) ? 'remove' : 'add',
       startDate: dateStr,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: bounds.left + bounds.width / 2,
+      startY: bounds.top + bounds.height / 2,
+      direction: null,
       didPaint: false,
       initialSelected: new Set(calSelectedRef.current),
     }
@@ -875,10 +860,9 @@ export default function Home() {
     if (!session.didPaint && distance < CALENDAR_PAINT_MOVE_THRESHOLD) return
 
     const dateStr = getCalendarDateAtPoint(e.clientX, e.clientY)
-    if (!dateStr) return
 
     e.preventDefault()
-    applyCalendarPaintRange(dateStr)
+    applyCalendarPaintRange(dateStr, e.clientX, e.clientY)
   }
 
   function handleCalendarPaintEnd(e: React.PointerEvent<HTMLButtonElement>) {
@@ -935,6 +919,8 @@ export default function Home() {
     e.preventDefault()
     const validCandidates = candidates.filter((c) => c.date)
 
+    if (isSubmitting || isLoadingEdit || !editAllowed) return
+
     if (validCandidates.length === 0) {
       setError(t("候補日を追加してください。"))
       return
@@ -944,11 +930,11 @@ export default function Home() {
     setError(null)
 
     try {
+      const supabase = eventClient(editShareId ?? '')
       if (editEventId && editShareId) {
         const existingCandidates = validCandidates.filter(
           (candidate): candidate is Candidate & { dbId: string } => Boolean(candidate.dbId)
         )
-        const newCandidates = validCandidates.filter((candidate) => !candidate.dbId)
         const keptCandidateIds = new Set(existingCandidates.map((candidate) => candidate.dbId))
         const removedCandidateIds = [...originalCandidateIds].filter(
           (candidateId) => !keptCandidateIds.has(candidateId)
@@ -1004,98 +990,49 @@ export default function Home() {
             }
           }
         }
-
-        const { error: eventError } = await supabase
-          .from('events')
-          .update({ name: eventName, description: description || null, answer_choices: answerChoices })
-          .eq('id', editEventId)
-
-        if (eventError) throw eventError
-
-        const updateResults = await Promise.all(
-          existingCandidates.map((candidate) =>
-            supabase
-              .from('candidates')
-              .update({
-                date: candidate.date,
-                time_label: candidate.timeLabel || null,
-                sort_order: validCandidates.indexOf(candidate),
-              })
-              .eq('id', candidate.dbId)
-          )
-        )
-        const candidateUpdateError = updateResults.find((result) => result.error)?.error
-        if (candidateUpdateError) throw candidateUpdateError
-
-        if (newCandidates.length > 0) {
-          const { error: insertError } = await supabase
-            .from('candidates')
-            .insert(
-              newCandidates.map((candidate) => ({
-                event_id: editEventId,
-                date: candidate.date,
-                time_label: candidate.timeLabel || null,
-                sort_order: validCandidates.indexOf(candidate),
-              }))
-            )
-
-          if (insertError) throw insertError
-        }
-
-        if (removedCandidateIds.length > 0) {
-          const { error: deleteError } = await supabase
-            .from('candidates')
-            .delete()
-            .in('id', removedCandidateIds)
-
-          if (deleteError) throw deleteError
-        }
-
-        router.push(path(`/e/${editShareId}`))
-        return
       }
 
-      let shareId = ''
-      let event: { id: string } | null = null
-
-      for (let attempt = 0; attempt < SHARE_ID_MAX_ATTEMPTS; attempt += 1) {
-        shareId = generateShareId()
-
-        const { data, error: eventError } = await supabase
-          .from('events')
-          .insert({ share_id: shareId, name: eventName, description: description || null, answer_choices: answerChoices })
-          .select('id')
-          .single()
-
-        if (!eventError) {
-          event = data
-          break
-        }
-
-        if (eventError.code !== '23505') throw eventError
-      }
-
-      if (!event) {
-        throw new Error(t("共有URLの生成に失敗しました。"))
-      }
-
-      const candidateRows = validCandidates.map((c, i) => ({
-        event_id: event.id,
+      const ids = { ...pendingCandidateIds }
+      const rows = validCandidates.map(c => ({
+        id: c.dbId ?? (ids[c.id] ??= crypto.randomUUID()),
         date: c.date,
         time_label: c.timeLabel || null,
-        sort_order: i,
       }))
-
-      const { error: candidatesError } = await supabase
-        .from('candidates')
-        .insert(candidateRows)
-
-      if (candidatesError) throw candidatesError
-
-      router.push(path(`/e/${shareId}`))
+      setPendingCandidateIds(ids)
+      let identity = pendingIdentity ?? { id: crypto.randomUUID(), shareId: generateShareId(), token: newEditToken() }
+      for (let attempt = 0; attempt < SHARE_ID_MAX_ATTEMPTS; attempt += 1) {
+        const shareId = editShareId ?? identity.shareId
+        if (!editEventId) {
+          setPendingIdentity(identity)
+          storeEditToken('event', shareId, identity.token)
+        }
+        const { error: saveError } = await eventClient(shareId).rpc('nittei_save_event', {
+          p_id: editEventId ?? identity.id,
+          p_share_id: shareId,
+          p_edit_token: editEventId ? readEditToken('event', shareId) : identity.token,
+          p_name: eventName.trim(),
+          p_description: description || null,
+          p_answer_choices: answerChoices,
+          p_candidates: rows,
+        })
+        if (!saveError) {
+          router.push(path(`/e/${shareId}`))
+          return
+        }
+        if (!editEventId && saveError.code === '23505' && saveError.message.includes('share_id')) {
+          identity = { ...identity, shareId: generateShareId() }
+          continue
+        }
+        throw saveError
+      }
+      throw new Error(t("共有URLの生成に失敗しました。"))
     } catch (err) {
       console.error(err)
-      setError(t("保存中にエラーが発生しました。もう一度試してください。"))
+      const message = err && typeof err === 'object' && 'message' in err ? String(err.message) : ''
+      setError(message.includes('ANSWER_CHOICES_IN_USE')
+        ? t("回答済みの記号は選択肢から外せません。")
+        : message.includes('EDIT_FORBIDDEN') ? t("編集用URLから開いてください。")
+        : t("保存中にエラーが発生しました。もう一度試してください。"))
       setIsSubmitting(false)
     }
   }
@@ -1130,27 +1067,31 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-3">
+    <div className="min-h-screen px-4 py-2">
       <div className="mx-auto max-w-xl">
         {/* ヘッダー */}
-        <div className="mb-2 text-center">
-          <h1 className="inline-flex items-baseline gap-1.5 font-serif text-3xl text-rose-800">
-            <span>{t("日程組")}</span>
-            {locale === 'ja' && <span className="font-sans text-xs font-normal text-stone-600">略して {siteShortName}</span>}
-          </h1>
-          <p className="text-sm text-stone-600">
-            {isLoadingEdit
-              ? t("日程を読み込んでいます...")
-              : isEditMode
-              ? t("日程を編集して、共有ページに戻りましょう")
-              : t("候補日を入力して、参加者に共有しましょう")}
-          </p>
-          <button
-            type="button"
-            onClick={scrollToPageBottom}
-            className="mt-1 rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
-          >{t("↓ 最下部へ")}</button>
-        </div>
+        <header className="home-brand-header mb-1 text-center sm:pt-1">
+          <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2">
+            <h1 className="home-brand-name col-start-2 inline-flex items-baseline justify-center gap-2 whitespace-nowrap font-sans text-[26px] font-bold leading-8">
+              <span>{t("日程組")}</span>
+              {locale === 'ja' && (
+                <span className="text-xs font-normal text-stone-600">略して <span className="font-medium">{siteShortName}</span></span>
+              )}
+            </h1>
+            <button
+              type="button"
+              onClick={scrollToPageBottom}
+              aria-label={t("↓ 最下部へ")}
+              title={t("↓ 最下部へ")}
+              className="home-header-action inline-flex items-center justify-center rounded-full text-xl transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            ><span aria-hidden="true">↓</span></button>
+          </div>
+          {(isLoadingEdit || isEditMode) && (
+            <p className="mt-0.5 text-xs leading-4 text-stone-600">
+              {isLoadingEdit ? t("日程を読み込んでいます...") : t("日程を編集して、共有ページに戻りましょう")}
+            </p>
+          )}
+        </header>
 
         {/* フォームカード */}
         <form
@@ -1158,18 +1099,18 @@ export default function Home() {
           onDragOver={handleIcsDragOver}
           onDragLeave={handleIcsDragLeave}
           onDrop={handleIcsDrop}
-          className={`rounded-2xl bg-white/70 px-6 pb-3 pt-4 shadow-sm backdrop-blur transition-shadow ${
+          className={`rounded-2xl bg-white/70 px-6 py-2 shadow-sm backdrop-blur transition-shadow ${
             isIcsDragOver ? 'ring-2 ring-rose-400' : ''
           }`}
         >
           {/* イベント名 */}
-          <div className="mb-2">
+          <div className="mb-1">
             <div className="mb-1 flex items-center justify-between gap-3">
               <label className="block text-sm font-medium text-stone-700">{t("イベント名")}<span className="text-rose-700">*</span>
               </label>
               <button
                 type="submit"
-                disabled={isSubmitting || isLoadingEdit || !hasDatedCandidates}
+                disabled={isSubmitting || isLoadingEdit || !editAllowed || !hasDatedCandidates}
                 className="shrink-0 rounded-full bg-rose-800 px-5 py-1.5 text-sm font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isSubmitting ? submittingLabel : submitLabel}
@@ -1178,10 +1119,11 @@ export default function Home() {
             <input
               type="text"
               required
+              maxLength={200}
               value={eventName}
               onChange={(e) => setEventName(e.target.value)}
               placeholder={t("例：みんなでご飯")}
-              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              className="w-full rounded-lg border border-stone-300 bg-white px-4 py-2 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
@@ -1192,21 +1134,24 @@ export default function Home() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("場所や詳細など")}
-              rows={3}
-              className="block w-full resize rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+              rows={2}
+              className="block w-full resize rounded-lg border border-stone-300 bg-white px-4 py-2 text-stone-800 placeholder-stone-500 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
             />
           </div>
 
           {/* 回答の選択肢 */}
-          <div className="mt-3">
+          <div className="mt-1">
             <label className="mb-1 block text-sm font-medium text-stone-700">{t("回答の選択肢")}</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="answer-choice-options flex flex-wrap gap-2">
               {ANSWER_CHOICE_SETS.map((set) => (
                 <button
                   key={set.value}
                   type="button"
                   onClick={() => setAnswerChoices(set.value)}
+                  disabled={!choiceSetAvailable(set.value)}
+                  title={!choiceSetAvailable(set.value) ? t("回答済みの記号は選択肢から外せません。") : undefined}
                   aria-pressed={answerChoices === set.value}
+                  aria-label={t(set.label)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                     answerChoices === set.value
                       ? 'border-rose-400 bg-rose-50 text-rose-800'
@@ -1220,12 +1165,12 @@ export default function Home() {
           </div>
 
           {/* 候補日時 */}
-          <div className="mb-8">
+          <div className="mb-2">
             <label className="mb-1 block text-sm font-medium text-stone-700">{t("候補日時")}<span className="text-rose-700">*</span>
             </label>
 
             {/* 時間帯バー */}
-            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3">
+            <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
               <span className="shrink-0 text-sm text-stone-600">{t("時間帯：")}</span>
               <div className="candidate-default-times flex items-center gap-1">
                 <input
@@ -1258,30 +1203,40 @@ export default function Home() {
                   className="w-28 rounded-lg border border-stone-300 bg-white px-3 py-1.5 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100 disabled:cursor-not-allowed disabled:bg-stone-50 disabled:text-stone-500"
                 />
               </div>
-              <button
-                type="button"
-                onClick={clearDefaultTime}
-                disabled={!defaultStartTime && !defaultEndTime}
-                title={t("開始・終了時刻を空にする")}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >{t("時刻なし")}</button>
-              <button
-                type="button"
-                onClick={applyTimeToAll}
-                disabled={candidates.length === 0}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >{t("全部これに揃える")}</button>
-              <button
-                type="button"
-                onClick={applyTimeToSelected}
-                disabled={selectedCandidateIds.size === 0}
-                className="rounded-full border border-stone-300 px-3 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70"
-              >{t("選択した日程に適用")}</button>
+              <div className="flex w-full flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={clearDefaultTime}
+                  disabled={!defaultStartTime && !defaultEndTime}
+                  title={t("開始・終了時刻を空にする")}
+                  className="rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70 sm:px-3"
+                >{t("時刻なし")}</button>
+                <button
+                  type="button"
+                  onClick={applyTimeToAll}
+                  disabled={candidates.length === 0}
+                  aria-label={t("全部これに揃える")}
+                  className="rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70 sm:px-3"
+                >
+                  <span className="sm:hidden">{t("全部に適用")}</span>
+                  <span className="hidden sm:inline">{t("全部これに揃える")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={applyTimeToSelected}
+                  disabled={selectedCandidateIds.size === 0}
+                  aria-label={t("選択した日程に適用")}
+                  className="rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-70 sm:px-3"
+                >
+                  <span className="sm:hidden">{t("選択分に適用")}</span>
+                  <span className="hidden sm:inline">{t("選択した日程に適用")}</span>
+                </button>
+              </div>
               {selectedCandidateIds.size > 0 && (
                 <span className="text-xs text-stone-600">
                   {selectedCandidateIds.size}{t("件選択中")}</span>
               )}
-              <div className="ml-auto flex shrink-0 items-center gap-1">
+              <div className="ml-auto flex w-full shrink-0 items-center justify-end gap-1">
                 <button
                   type="button"
                   onClick={undoCandidateChange}
@@ -1298,7 +1253,7 @@ export default function Home() {
             </div>
 
             {/* カレンダー（日付を選択してから候補日に追加） */}
-            <div className="mb-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2.5">
+            <div className="mb-1.5 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2">
               {!calendarMounted && <div className="h-80" aria-hidden="true" />}
               {calendarMounted && (
               <div className="mx-auto max-w-sm">
@@ -1421,7 +1376,7 @@ export default function Home() {
                   type="button"
                   onClick={handleAddFromCalendar}
                   disabled={calSelected.size === 0}
-                  className="mt-2 w-full rounded-full bg-rose-800 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-1 w-full rounded-full bg-rose-800 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {calSelected.size > 0 ? t("{0}日を追加", calSelected.size) : t("日付を選んでください")}
                 </button>
@@ -1430,7 +1385,7 @@ export default function Home() {
             </div>
 
             {/* 追加ボタン群 */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-x-2 gap-y-1">
               <button
                 type="button"
                 onClick={() => setRangeOpen(true)}
@@ -1464,7 +1419,7 @@ export default function Home() {
             >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
             </button>
             {icsGuideOpen && (
-              <div className="mt-2 space-y-3 rounded-xl border border-stone-300 bg-stone-50 px-4 py-3 text-xs text-stone-700">
+              <div className="mt-1 space-y-2 rounded-xl border border-stone-300 bg-stone-50 px-4 py-2 text-xs text-stone-700">
                 <p className="text-stone-600">{t("ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
                 <div>
                   <a href="https://calendar.google.com/calendar/u/0/r/settings/export" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2.5 py-1 font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline">{t("Google カレンダーを開く")}<span aria-hidden="true">↗</span>
@@ -1506,7 +1461,7 @@ export default function Home() {
                   items={candidates.map((c) => c.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-1.5 space-y-1">
                     {candidates.map((c) => (
                       <SortableCandidate
                         key={c.id}
@@ -1521,13 +1476,13 @@ export default function Home() {
                 </SortableContext>
               </DndContext>
             ) : (
-              <p className="mt-3 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-3 text-sm text-stone-600">{t("候補日はまだありません")}</p>
+              <p className="mt-1.5 rounded-xl border border-dashed border-stone-300 bg-white/50 px-4 py-2 text-sm text-stone-600">{t("候補日はまだありません")}</p>
             )}
           </div>
 
           {/* エラーメッセージ */}
           {error && (
-            <p className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
+            <p className="mb-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-600">
               {error}
             </p>
           )}
@@ -1535,8 +1490,8 @@ export default function Home() {
           {/* 送信ボタン */}
           <button
             type="submit"
-            disabled={isSubmitting || isLoadingEdit || !hasDatedCandidates}
-            className="w-full rounded-full bg-rose-800 py-3 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isSubmitting || isLoadingEdit || !editAllowed || !hasDatedCandidates}
+            className="w-full rounded-full bg-rose-800 py-2.5 text-base font-medium text-white shadow transition-all hover:bg-rose-900 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting ? submittingLabel : submitLabel}
           </button>
@@ -1549,11 +1504,11 @@ export default function Home() {
             className="rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
           >{t("↑ 最上部へ")}</button>
         </div>
-        <p className="mt-2 text-center text-[11px] text-stone-600">{t("※ 最後の更新から1年が経過したイベントは自動的に削除されます")}</p>
-        <p className="mt-1 text-center text-xs text-stone-600">{t("不具合・ご要望はこちら:")}{' '}
+        <p className="mt-1 text-center text-[11px] text-stone-600">{t("※ 最後の更新から1年が経過したイベントは自動的に削除されます")}</p>
+        <p className="mt-1 text-center text-xs text-stone-600">
           <Link href={path("/contact")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("お問い合わせ")}</Link>
         </p>
-        <p className="mt-1 text-center text-[11px] text-stone-600">
+        <p className="footer-links mt-1 text-center text-[11px] text-stone-600">
           <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>
           <span className="mx-2">·</span>
           <Link href={path("/privacy")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("プライバシーポリシー")}</Link>
@@ -1568,6 +1523,13 @@ export default function Home() {
             className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
           >{t("支援")}<span aria-hidden="true">↗</span>
           </a>
+          <span className="mx-1">·</span>
+          <LanguageSwitch />
+        </p>
+        <p className="site-secondary-links mt-1 text-center text-[11px] text-stone-600">
+          <Link href={path("/updates")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("更新履歴")}</Link>
+          <span className="mx-1">·</span>
+          <ServiceShareLink locale={locale} />
         </p>
       </div>
 
@@ -1577,9 +1539,9 @@ export default function Home() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
           onClick={(e) => { if (e.target === e.currentTarget) setRangeOpen(false) }}
         >
-          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-6 shadow-2xl">
+          <div className="mx-4 w-full max-w-sm rounded-2xl bg-white px-6 py-3 shadow-2xl">
             <p className="mb-1 text-center font-serif text-lg text-stone-700">{t("範囲で追加")}</p>
-            <p className="mb-5 text-center text-xs text-stone-600">{t("開始日〜終了日を選ぶと、その間の日程をまとめて追加できます")}</p>
+            <p className="mb-2 text-center text-xs text-stone-600">{t("開始日〜終了日を選ぶと、その間の日程をまとめて追加できます")}</p>
             <div className="flex items-center gap-2">
               <input
                 type="date"
@@ -1596,7 +1558,7 @@ export default function Home() {
                 className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
               />
             </div>
-            <div className="mt-5 flex items-center gap-3">
+            <div className="mt-2 flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleAddRange}

@@ -57,7 +57,7 @@ test('English create, answer, edit, history, language switch, and mobile layout'
   await page.getByRole('button', { name: 'Create event', exact: true }).first().click()
   await page.waitForURL(/\/en\/e\/[a-z0-9]+$/)
   const englishUrl = page.url()
-  await expect(page.getByRole('heading', { name: 'English test 日本語' })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'English test 日本語' })).toBeVisible()
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
   await page.getByPlaceholder('e.g. Alex').fill('Alex')
   const firstAnswer = page.locator('[data-answer-candidate-id][data-answer-value="○"]').first()
@@ -123,9 +123,10 @@ test('English create, answer, edit, history, language switch, and mobile layout'
 })
 
 test('calendar drag reversal, selection undo, theme, and edit-link locale', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-09-15T12:00:00'))
   await page.goto('/en')
-  const first = page.locator('[data-calendar-date]').nth(10)
-  const last = page.locator('[data-calendar-date]').nth(12)
+  const first = page.locator('[data-calendar-date]').nth(7)
+  const last = page.locator('[data-calendar-date]').nth(9)
   await first.scrollIntoViewIfNeeded()
   const a = (await first.boundingBox())!
   const b = (await last.boundingBox())!
@@ -134,9 +135,11 @@ test('calendar drag reversal, selection undo, theme, and edit-link locale', asyn
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 })
   await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(3)
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2, { steps: 8 })
+  await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(1)
+  await page.mouse.move(a.x + a.width / 2 - 12, a.y + a.height / 2)
   await page.mouse.up()
   await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(0)
-  await page.getByRole('button', { name: /Select remaining dates this month/ }).click()
+  await page.getByRole('button', { name: /Select remaining days/ }).click()
   expect(await page.locator('[data-calendar-date].bg-rose-700').count()).toBeGreaterThan(0)
   await page.getByRole('button', { name: '↶ Undo', exact: true }).click()
   await expect(page.locator('[data-calendar-date].bg-rose-700')).toHaveCount(0)
