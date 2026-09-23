@@ -4,6 +4,18 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-09-23: General Note Position Preview (Not Merged)
+
+Added a compact "General notes: By name / Below table" segmented control beside the existing results controls, in both languages. Default is the existing by-name display. Below-table mode renders nonblank response-level notes once, with respondent names, outside the horizontal scroller. Per-date notes remain in their answer cells; response input, edit permissions and DB writes are unchanged. Long words and explicit line breaks wrap; the list does not determine table/panel width. Existing table preferences remain compatible and the new `notes: 'name' | 'bottom'` preference is remembered on the device, with fallback when storage is unavailable.
+
+Source branch `ui/general-note-position`, application `04ee769`, based on main `fca5cbb`. Compatible branch `preview/general-note-position`, application `e9fedcc`, based on release `5ca6307`. Both are pushed but not merged. Preview: https://general-notes-nittei-app.qoj.workers.dev/e/ohbcvs2j (English: /en/e/ohbcvs2j), Worker `fe320559-2547-486d-acd6-3f44236744a3`.
+
+Source verification: 20 related Playwright cases passed; after a final bullet-indent adjustment, the two multilingual geometry tests passed again. Source lint and TypeScript passed. Compatible final build: 13 note/JA/EN workflow tests, scoped lint, webpack (including TypeScript) and OpenNext passed. Tests cover both orientations, light/dark themes, mobile/desktop widths, long names/notes, line breaks, empty notes/results, old/invalid/blocked storage, reload/language persistence, keyboard use, unsaved input preservation, and updating/clearing a note.
+
+The public preview passed 24 locale/width/theme/orientation combinations at 320/390/1440px using seven existing notes, with no page errors or DB writes. It also passed reload and keyboard checks. Screenshots were visually inspected. Public validation is read-only; the preview shares production data, so manual saves are real.
+
+**Production is unchanged:** Worker `fcf0e160-27e2-47bf-9282-a69e6b5e4a98` remains at 100%. Only `wrangler versions upload --keep-vars` was used; no production promotion, SQL, Cron or runtime changes. No public update-log entry was added for this unmerged feature. The held desktop layout is excluded. The secure migration remains pending: never deploy main to the legacy DB or merge legacy storage back into main.
+
 ## 2026-09-23: Compact Home Header Released
 
 The header-only change was implemented on `ui/compact-brand-header` (application `26b37b3`, based on main `9bc4aad`) and the legacy-compatible `preview/compact-brand-header` (application `c50f17e`, based on release `8769c65`). On 2026-09-23, these were fast-forwarded separately into `main` and `release/ui-20260910`, preserving their different storage implementations. After the user clarified that "merge" includes production rollout, the verified compatible Worker was promoted unchanged. Preview: https://brand-header-nittei-app.qoj.workers.dev/ (English: /en), Worker `fcf0e160-27e2-47bf-9282-a69e6b5e4a98`.
