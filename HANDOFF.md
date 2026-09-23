@@ -1,14 +1,20 @@
 # 日程組 引き継ぎメモ
 
-## 2026-09-23: Compact Home Header Preview (Not Production)
+## 運用方針 (2026-09-23 ユーザー指定)
 
-The header-only trial was implemented on `ui/compact-brand-header` (application `26b37b3`, based on main `9bc4aad`) and the legacy-compatible `preview/compact-brand-header` (application `c50f17e`, based on release `8769c65`). On 2026-09-23, the user requested a merge: these were fast-forwarded separately into `main` and `release/ui-20260910`, preserving their different storage implementations. No application code changed during the merge, and no production deployment was requested or performed. Preview: https://brand-header-nittei-app.qoj.workers.dev/ (English: /en), Worker `fcf0e160-27e2-47bf-9282-a69e6b5e4a98`.
+「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
+
+## 2026-09-23: Compact Home Header Released
+
+The header-only change was implemented on `ui/compact-brand-header` (application `26b37b3`, based on main `9bc4aad`) and the legacy-compatible `preview/compact-brand-header` (application `c50f17e`, based on release `8769c65`). On 2026-09-23, these were fast-forwarded separately into `main` and `release/ui-20260910`, preserving their different storage implementations. After the user clarified that "merge" includes production rollout, the verified compatible Worker was promoted unchanged. Preview: https://brand-header-nittei-app.qoj.workers.dev/ (English: /en), Worker `fcf0e160-27e2-47bf-9282-a69e6b5e4a98`.
 
 The create/edit header uses a monochrome bold 26px brand, a small Japanese alias, and matching 32px theme/bottom controls. The regular introductory sentence is removed; loading/editing status remains. The theme control remains absolute and scrolls away. Form layout, event headers, storage and input behavior are unchanged. The preview is 54px shorter on mobile and 50px shorter at desktop widths.
 
 Source verification: 8 header/spacing/JA+EN workflow cases and 12 calendar-drag cases passed, plus lint and TypeScript. Compatible preview: 8 header/spacing/JA+EN workflow cases, lint, webpack (including TypeScript) and OpenNext builds passed. Read-only public checks passed in 24 locale/width/theme combinations (320/390/640/768/1440/1920px), comparing unchanged form dimensions and relative control positions against production. Bottom/top navigation, keyboard activation, non-sticky theme control and four existing-event page loads passed; page errors and DB writes were zero. Public mobile/desktop screenshots were visually inspected.
 
-**Production is unchanged:** Worker `6c578af4-d8c3-442a-b632-dd01f23f0ea9` is still at 100% (application `fb8372c`). Only `wrangler versions upload --keep-vars` was used; no traffic promotion, SQL, Cron, variable or runtime-limit changes. This preview shares production data, so manual saves are real. Existing CPU-limit concerns remain unresolved; passing these checks is not a runtime remediation.
+**Production is live:** https://nittei-app.qoj.workers.dev/ now serves Worker `fcf0e160-27e2-47bf-9282-a69e6b5e4a98` at 100% (application `c50f17e`), confirmed by deployment status. The previous compatible Worker is `6c578af4-d8c3-442a-b632-dd01f23f0ea9` (application `fb8372c`). Production passed the same 24 header/form comparisons against that previous version, four existing-event page checks, and all eight mouse/touch calendar-drag cases. No page errors or DB writes occurred. Production screenshots were visually inspected.
+
+The already-built preview was promoted with `wrangler versions deploy`; no application rebuild, SQL, Cron, variable or runtime-limit changes were needed. The preview shares production data, so manual saves are real. Existing CPU-limit concerns remain unresolved; passing these checks is not a runtime remediation.
 
 The desktop two-column experiment remains on hold on `ui/desktop-create-layout` / `preview/desktop-create-layout`, preview https://desktop-form-nittei-app.qoj.workers.dev/ (Worker `84fb691e-1240-48f4-b001-da04f6645260`). It is **not included** in this header trial. Do not deploy main to the legacy DB or merge legacy storage back into main; the coordinated secure SQL migration is still pending.
 
