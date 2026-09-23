@@ -4,15 +4,17 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
-## 2026-09-24: Compact Result Names Preview (Not Merged)
+## 2026-09-24: Compact Result Names Released
 
 The latest screenshot identifies excess horizontal space around wrapped respondent names, not gaps between answer rows. Vertical results now measure centered text lines in one batched layout effect and shrink each name label to its rendered width, keeping the existing wrapping and font size. Name edits and orientation changes remeasure the labels. Short names remain compact; notes and edit controls can still determine the minimum column width. A screenshot-like two-line Japanese/English name shrank from roughly 176px to 127px without adding lines. Horizontal orientation and the response-input comparison table are unchanged.
 
-Source `fix/compact-result-names`, application `7b872c4`, based on main `7d06c3b`. Legacy-compatible `preview/compact-result-names`, application `cf0207a`, based on release `f1c3bc7`. Preview: https://compact-names-nittei-app.qoj.workers.dev/e/ohbcvs2j (English: /en/e/ohbcvs2j), Worker `703681c5-ce0e-49c1-b8fd-34013c652312`. These changes are not merged or promoted.
+Source `fix/compact-result-names`, application `7b872c4`, based on main `7d06c3b`. Legacy-compatible `preview/compact-result-names`, application `cf0207a`, based on release `f1c3bc7`. Preview: https://compact-names-nittei-app.qoj.workers.dev/e/ohbcvs2j (English: /en/e/ohbcvs2j), Worker `703681c5-ce0e-49c1-b8fd-34013c652312`. Both were fast-forwarded into main `3883795` and release `ea972b0` and pushed.
+
+**Production is live:** Worker `703681c5-ce0e-49c1-b8fd-34013c652312` was promoted to 100% at 2026-09-23T15:45:05Z (September 24, 00:45 JST), about ten minutes after this entry was first written as preview-only. The record was corrected on September 24 after `wrangler deployments status` showed the mismatch. A read-only production sweep that day returned 200 for all 11 public routes and found zero page errors across 8 pages × 4 widths × light/dark; it also found the results toolbar widening the page at 640–890px in English and 640–710px in Japanese, which is being fixed separately.
 
 The final focused source tests passed for both languages, plus scoped lint and TypeScript. Compatible verification passed all 10 name/notes tests, scoped lint, webpack (including TypeScript) and OpenNext. Tests include 320/390/1440px, light/dark, counts on/off, mixed-direction and long names, unchanged line counts, edits to short and long names, and orientation switching. Public preview verification passed 24 name-width combinations and 24 note-placement combinations, with zero page errors and zero DB writes. Mobile and desktop screenshots were visually checked. The public preview shares production data, so manual saves are real.
 
-Only `wrangler versions upload --keep-vars` was used for this fix. Production remains on the general-notes Worker `fe320559-2547-486d-acd6-3f44236744a3`; the prior rollout and September 24 recheck are recorded below. No SQL, storage, Cron or runtime changes, and no held desktop layout. Do not deploy main to the legacy DB or merge legacy storage back into main.
+The version was uploaded with `wrangler versions upload --keep-vars` and later promoted. The previous compatible Worker is the general-notes Worker `fe320559-2547-486d-acd6-3f44236744a3`; its rollout and recheck are recorded below. No SQL, storage, Cron or runtime changes, and no held desktop layout. Do not deploy main to the legacy DB or merge legacy storage back into main.
 
 ## 2026-09-23: General Note Position Released
 
