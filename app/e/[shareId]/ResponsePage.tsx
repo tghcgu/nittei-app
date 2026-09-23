@@ -1945,10 +1945,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           id="responses-section"
           className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-2 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
-          {/* 操作が入りきらない幅では折り返す。表だけを横スクロールさせる */}
+          {/* スマホでは見出しの下に操作を1行で置き、入りきらないときはその行だけ横に流す。640px以上は見出しの横に置き、入りきらなければ折り返す */}
           <div className="mb-2 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
             <h2 className="shrink-0 font-serif text-xl text-stone-700">{t("みんなの回答")}</h2>
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-1 pb-1 sm:w-auto sm:gap-2 sm:pb-0">
+            <div className="-mx-1 flex w-full shrink-0 items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:min-w-0 sm:shrink sm:flex-wrap sm:gap-2 sm:overflow-visible sm:pb-0">
               <button
                 type="button"
                 onClick={scrollToAnswerForm}

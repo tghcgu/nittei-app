@@ -97,11 +97,13 @@ for (const locale of ['ja','en'] as const) {
     await page.setViewportSize({width:320,height:800})
     const toolbar = page.getByRole('heading',{name:t('みんなの回答'),exact:true}).locator('..')
     await toolbar.scrollIntoViewIfNeeded()
-    const rectangles = await toolbar.locator('button,label').evaluateAll(elements => elements.map(el => {
-      const r = el.getBoundingClientRect()
-      return {left:r.left,right:r.right}
-    }))
-    expect(rectangles.every(r => r.left >= 0 && r.right <= 320)).toBe(true)
+    // phones keep the controls on one row; each one is reachable by scrolling that row
+    for (const control of await toolbar.locator('button,label').all()) {
+      await control.scrollIntoViewIfNeeded()
+      const r = (await control.boundingBox())!
+      expect(r.x >= 0 && r.x + r.width <= 320).toBe(true)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
     await page.screenshot({path:`test-results/reliability-${locale}-mobile.png`})
     expect(errors).toEqual([])
   })
