@@ -4,11 +4,13 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
-## 2026-09-24: Results Toolbar Wrap Preview (Not Merged)
+## 2026-09-24: Results Toolbar Wrap Released
 
 From 640px the results controls sat beside the "Everyone's responses" heading on one row that could not shrink. After the general-note toggle joined them, production pages widened to 896px at 640–890px in English and 713px at 640–710px in Japanese (iPad portrait, landscape phones, narrow windows). The controls now shrink and wrap beside the heading from 640px. Phones keep the single sideways-scrolling row requested on 2026-08-30. main's all-width wrap from `d468305` was replaced with the same markup so both branches match; its reliability test now checks that each phone control is reachable by scrolling that row.
 
-Source `fix/results-toolbar-wrap` (`65d5df1` plus this record), based on main `6d31e66`. Compatible `preview/results-toolbar-wrap` (`c6e3239` plus this record), based on release `a04418b`. Preview: https://toolbar-wrap-nittei-app.qoj.workers.dev/e/ohbcvs2j (English: /en/e/ohbcvs2j), Worker `dcb1f29d-5a6f-4b28-8e77-db228f986267`. Not merged or promoted.
+Source `fix/results-toolbar-wrap` (`65d5df1` plus this record), based on main `6d31e66`. Compatible `preview/results-toolbar-wrap` (`c6e3239` plus this record), based on release `a04418b`. Preview: https://toolbar-wrap-nittei-app.qoj.workers.dev/e/ohbcvs2j (English: /en/e/ohbcvs2j), Worker `dcb1f29d-5a6f-4b28-8e77-db228f986267`. Both were fast-forwarded into main `9679915` and release `2a69d1a` and pushed.
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `44cc0d87-f81a-499f-87d8-fb635237ca98` 100% at 2026-09-24T03:23:09Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `703681c5-ce0e-49c1-b8fd-34013c652312`. Afterwards all 11 public routes returned 200. The same 320–1440px sweep on production matched the preview: no overflow, one row on phones, and wrapping only at 640–890px (EN) and 640–710px (JA). A sweep of 8 pages × 4 widths × light/dark found no page errors or overflow. All checks were read-only.
 
 The new `tests/results-toolbar.spec.ts` failed on the unfixed release (713px / 896px at 640px) and passes after the fix. Full suites: release 74/75 and main 74/75. The single failures were `retry.spec.ts` before-answers during a concurrent webpack build and `reliability.spec.ts` ja at the edit-link navigation step; both passed when rerun alone. Lint, TypeScript, webpack and OpenNext passed. The public preview was measured every 10px from 320 to 1440px in both languages and themes. It showed no page overflow, one row on phones, two lines only at 640–890px (EN) and 640–710px (JA), and no page errors or DB writes.
 
