@@ -95,7 +95,7 @@ for (const locale of ['ja','en'] as const) {
     await page.getByRole('button',{name:t('更新する'),exact:true}).first().click()
     await page.waitForURL(eventUrl)
     await page.setViewportSize({width:320,height:800})
-    const toolbar = page.getByRole('heading',{name:t('みんなの回答'),exact:true}).locator('..')
+    const toolbar = page.getByRole('heading',{name:t('みんなの回答'),exact:true}).locator('../..')
     await toolbar.scrollIntoViewIfNeeded()
     // phones keep the controls on one row; each one is reachable by scrolling that row
     for (const control of await toolbar.locator('button,label').all()) {

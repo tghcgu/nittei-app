@@ -1945,40 +1945,38 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           id="responses-section"
           className="scroll-mt-4 -mx-4 rounded-2xl bg-white/70 px-1 py-2 shadow-sm backdrop-blur lg:mx-0 lg:w-fit lg:max-w-full lg:px-6"
         >
-          {/* スマホでは見出しの下に操作を1行で置き、入りきらないときはその行だけ横に流す。640px以上は見出しの横に置き、入りきらなければ折り返す */}
+          {/* 「回答へ」は見出しの隣。表示の切り替えはスマホでも1行に収まる大きさにし、入りきらない幅だけ横に流す。640px以上は見出しの横で折り返す */}
           <div className="mb-2 flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:gap-x-3">
-            <h2 className="shrink-0 font-serif text-xl text-stone-700">{t("みんなの回答")}</h2>
-            <div className="-mx-1 flex w-full shrink-0 items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:min-w-0 sm:shrink sm:flex-wrap sm:gap-2 sm:overflow-visible sm:pb-0">
+            <div className="flex shrink-0 items-center gap-2">
+              <h2 className="shrink-0 font-serif text-xl text-stone-700">{t("みんなの回答")}</h2>
               <button
                 type="button"
                 onClick={scrollToAnswerForm}
-                className="shrink-0 rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:px-3"
+                className="inline-flex shrink-0 items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
               >{t("↑ 回答へ")}</button>
-              {hasResponses && (
-                <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
+            </div>
+            {hasResponses && (
+              <div className="results-controls -mx-1 flex w-full shrink-0 items-center gap-0.5 overflow-x-auto px-1 pb-1 sm:mx-0 sm:w-auto sm:min-w-0 sm:shrink sm:flex-wrap sm:gap-2 sm:overflow-visible sm:pb-0">
+                <label className="flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-full border border-stone-300 px-[3px] py-1 text-[11px] text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs">
                   <input
                     type="checkbox"
                     checked={showAnswerCounts}
                     onChange={(e) => updateTablePrefs({ counts: e.target.checked })}
-                    className="h-3.5 w-3.5 accent-rose-700"
+                    className="h-[11px] w-[11px] accent-rose-700 sm:h-3.5 sm:w-3.5"
                   />{t("集計")}</label>
-              )}
-              {hasResponses && (
-                <label className="flex shrink-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-stone-300 px-2 py-1.5 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3">
+                <label className="flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap rounded-full border border-stone-300 px-[3px] py-1 text-[11px] text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 sm:gap-1.5 sm:px-3 sm:py-1.5 sm:text-xs">
                   <input
                     type="checkbox"
                     checked={stickyHeadColumn}
                     onChange={(e) => updateTablePrefs({ sticky: e.target.checked })}
-                    className="h-3.5 w-3.5 accent-rose-700"
+                    className="h-[11px] w-[11px] accent-rose-700 sm:h-3.5 sm:w-3.5"
                   />{t("見出し固定")}</label>
-              )}
-              {hasResponses && (
                 <div className="flex shrink-0 overflow-hidden rounded-full border border-stone-300">
                   <button
                     type="button"
                     onClick={() => updateTablePrefs({ layout: 'h' })}
                     title={t("横向き表示")}
-                    className={`px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
+                    className={`px-[3px] py-1 text-[11px] transition-colors sm:px-3 sm:py-1.5 sm:text-xs ${
                       tableLayout === 'h'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
@@ -1988,34 +1986,32 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     type="button"
                     onClick={() => updateTablePrefs({ layout: 'v' })}
                     title={t("縦向き表示")}
-                    className={`border-l border-stone-300 px-2.5 py-1.5 text-xs transition-colors sm:px-3 ${
+                    className={`border-l border-stone-300 px-[3px] py-1 text-[11px] transition-colors sm:px-3 sm:py-1.5 sm:text-xs ${
                       tableLayout === 'v'
                         ? 'bg-rose-800 text-white'
                         : 'text-stone-600 hover:bg-stone-50'
                     }`}
                   >{t("縦 ╦")}</button>
                 </div>
-              )}
-              {hasResponses && (
-                <div role="group" aria-label={t("全体メモの表示位置")} className="flex shrink-0 items-center gap-1 text-xs text-stone-600">
+                <div role="group" aria-label={t("全体メモの表示位置")} className="flex shrink-0 items-center gap-0.5 text-[11px] text-stone-600 sm:gap-1 sm:text-xs">
                   <span>{t("全体メモ")}</span>
                   <div className="flex overflow-hidden rounded-full border border-stone-300">
                     <button
                       type="button"
                       aria-pressed={notePosition === 'name'}
                       onClick={() => updateTablePrefs({ notes: 'name' })}
-                      className={`whitespace-nowrap px-2 py-1.5 transition-colors ${notePosition === 'name' ? 'bg-rose-800 text-white' : 'hover:bg-stone-50'}`}
+                      className={`whitespace-nowrap px-[3px] py-1 transition-colors sm:px-2 sm:py-1.5 ${notePosition === 'name' ? 'bg-rose-800 text-white' : 'hover:bg-stone-50'}`}
                     >{t("名前の下")}</button>
                     <button
                       type="button"
                       aria-pressed={notePosition === 'bottom'}
                       onClick={() => updateTablePrefs({ notes: 'bottom' })}
-                      className={`whitespace-nowrap border-l border-stone-300 px-2 py-1.5 transition-colors ${notePosition === 'bottom' ? 'bg-rose-800 text-white' : 'hover:bg-stone-50'}`}
+                      className={`whitespace-nowrap border-l border-stone-300 px-[3px] py-1 transition-colors sm:px-2 sm:py-1.5 ${notePosition === 'bottom' ? 'bg-rose-800 text-white' : 'hover:bg-stone-50'}`}
                     >{t("表の下")}</button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Keep the description from determining the content-sized table width. */}

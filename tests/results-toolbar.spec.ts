@@ -19,17 +19,23 @@ async function seed(request: APIRequestContext, shareId: string) {
 }
 
 for (const locale of ['ja', 'en'] as const) {
-  test(`${locale}: results controls stay on one row on phones and wrap instead of widening the page`, async ({ page, request }) => {
+  test(`${locale}: answer link sits beside the heading and the controls fit one row on phones`, async ({ page, request }) => {
     const { t, path } = getI18n(locale)
     const shareId = `results-toolbar-${locale}`
     await seed(request, shareId)
     await page.setViewportSize({ width: 390, height: 900 })
     await page.goto(path(`/e/${shareId}`))
-    const heading = page.getByRole('heading', { name: t('みんなの回答'), exact: true })
+    const results = page.locator('#responses-section')
+    const heading = results.getByRole('heading', { name: t('みんなの回答'), exact: true })
     await expect(heading).toBeVisible()
-    const controls = heading.locator('xpath=following-sibling::div[1]')
-    for (const width of [320, 390, 639, 640, 700, 768, 820, 890, 1024, 1440]) {
+    const answerLink = results.getByRole('button', { name: t('↑ 回答へ'), exact: true })
+    const controls = results.locator('.results-controls')
+    for (const width of [320, 360, 375, 390, 430, 639, 640, 700, 768, 820, 890, 1024, 1440]) {
       await page.setViewportSize({ width, height: 900 })
+      const title = (await heading.boundingBox())!
+      const link = (await answerLink.boundingBox())!
+      expect(Math.abs(link.y + link.height / 2 - (title.y + title.height / 2)), `${width}px answer link on the heading line`).toBeLessThan(4)
+      expect(link.x, `${width}px answer link after the heading`).toBeGreaterThanOrEqual(title.x + title.width)
       const geometry = await controls.evaluate(el => {
         const box = el.getBoundingClientRect()
         const centers = [...el.children].map(child => {
@@ -49,6 +55,8 @@ for (const locale of ['ja', 'en'] as const) {
       expect(geometry.pageWidth, `${width}px page width`).toBeLessThanOrEqual(width)
       if (width < 640) {
         expect(geometry.rowSpread, `${width}px controls share one row`).toBeLessThan(3)
+        // Japanese labels fit without scrolling from 360px; longer English labels may still scroll
+        if (locale === 'ja' && width >= 360) expect(geometry.scrolls, `${width}px controls fit the phone row`).toBe(false)
       } else {
         expect(geometry.inside, `${width}px controls fully visible`).toBe(true)
         expect(geometry.scrolls, `${width}px controls need no sideways scroll`).toBe(false)
