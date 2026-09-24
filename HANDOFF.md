@@ -4,6 +4,16 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-09-24: Compact Results Controls Preview (Not Merged)
+
+At the user's request, "↑ Respond" moved beside the "Everyone's responses" heading and now uses the same quiet style as "↓ Everyone's responses" near the top of the page (`rounded-lg bg-white/50 px-2 py-0.5 text-xs`). On phones the remaining controls (Totals, Pin headers, Across/Down, General notes) use 11px text, 3px padding and 2px gaps. The Japanese row fits without scrolling from 360px; only 320–350px still scrolls sideways. English labels are longer, so that row still scrolls below 450px. From 640px the controls keep their previous sizes and the wrapping from the release below. The controls row now renders only when there are responses.
+
+Source `fix/results-controls-compact` (`d1e0b8c` plus this record), based on main `4c24aad`. Compatible `preview/results-controls-compact` (`11078ff` plus this record), based on release `6bbcc0a`. Preview: https://compact-controls-nittei-app.qoj.workers.dev/e/ohbcvs2j (English: /en/e/ohbcvs2j), Worker `0c2d35c5-1281-4f9c-a0f6-d8bdeac170a2`. Not merged or promoted.
+
+`tests/results-toolbar.spec.ts` now also checks that the answer link shares the heading line and that the Japanese phone row does not scroll from 360px. main's reliability check now covers the whole results header. Release passed 30 related tests and main 22, plus lint and TypeScript on both; webpack and OpenNext also passed. The preview was measured every 10px from 320 to 1440px in dark mode for both languages. It showed no page overflow, one control row on phones, the answer link beside the heading at every width, and no page errors.
+
+No SQL, storage, Cron or runtime changes. Do not deploy main to the legacy DB or merge legacy storage back into main.
+
 ## 2026-09-24: Results Toolbar Wrap Released
 
 From 640px the results controls sat beside the "Everyone's responses" heading on one row that could not shrink. After the general-note toggle joined them, production pages widened to 896px at 640–890px in English and 713px at 640–710px in Japanese (iPad portrait, landscape phones, narrow windows). The controls now shrink and wrap beside the heading from 640px. Phones keep the single sideways-scrolling row requested on 2026-08-30. main's all-width wrap from `d468305` was replaced with the same markup so both branches match; its reliability test now checks that each phone control is reachable by scrolling that row.
