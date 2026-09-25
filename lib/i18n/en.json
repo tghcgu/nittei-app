@@ -406,5 +406,16 @@
   "イベントページは、共有URLを知っている人なら誰でも閲覧・回答できます。新規イベントと回答の編集には、それぞれの編集キーが必要です。主催者はそのイベントの回答も管理できます。移行前のイベント・回答は従来どおり共有URLで編集できます。検索エンジンへの登録を防ぐ設定はアクセス制限ではありません。共有URLと編集用URLの取り扱いにご注意ください。": "Anyone with the shared URL can view and answer an event. New events and responses require their private edit keys for changes; organizers can also manage responses to their event. Legacy events and responses retain share-link editing. Search indexing restrictions are not access control. Handle shared and private edit links carefully.",
   "新規イベント・回答は編集キーの所持により編集権限を確認します。本人確認ではありません。主催者はイベントとその回答を管理できます。移行前のデータは従来どおり共有URLで編集できます。編集用URLは非公開で保管してください。": "Editing rights for new events and responses are checked using private edit keys, not identity verification. Organizers can manage their event and its responses. Legacy data retains share-link editing. Keep private edit links confidential.",
   "編集キーも端末内に保存し、権限確認のため送信します。データベースにはキーのハッシュのみ保存します。端末変更に備えて編集用URLを非公開で保管してください。言語切り替え時の下書きはタブ内に一時保存し、復元後に削除します。": "Edit keys are also stored on your device and sent for authorization. Only key hashes are stored in the database. Keep private edit links for recovery on another device. Language-switch drafts are temporarily stored in the tab and removed after restoration.",
-  "最終改定日: 2026年9月8日": "Last updated: September 8, 2026"
+  "最終改定日: 2026年9月8日": "Last updated: September 8, 2026",
+  "英語表示と更新直後の動作を改善": "Improved English labels and behavior after updates",
+  "英語版の回答一覧で、表示の切り替えボタンをスマホでも一列に収まる短い表記にしました。": "Shortened the English response-list controls so they fit one row on phones.",
+  "サイトの更新前から開いていたページが動かなくなったときは、入力中の内容を保ったまま自動で読み込み直すようにしました。": "If a page opened before a site update stops working, it now reloads automatically and keeps what you were typing.",
+  "2回目以降の表示で、変わっていないファイルを読み込み直さないようにし、表示を速くしました。": "Pages open faster on return visits by reusing files that have not changed.",
+  "「みんなの回答」を見やすく改善": "Easier-to-read response list",
+  "回答者名が折り返すときの余分な列幅を詰めました。": "Removed extra column width around wrapped respondent names.",
+  "タブレットや横向きのスマホで、回答一覧の操作ボタンが画面からはみ出さないようにしました。": "Response-list controls no longer run off the screen on tablets or phones held sideways.",
+  "「↑ 回答へ」を見出しの隣に移し、スマホでは表示の切り替えボタンを一列に収まる大きさにしました。": "Moved \"↑ Respond\" next to the heading and sized the display controls to fit one row on phones.",
+  "作成画面の見出しと全体メモの表示位置": "Compact header and general note position",
+  "作成・編集画面の見出しを白黒の太字でコンパクトにし、画面上部を詰めました。": "Made the create and edit header a compact bold monochrome title, freeing space at the top.",
+  "「みんなの回答」で、全体メモを名前の下と表の下のどちらに表示するか選べるようにしました。": "In the response list, you can now show general notes under each name or below the table."
 }
