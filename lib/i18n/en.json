@@ -399,5 +399,16 @@
   "zip内の{0}件の .ics を解析しました。": "Processed {0} calendar files from the ZIP.",
   "下書きを保持できないため、言語を切り替えられません。入力内容を保存してから切り替えてください。": "Your draft could not be kept. Save your changes before switching languages.",
   "ファイルは10MB、zip展開後は50MB・100カレンダーまでです。対象を分けて書き出してください。": "Use files up to 10 MB, or 50 MB and 100 calendars after ZIP extraction. Export smaller files.",
-  "繰り返し予定が多すぎます。対象期間を絞って書き出してください。": "Too many recurring events. Export a shorter date range."
+  "繰り返し予定が多すぎます。対象期間を絞って書き出してください。": "Too many recurring events. Export a shorter date range.",
+  "英語表示と更新直後の動作を改善": "Improved English labels and behavior after updates",
+  "英語版の回答一覧で、表示の切り替えボタンをスマホでも一列に収まる短い表記にしました。": "Shortened the English response-list controls so they fit one row on phones.",
+  "サイトの更新前から開いていたページが動かなくなったときは、入力中の内容を保ったまま自動で読み込み直すようにしました。": "If a page opened before a site update stops working, it now reloads automatically and keeps what you were typing.",
+  "2回目以降の表示で、変わっていないファイルを読み込み直さないようにし、表示を速くしました。": "Pages open faster on return visits by reusing files that have not changed.",
+  "「みんなの回答」を見やすく改善": "Easier-to-read response list",
+  "回答者名が折り返すときの余分な列幅を詰めました。": "Removed extra column width around wrapped respondent names.",
+  "タブレットや横向きのスマホで、回答一覧の操作ボタンが画面からはみ出さないようにしました。": "Response-list controls no longer run off the screen on tablets or phones held sideways.",
+  "「↑ 回答へ」を見出しの隣に移し、スマホでは表示の切り替えボタンを一列に収まる大きさにしました。": "Moved \"↑ Respond\" next to the heading and sized the display controls to fit one row on phones.",
+  "作成画面の見出しと全体メモの表示位置": "Compact header and general note position",
+  "作成・編集画面の見出しを白黒の太字でコンパクトにし、画面上部を詰めました。": "Made the create and edit header a compact bold monochrome title, freeing space at the top.",
+  "「みんなの回答」で、全体メモを名前の下と表の下のどちらに表示するか選べるようにしました。": "In the response list, you can now show general notes under each name or below the table."
 }
