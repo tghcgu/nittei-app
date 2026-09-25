@@ -5,6 +5,9 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 60000,
+  // The test server is `next dev`, which compiles a route on its first visit. Under load that
+  // can exceed the 5s default, so waits for navigations and restored drafts get more room.
+  expect: { timeout: 15000 },
   use: {
     baseURL: 'http://127.0.0.1:3100',
     trace: 'retain-on-failure',
