@@ -4,6 +4,18 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-09-25: Improvements Batch Released
+
+Five changes shipped together. (1) English result labels are shorter ("Pin", "Notes", "Below"), so the English phone row fits from 339px; Japanese fits from 360px. (2) A head script in `SiteLayout` catches failed `/_next/static` script or stylesheet loads and chunk-load rejections. It lets pages save drafts through the existing language-switch event (`lib/draft-events.ts`) and then reloads once. A second failure within a minute leaves the page alone, and a failed draft save cancels the reload silently. This addresses the old-chunk errors after deploys recorded below. (3) `public/_headers` makes hashed `/_next/static/*` files `public,max-age=31536000,immutable` instead of `max-age=0`, as OpenNext recommends. (4) The Playwright expect timeout is now 15s, because `next dev` compiles routes on first visit and the earlier flakes (`retry.spec`, `reliability.spec`) were 5s waits under load. (5) `lib/updates.ts` gained the missing 2026-09-23 and 09-24 releases plus this one, with translations.
+
+Source `fix/improvements-0925` → main `44e72a3`; compatible `preview/improvements-0925` → release `7024849`. Both suites passed 78/78, and lint and TypeScript passed on both. The new `tests/stale-chunk.spec.ts` fails without the head script (the page stays broken) and passes with it. **Production is live:** `npm run deploy` from the release worktree made Worker `b9ead445-7f33-46e8-bb88-75aff0cc6661` 100% at 2026-09-25T05:08:56Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `f9a7a0f2-7dac-436f-b910-b300778cddc2`. Production checks passed: 14 routes returned 200 (`/_headers` is 404, i.e. not served); the chunk cache header, the head script and both update pages were present; phone rows fit as above. A missing chunk reloaded once and kept an unsaved name without submitting it.
+
+**Local verification note:** AdGuard on this PC now injects `local.adguard.org` scripts into HTML that Chromium receives. That makes React report #418 on every page, including older Workers, and blocks the Cloudflare analytics beacon. When HTML is fetched outside the browser (Playwright `route.fetch()` + `fulfill`), every page has zero errors. Use that bypass for public checks from this machine; the site itself is unaffected.
+
+Cleanup: 10 merged `fix/`, `ui/` and `preview/` branches were deleted from GitHub and locally. Unmerged `ui/desktop-create-layout`, `preview/desktop-create-layout` and the April Vercel branch remain. Seven leftover test events (`wfp93t1l d8nnw6td 1a0h9a3g uj5po2hk h486fas8 8mb5pefz y3p2xd0i`) cannot be deleted with the publishable key under the legacy RLS; they are to be removed in the SQL Editor during the cutover. `pje8ct2z` (" fdvs", two responses) may not be a test event and was kept.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending.
+
 ## 2026-09-24: Compact Results Controls Released
 
 At the user's request, "↑ Respond" moved beside the "Everyone's responses" heading and now uses the same quiet style as "↓ Everyone's responses" near the top of the page (`rounded-lg bg-white/50 px-2 py-0.5 text-xs`). On phones the remaining controls (Totals, Pin headers, Across/Down, General notes) use 11px text, 3px padding and 2px gaps. The Japanese row fits without scrolling from 360px; only 320–350px still scrolls sideways. English labels are longer, so that row still scrolls below 450px. From 640px the controls keep their previous sizes and the wrapping from the release below. The controls row now renders only when there are responses.
