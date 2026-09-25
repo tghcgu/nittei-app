@@ -11,6 +11,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { LocaleProvider } from './LocaleProvider';
 import type { Locale } from '@/lib/i18n';
 import { englishDescription } from '@/lib/i18n/metadata';
+import { LANGUAGE_SWITCH_EVENT, RELOAD_DETAIL } from '@/lib/draft-events';
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -97,6 +98,34 @@ const themeInitScript = `
 })();
 `;
 
+// A tab opened before a deploy can ask for chunks the new version no longer serves. Reload once,
+// after pages save their drafts as they do for a language switch, instead of leaving it broken.
+const staleChunkReloadScript = `
+(() => {
+  const reload = () => {
+    try {
+      const last = Number(sessionStorage.getItem('nittei-chunk-reload') || 0);
+      if (Date.now() - last < 60000) return;
+      sessionStorage.setItem('nittei-chunk-reload', String(Date.now()));
+    } catch {
+      return;
+    }
+    const save = new CustomEvent(${JSON.stringify(LANGUAGE_SWITCH_EVENT)}, { cancelable: true, detail: ${JSON.stringify(RELOAD_DETAIL)} });
+    if (window.dispatchEvent(save)) location.reload();
+  };
+  addEventListener('error', (event) => {
+    const el = event.target;
+    const url = el instanceof HTMLScriptElement ? el.src
+      : el instanceof HTMLLinkElement && el.rel === 'stylesheet' ? el.href : '';
+    if (url.includes('/_next/static/')) reload();
+  }, true);
+  addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason;
+    if (/ChunkLoadError|Loading (CSS )?chunk .+ failed/.test(String(reason && reason.name) + ' ' + String(reason && reason.message))) reload();
+  });
+})();
+`;
+
 export default function RootLayout({
   children,
   locale = 'ja',
@@ -108,6 +137,7 @@ export default function RootLayout({
     <html lang={locale} data-theme="light" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: staleChunkReloadScript }} />
       </head>
       <body>
         <script
