@@ -55,8 +55,8 @@ for (const locale of ['ja', 'en'] as const) {
       expect(geometry.pageWidth, `${width}px page width`).toBeLessThanOrEqual(width)
       if (width < 640) {
         expect(geometry.rowSpread, `${width}px controls share one row`).toBeLessThan(3)
-        // Japanese labels fit without scrolling from 360px; longer English labels may still scroll
-        if (locale === 'ja' && width >= 360) expect(geometry.scrolls, `${width}px controls fit the phone row`).toBe(false)
+        // both languages fit without scrolling from 360px; only smaller phones scroll the row
+        if (width >= 360) expect(geometry.scrolls, `${width}px controls fit the phone row`).toBe(false)
       } else {
         expect(geometry.inside, `${width}px controls fully visible`).toBe(true)
         expect(geometry.scrolls, `${width}px controls need no sideways scroll`).toBe(false)
