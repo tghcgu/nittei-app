@@ -417,5 +417,22 @@
   "「↑ 回答へ」を見出しの隣に移し、スマホでは表示の切り替えボタンを一列に収まる大きさにしました。": "Moved \"↑ Respond\" next to the heading and sized the display controls to fit one row on phones.",
   "作成画面の見出しと全体メモの表示位置": "Compact header and general note position",
   "作成・編集画面の見出しを白黒の太字でコンパクトにし、画面上部を詰めました。": "Made the create and edit header a compact bold monochrome title, freeing space at the top.",
-  "「みんなの回答」で、全体メモを名前の下と表の下のどちらに表示するか選べるようにしました。": "In the response list, you can now show general notes under each name or below the table."
+  "「みんなの回答」で、全体メモを名前の下と表の下のどちらに表示するか選べるようにしました。": "In the response list, you can now show general notes under each name or below the table.",
+  "カレンダーの空き時間で一括回答": "Fill from free time in your calendar",
+  "終日": "All day",
+  "{0}の開始時刻": "Start time for {0}",
+  "{0}の終了時刻": "End time for {0}",
+  "どれも空いていない日：": "If none is free:",
+  "どれも空いていない日を{0}にする": "Use {0} when no time is free",
+  "空き時間で適用": "Apply by free time",
+  "カレンダーを選んで適用": "Choose a calendar and apply",
+  "別のカレンダーも読み込む": "Add another calendar",
+  "上の日付範囲・曜日の中で、上の記号から順に見て、その時間に予定が少しもかぶらない最初の記号を入れます（時間が空欄の記号は使いません）": "Within the dates and weekdays above, each date gets the first symbol, from the top, whose time has no overlapping event. Symbols without a time are skipped.",
+  "この日付範囲・曜日に候補日がありません。": "No dates match this range and weekday filter.",
+  "手で入力した{0}件は変更していません。書き換えるには「入力済の行は変更しない」を外してください。": "{0} answers entered by hand were left unchanged. Turn off “Keep existing answers” to overwrite them.",
+  "{0}件の候補に入力しました（手で入力した{1}件は変更していません）。": "Filled {0} dates; {1} entered by hand were left unchanged.",
+  "{0}件の候補に入力しました。内容を確認してから送信してください。": "Filled {0} dates. Please review your answers before submitting.",
+  "{0}にする時間": "Time for {0}",
+  "カレンダーの空き時間から記号を選んで入力": "Fill answers from free time in your calendar",
+  "「範囲で一括回答」に、記号ごとに時間帯を決めてカレンダーから入力する機能を追加しました。「◎終日、○20〜24時、△23〜26時」のように記号で時間帯を分けるイベントで、上の記号から順に、予定がかぶらない最初の記号を入れます。": "Added a way to fill answers from your calendar by giving each symbol a time window, under \"Fill date range\". For events that split time by symbol, such as \"◎ all day, ○ 20:00-24:00, △ 23:00-26:00\", each date gets the first symbol, from the top, whose time has no overlapping event."
 }

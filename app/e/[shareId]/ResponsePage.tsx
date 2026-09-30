@@ -8,7 +8,7 @@ import { ServiceShareLink } from '@/app/ServiceShareLink'
 import { eventClient } from '@/lib/supabase'
 import { newEditToken, readEditToken, storeEditToken, consumeEditKey } from '@/lib/edit-keys'
 import { useLanguageDraft } from '@/app/useLanguageDraft'
-import { calendarBusyPeriods, overlapsCalendar, type BusyPeriod } from '@/lib/calendar'
+import { calendarBusyPeriods, firstFreeValue, overlapsCalendar, type BusyPeriod, type FreeWindowRule } from '@/lib/calendar'
 import { siteShortName } from '@/lib/site'
 import { recordHistory } from '@/lib/history'
 import { answerValuesFor } from '@/lib/answer-choices'
@@ -70,6 +70,16 @@ type LastSetAllAnswers = {
   value: AnswerValue
   candidateIds: string[]
 }
+
+// 記号ごとの「この時間が空いていれば」の入力。終日でも時刻指定でもなければ、その記号は使わない
+type FreeRuleInput = {
+  allDay: boolean
+  start: string
+  end: string
+}
+
+// いちばん上の記号だけ、はじめから「終日」にしておく
+const defaultFreeRuleInput = (index: number): FreeRuleInput => ({ allDay: index === 0, start: '', end: '' })
 
 type AnswerHistorySnapshot = {
   answers: Record<string, AnswerValue>
@@ -322,6 +332,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // 一括回答パネル共通の曜日フィルター（空＝全曜日が対象）
   const [bulkWeekdays, setBulkWeekdays] = useState<Set<number>>(new Set())
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
+  // カレンダーの空き時間で一括回答
+  const [freeRuleInputs, setFreeRuleInputs] = useState<Partial<Record<AnswerValue, FreeRuleInput>>>({})
+  const [freeFallbackValue, setFreeFallbackValue] = useState<AnswerValue>('✕')
+  const [freeRuleMessage, setFreeRuleMessage] = useState('')
+  // 読み込んだカレンダーの予定（開始・終了だけ）。ページを開いている間だけ持ち、保存も送信もしない
+  const calendarPeriodsRef = useRef<BusyPeriod[]>([])
+  const [hasCalendar, setHasCalendar] = useState(false)
+  // カレンダーから自動で入れた値。手で直していない行は「入力済」とみなさず、入れ直せるようにする
+  const calendarFilledRef = useRef<Record<string, AnswerValue>>({})
   const [lastSetAllAnswers, setLastSetAllAnswers] = useState<LastSetAllAnswers | null>(null)
   const [answerPast, setAnswerPast] = useState<AnswerHistorySnapshot[]>([])
   const [answerFuture, setAnswerFuture] = useState<AnswerHistorySnapshot[]>([])
@@ -441,6 +460,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   function resetAnswerHistory() {
     setAnswerPast([])
     setAnswerFuture([])
+    calendarFilledRef.current = {}
   }
 
   function commitAnswerChange(
@@ -593,6 +613,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const allowed = answerValuesFor(event.answer_choices)
     return ANSWER_OPTIONS.filter((opt) => allowed.includes(opt.value))
   }, [event.answer_choices])
+  // ✕ と「-」以外の記号に、上から順に「この時間が空いていれば」を設定できる
+  const freeRuleOptions = answerOptions.filter((opt) => opt.value !== '✕' && opt.value !== '-')
+  const freeRules = freeRuleOptions.flatMap((opt, index): FreeWindowRule<AnswerValue>[] => {
+    const input = freeRuleInputs[opt.value] ?? defaultFreeRuleInput(index)
+    if (input.allDay) return [{ value: opt.value, window: 'allDay' }]
+    if (!input.start || !input.end || input.start === input.end) return []
+    return [{ value: opt.value, window: { start: input.start, end: input.end } }]
+  })
   const countOptions = useMemo(() => {
     const values = new Set(answerValuesFor(event.answer_choices))
     for (const response of responseRows) for (const answer of response.answers) values.add(answer.value)
@@ -696,6 +724,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   // ---- .ics ファイルから日程を読み取り ----
   const icsInputRef = useRef<HTMLInputElement>(null)
+  // ファイル選択のあとに行う入力。取り込みボタンは 'auto'、空き時間の一括回答は 'freeRules'
+  const icsTargetRef = useRef<'auto' | 'freeRules'>('auto')
+
+  function chooseCalendarFile(target: 'auto' | 'freeRules') {
+    icsTargetRef.current = target
+    icsInputRef.current?.click()
+  }
 
   function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
     const newAnswers: Record<string, AnswerValue | null> = {}
@@ -712,6 +747,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         if (val === null) continue
         if (current.answers[id] === icsBusyValue && val === icsFreeValue) continue
         merged[id] = val
+        calendarFilledRef.current[id] = val
       }
       return {
         ...current,
@@ -727,7 +763,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    void processIcsFile(file)
+    const target = icsTargetRef.current
+    icsTargetRef.current = 'auto'
+    void processIcsFile(file, target)
   }
 
   // ファイルをフォームに落としても読み込めるようにする
@@ -750,7 +788,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     if (file) void processIcsFile(file)
   }
 
-  async function processIcsFile(file: File) {
+  async function processIcsFile(file: File, target: 'auto' | 'freeRules' = 'auto') {
     if (candidates.length === 0) {
       setIcsStatus('error')
       setIcsMessage(t("候補日がないため自動入力できません。"))
@@ -763,17 +801,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     try {
       const calendarFiles = await readCalendarFileTexts(file)
       const busyPeriods = await calendarBusyPeriods(calendarFiles, candidates.map(c => ({ date: c.date, timeLabel: c.time_label })))
+      // 複数のカレンダーを続けて読んだときは、予定を足し合わせて判定する
+      calendarPeriodsRef.current = [...calendarPeriodsRef.current, ...busyPeriods]
+      setHasCalendar(true)
+      const doneMessage = t("{0} 内容を確認してから送信してください。", describeCalendarFileRead(calendarFiles, locale))
 
-      applyBusyPeriodsToAnswers(
-        busyPeriods,
-        t("{0} 内容を確認してから送信してください。", describeCalendarFileRead(calendarFiles, locale))
-      )
+      if (target === 'freeRules') {
+        setIcsStatus('done')
+        setIcsMessage(doneMessage)
+        applyFreeWindowRules(calendarPeriodsRef.current)
+        return
+      }
+      applyBusyPeriodsToAnswers(busyPeriods, doneMessage)
     } catch (err) {
+      const message = describeCalendarFileError(err, locale) ??
+        t("読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。")
       setIcsStatus('error')
-      setIcsMessage(
-        describeCalendarFileError(err, locale) ??
-          t("読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。")
-      )
+      setIcsMessage(message)
+      if (target === 'freeRules') setFreeRuleMessage(message)
     }
   }
 
@@ -861,6 +906,61 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         lastSetAllAnswers: null,
       }
     })
+  }
+
+  function updateFreeRuleInput(value: AnswerValue, index: number, patch: Partial<FreeRuleInput>) {
+    setFreeRuleInputs((current) => ({
+      ...current,
+      [value]: { ...(current[value] ?? defaultFreeRuleInput(index)), ...patch },
+    }))
+  }
+
+  function applyFreeWindowRules(periods: BusyPeriod[]) {
+    if (!bulkStart || !bulkEnd || bulkStart > bulkEnd || freeRules.length === 0) return
+    const targets = candidates.filter(
+      (c) => c.date >= bulkStart && c.date <= bulkEnd && matchesBulkWeekdays(c.date)
+    )
+    if (targets.length === 0) {
+      setFreeRuleMessage(t("この日付範囲・曜日に候補日がありません。"))
+      return
+    }
+
+    const calendarFilled = calendarFilledRef.current
+    const updates: Record<string, AnswerValue> = {}
+    let keptByHand = 0
+    commitAnswerChange((current) => {
+      for (const c of targets) {
+        const existing = current.answers[c.id]
+        // 「入力済の行は変更しない」がONでも、カレンダーから自動で入れたままの行は入れ直す
+        if (keepExistingAnswers && existing !== undefined && existing !== calendarFilled[c.id]) {
+          keptByHand += 1
+          continue
+        }
+        // 上の記号から順に見て、その時間に予定が少しもかぶらない最初の記号にする
+        updates[c.id] = firstFreeValue(c.date, freeRules, freeFallbackValue, periods)
+      }
+
+      const nextDetailNotes = { ...current.detailNotes }
+      for (const [id, value] of Object.entries(updates)) {
+        if (value !== '-') delete nextDetailNotes[id]
+      }
+
+      return {
+        answers: { ...current.answers, ...updates },
+        detailNotes: nextDetailNotes,
+        lastSetAllAnswers: null,
+      }
+    })
+    Object.assign(calendarFilled, updates)
+
+    const filledCount = Object.keys(updates).length
+    setFreeRuleMessage(
+      filledCount === 0
+        ? t("手で入力した{0}件は変更していません。書き換えるには「入力済の行は変更しない」を外してください。", keptByHand)
+        : keptByHand > 0
+        ? t("{0}件の候補に入力しました（手で入力した{1}件は変更していません）。", filledCount, keptByHand)
+        : t("{0}件の候補に入力しました。内容を確認してから送信してください。", filledCount)
+    )
   }
 
   function handleSetAllAnswers(value: AnswerValue) {
@@ -1440,7 +1540,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <button
                 type="button"
-                onClick={() => icsInputRef.current?.click()}
+                onClick={() => chooseCalendarFile('auto')}
                 disabled={icsStatus === 'loading'}
                 className="flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -1749,6 +1849,95 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     >{t("適用")}</button>
                     <span className="text-xs text-stone-600">{t("上の日付範囲・曜日の中で、少しでも時間が重なる候補を変更します")}</span>
                   </div>
+                </div>
+                <div data-free-rules className="mt-2 border-t border-stone-300 pt-1.5">
+                  <p className="mb-1.5 text-xs font-medium text-stone-600">{t("カレンダーの空き時間で一括回答")}</p>
+                  <div className="mb-2 space-y-1.5">
+                    {freeRuleOptions.map((opt, index) => {
+                      const input = freeRuleInputs[opt.value] ?? defaultFreeRuleInput(index)
+                      const isUsed = freeRules.some((rule) => rule.value === opt.value)
+                      return (
+                        <div key={opt.value} data-free-rule={opt.value} role="group" aria-label={t("{0}にする時間", opt.value)} className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm ${
+                              isUsed ? opt.active : 'border-stone-300 text-stone-400'
+                            }`}
+                          >
+                            {opt.value}
+                          </span>
+                          <label className="flex items-center gap-1.5 text-xs text-stone-600">
+                            <input
+                              type="checkbox"
+                              checked={input.allDay}
+                              onChange={(e) => updateFreeRuleInput(opt.value, index, { allDay: e.target.checked })}
+                              className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
+                            />{t("終日")}</label>
+                          {!input.allDay && (
+                            <>
+                              <input
+                                type="time"
+                                value={input.start}
+                                onChange={(e) => updateFreeRuleInput(opt.value, index, { start: e.target.value })}
+                                aria-label={t("{0}の開始時刻", opt.value)}
+                                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                              />
+                              <span className="text-stone-600">〜</span>
+                              <input
+                                type="time"
+                                value={input.end}
+                                onChange={(e) => updateFreeRuleInput(opt.value, index, { end: e.target.value })}
+                                aria-label={t("{0}の終了時刻", opt.value)}
+                                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-stone-600">{t("どれも空いていない日：")}</span>
+                    {answerOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setFreeFallbackValue(opt.value)}
+                        aria-label={t("どれも空いていない日を{0}にする", opt.value)}
+                        aria-pressed={freeFallbackValue === opt.value}
+                        className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${
+                          freeFallbackValue === opt.value ? opt.active : opt.idle
+                        }`}
+                      >
+                        {opt.value === '-' ? '−' : opt.value}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => hasCalendar ? applyFreeWindowRules(calendarPeriodsRef.current) : chooseCalendarFile('freeRules')}
+                      disabled={
+                        !bulkStart ||
+                        !bulkEnd ||
+                        bulkStart > bulkEnd ||
+                        freeRules.length === 0 ||
+                        icsStatus === 'loading'
+                      }
+                      className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
+                    >{hasCalendar ? t("空き時間で適用") : t("カレンダーを選んで適用")}</button>
+                    {hasCalendar && (
+                      <button
+                        type="button"
+                        onClick={() => chooseCalendarFile('freeRules')}
+                        disabled={icsStatus === 'loading'}
+                        className="text-xs text-stone-600 underline hover:text-rose-700"
+                      >{t("別のカレンダーも読み込む")}</button>
+                    )}
+                    <span className="text-xs text-stone-600">{t("上の日付範囲・曜日の中で、上の記号から順に見て、その時間に予定が少しもかぶらない最初の記号を入れます（時間が空欄の記号は使いません）")}</span>
+                  </div>
+                  {freeRuleMessage && (
+                    <p role="status" className="mt-1.5 text-xs text-stone-700">{freeRuleMessage}</p>
+                  )}
                 </div>
               </div>
             )}
