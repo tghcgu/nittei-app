@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { zipSync, strToU8 } from 'fflate'
-import { calendarBusyPeriods, firstFreeValue, overlapsCalendar } from '../lib/calendar'
+import { calendarBusyPeriods, firstFreeValue, overlapsCalendar, overlapsWindow } from '../lib/calendar'
 import { readCalendarFileTexts } from '../lib/calendar-files'
 
 const calendar = (...events: string[]) => ({
@@ -85,4 +85,11 @@ test('free-window rules give the first symbol whose time has no overlapping even
   // order decides: the same free date takes whichever rule comes first
   expect(firstFreeValue('2026-10-01', [...rules].reverse(), '✕', periods)).toBe('△')
   expect(firstFreeValue('2026-10-01', [], '✕', periods)).toBe('✕')
+
+  // the single-window check behind "dates with an overlapping event"
+  const late = { start: '23:00', end: '02:00' }
+  expect(['2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'].map(date => overlapsWindow(date, late, periods)))
+    .toEqual([false, true, true, false])
+  expect(overlapsWindow('2026-10-01', 'allDay', periods)).toBe(false)
+  expect(overlapsWindow('2026-10-08', 'allDay', periods)).toBe(true)
 })
