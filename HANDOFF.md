@@ -20,7 +20,7 @@ Source `feat/free-window-rules` → main `f1730f3`; compatible `preview/free-win
 
 When checking exit codes in a loop, capture `$?` into a variable first. `echo "$(basename $d) EXIT=$?"` always prints 0 because the command substitution runs first.
 
-No SQL, storage, Cron or runtime changes. The secure migration is still pending; the owner has the SQL steps.
+No SQL, storage, Cron or runtime changes. The secure migration is still pending; the owner has the SQL steps. The matching Worker for that cutover was rebuilt from main `db21e6d` and uploaded without promotion: `ceb357aa-04e0-4863-ad56-0274f628fce2` (preview alias `secure`). The one prepared on September 25 (`008f8cf1`) predates these changes; do not promote it.
 
 ## 2026-09-25: Improvements Batch Released
 
