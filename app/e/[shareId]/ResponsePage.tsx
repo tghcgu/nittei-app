@@ -1975,9 +1975,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         className="text-xs text-stone-600 underline hover:text-rose-700"
                       >{t("別のカレンダーも読み込む")}</button>
                     )}
-                    <span className="text-xs text-stone-600">{t("上の日付範囲・曜日の中で、この時間にカレンダーの予定が少しでもかぶる日を変更します")}</span>
+                    <span className="text-xs text-stone-600">{t("この時間に予定が少しでも入っている日を、選んだ記号に変えます。")}</span>
                   </div>
-                  <p className="mt-1 text-xs text-stone-600">{t("24時より後は 02:00 のように入力します（終了が開始より早いと翌日までとみなします）")}</p>
+                  <p className="mt-1 text-xs text-stone-600">{t("26時は 02:00 と入力します。対象は上の日付範囲・曜日です。")}</p>
                   {busyWindowMessage && (
                     <p role="status" className="mt-1.5 text-xs text-stone-700">{busyWindowMessage}</p>
                   )}
@@ -2065,9 +2065,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         className="text-xs text-stone-600 underline hover:text-rose-700"
                       >{t("別のカレンダーも読み込む")}</button>
                     )}
-                    <span className="text-xs text-stone-600">{t("上の日付範囲・曜日の中で、上の記号から順に見て、その時間に予定が少しもかぶらない最初の記号を入れます（時間が空欄の記号は使いません）")}</span>
+                    <span className="text-xs text-stone-600">{t("日付ごとに上の記号から順に確かめ、その時間に予定がなければ、その記号を入れます。")}</span>
                   </div>
-                  <p className="mt-1 text-xs text-stone-600">{t("24時より後は 02:00 のように入力します（終了が開始より早いと翌日までとみなします）")}</p>
+                  <p className="mt-1 text-xs text-stone-600">{t("時間が空欄の記号は飛ばします。26時は 02:00 と入力します。対象は上の日付範囲・曜日です。")}</p>
                   {freeRuleMessage && (
                     <p role="status" className="mt-1.5 text-xs text-stone-700">{freeRuleMessage}</p>
                   )}
