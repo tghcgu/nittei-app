@@ -302,6 +302,11 @@ html[data-theme="dark"] .bg-red-50 {
   background-color: rgba(82, 18, 18, 0.55) !important;
 }
 
+/* 選択中の ✕。明るい灰色の地のままだと、黒背景用に明るくした文字が読めなくなる */
+html[data-theme="dark"] .bg-stone-100 {
+  background-color: rgba(87, 83, 78, 0.6) !important;
+}
+
 html[data-theme="dark"] .border-stone-100,
 html[data-theme="dark"] .border-stone-200,
 html[data-theme="dark"] .border-stone-300 {
