@@ -3,6 +3,8 @@ import type { CalendarFileReadResult } from './calendar-files'
 export type BusyPeriod = { start: Date; end: Date; isAllDay: boolean }
 export type CalendarCandidate = { date: string; timeLabel: string | null }
 const MAX_OCCURRENCES = 10000
+// A candidate that only has a start time is treated as lasting this long.
+export const OPEN_ENDED_HOURS = 3
 
 export function candidateTimeRange(date: string, timeLabel: string | null) {
   const start = new Date(`${date}T00:00:00`)
@@ -16,7 +18,7 @@ export function candidateTimeRange(date: string, timeLabel: string | null) {
       end.setHours(Number(match[3]), Number(match[4]), 0, 0)
       if (end <= start) end.setDate(end.getDate() + 1)
     } else {
-      end.setHours(end.getHours() + 3)
+      end.setHours(end.getHours() + OPEN_ENDED_HOURS)
     }
   }
   return { start, end }
@@ -27,14 +29,19 @@ export function overlapsCalendar(candidate: CalendarCandidate, periods: BusyPeri
   return periods.some(period => period.start < end && period.end > start)
 }
 
-export type FreeWindowRule<T> = { value: T; window: 'allDay' | { start: string; end: string } }
+// A time of day on one date. As with candidate times, an end at or before the start is the next day.
+export type TimeWindow = 'allDay' | { start: string; end: string }
+export type FreeWindowRule<T> = { value: T; window: TimeWindow }
+
+export function overlapsWindow(date: string, window: TimeWindow, periods: BusyPeriod[]) {
+  const timeLabel = window === 'allDay' ? null : `${window.start}〜${window.end}`
+  return overlapsCalendar({ date, timeLabel }, periods)
+}
 
 // Rules are checked in order and the first window with no overlapping event decides the value.
-// A timed window follows the candidate-time convention: an end at or before the start is the next day.
 export function firstFreeValue<T>(date: string, rules: readonly FreeWindowRule<T>[], fallback: T, periods: BusyPeriod[]): T {
   for (const rule of rules) {
-    const timeLabel = rule.window === 'allDay' ? null : `${rule.window.start}〜${rule.window.end}`
-    if (!overlapsCalendar({ date, timeLabel }, periods)) return rule.value
+    if (!overlapsWindow(date, rule.window, periods)) return rule.value
   }
   return fallback
 }
