@@ -4,6 +4,24 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-09-30: Calendar Bulk Answers And Polish Released
+
+Requested by the owner and shipped together.
+
+**Calendar bulk answers** (bulk panel on the response page). Parsed events are now kept in memory for the page (`calendarPeriodsRef`; never stored or sent) and add up across several files. Two blocks use them. "カレンダーの空き時間で一括回答" takes one time window per symbol and gives each date the first symbol, from the top, whose window has no overlapping event (`firstFreeValue` in `lib/calendar.ts`). This matches legends such as "◎ all day / ○ 20:00-24:00 / △ 23:00-26:00 / ✕ none". "カレンダーの予定がかぶる日を一括回答" is the single-window operation the owner first described: dates with any event in the window take one symbol (`overlapsWindow`). An end at or before the start is the next day, so 26:00 is entered as 02:00. Both respect the panel's date range and weekday filter. Rows the calendar filled are tracked in `calendarFilledRef` and are redone even when "keep existing answers" is on; rows changed by hand are kept. The single hidden file input serves the import button and both blocks through `icsTargetRef`.
+
+**Existing time-range block.** It is hidden when no candidate has a time, where it could never match. A candidate with only a start time now lasts `OPEN_ENDED_HOURS` (3h), the same as the calendar import, instead of being a single instant.
+
+**Other changes.** A button under the results copies the per-date totals as text. The dark theme gives the selected ✕ a dark fill (it was light on light, 1.15:1), and weekend dates use `text-rose-700` / `text-blue-600` (they were 2.5-2.7:1). Each language has a not-found page, and a `[...rest]` catch-all per language sends unmatched URLs to it; no experimental flag is used. `public/` now holds `og.png`, `og-en.png`, a 512px `icon.png`, `icons/icon-192.png` and `apple-touch-icon.png`, referenced through `shareImage` and `appIcons` in `lib/i18n/metadata.ts`; `app/icon.png` (765KB, served by the Worker) was removed, and the Twitter card is `summary_large_image`. The update history and README list the changes.
+
+Source `feat/free-window-rules` → main `f1730f3`; compatible `preview/free-window-rules` → release `c0f7c7b`. Preview: https://calendar-rules-nittei-app.qoj.workers.dev (Worker `f1bc5a0a-5dfd-404a-9b2e-c12abef01b3a`, before the final help-text rewording). Release passed all 97 tests. Main passed 95 of 97 in the full run; the two `spacing.spec.ts` failures happened while a webpack build and a browser check ran at the same time ("session closed"), and all four spacing tests passed when rerun alone. TypeScript and `npx eslint .` pass on both.
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `4b989880-dc91-40ca-83fe-d99df6e48995` 100% at 2026-09-30T10:18:31Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `b9ead445-7f33-46e8-bb88-75aff0cc6661`. Read-only production checks passed: routes, static images, link-preview tags and manifests in both languages, 404 pages, both calendar blocks with a synthetic calendar (nothing submitted), copied totals, contrast, the September 25 checks, and a sweep of 8 pages × 4 widths × 2 themes with no errors or overflow.
+
+When checking exit codes in a loop, capture `$?` into a variable first. `echo "$(basename $d) EXIT=$?"` always prints 0 because the command substitution runs first.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending; the owner has the SQL steps.
+
 ## 2026-09-25: Improvements Batch Released
 
 Five changes shipped together. (1) English result labels are shorter ("Pin", "Notes", "Below"), so the English phone row fits from 339px; Japanese fits from 360px. (2) A head script in `SiteLayout` catches failed `/_next/static` script or stylesheet loads and chunk-load rejections. It lets pages save drafts through the existing language-switch event (`lib/draft-events.ts`) and then reloads once. A second failure within a minute leaves the page alone, and a failed draft save cancels the reload silently. This addresses the old-chunk errors after deploys recorded below. (3) `public/_headers` makes hashed `/_next/static/*` files `public,max-age=31536000,immutable` instead of `max-age=0`, as OpenNext recommends. (4) The Playwright expect timeout is now 15s, because `next dev` compiles routes on first visit and the earlier flakes (`retry.spec`, `reliability.spec`) were 5s waits under load. (5) `lib/updates.ts` gained the missing 2026-09-23 and 09-24 releases plus this one, with translations.
