@@ -118,6 +118,7 @@ Tests start a separate Next.js server on port `3100` and an in-memory Supabase A
 - 入力欄の横に他の人の回答を並べて確認
 - 回答一覧の縦表示・横表示切り替え
 - 記号ごとの回答数サマリーの表示切り替え
+- 集計をチャットに貼れるテキストとしてコピー
 - 候補日の列を横スクロール時に固定する切り替え
 - これらの表示設定をブラウザに記憶
 
@@ -131,6 +132,8 @@ Tests start a separate Next.js server on port `3100` and an in-memory Supabase A
 - キャンセル済み予定を予定あり判定から除外
 - 作成画面では、既存予定と重ならない候補日へ絞り込み
 - 回答画面では、予定あり・予定なしに設定する記号を個別指定
+- 記号ごとに時間帯を決め、その時間が空いている最初の記号を日付ごとに入力（「◎終日、○20〜24時」のような決め方に対応）
+- 指定した時間に予定が少しでもかぶる日を、選んだ記号にまとめて変更
 
 カレンダーファイルはブラウザ内だけで処理します。ファイルそのものをSupabaseやCloudflareへ送信・保存する処理はありません。
 
@@ -849,6 +852,7 @@ Production: https://nittei-app.qoj.workers.dev/
 - See other participants' answers beside your own input
 - Vertical and horizontal result views
 - Toggle the per-symbol count summary
+- Copy the totals as text for a chat message
 - Toggle pinning the candidate column while scrolling sideways
 - Remember these view settings in the browser
 
@@ -862,6 +866,8 @@ Production: https://nittei-app.qoj.workers.dev/
 - Ignore cancelled events
 - Filter candidate dates on the organizer screen
 - Choose separate response symbols for busy and free slots
+- Give each symbol a time window and fill every date with the first symbol whose time is free
+- Change every date where an event overlaps a chosen time to one symbol
 
 Calendar files are parsed entirely in the browser. The original `.ics` or `.zip` file is not uploaded to Supabase or Cloudflare.
 
