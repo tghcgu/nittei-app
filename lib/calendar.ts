@@ -27,6 +27,18 @@ export function overlapsCalendar(candidate: CalendarCandidate, periods: BusyPeri
   return periods.some(period => period.start < end && period.end > start)
 }
 
+export type FreeWindowRule<T> = { value: T; window: 'allDay' | { start: string; end: string } }
+
+// Rules are checked in order and the first window with no overlapping event decides the value.
+// A timed window follows the candidate-time convention: an end at or before the start is the next day.
+export function firstFreeValue<T>(date: string, rules: readonly FreeWindowRule<T>[], fallback: T, periods: BusyPeriod[]): T {
+  for (const rule of rules) {
+    const timeLabel = rule.window === 'allDay' ? null : `${rule.window.start}〜${rule.window.end}`
+    if (!overlapsCalendar({ date, timeLabel }, periods)) return rule.value
+  }
+  return fallback
+}
+
 export async function calendarBusyPeriods(files: CalendarFileReadResult, candidates: CalendarCandidate[]) {
   const ICAL = (await import('ical.js')).default
   const bounds = candidates.map(c => candidateTimeRange(c.date, c.timeLabel))

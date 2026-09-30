@@ -3,6 +3,13 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-09-30',
+    title: 'カレンダーの空き時間から記号を選んで入力',
+    changes: [
+      '「範囲で一括回答」に、記号ごとに時間帯を決めてカレンダーから入力する機能を追加しました。「◎終日、○20〜24時、△23〜26時」のように記号で時間帯を分けるイベントで、上の記号から順に、予定がかぶらない最初の記号を入れます。',
+    ],
+  },
+  {
     date: '2026-09-25',
     title: '英語表示と更新直後の動作を改善',
     changes: [

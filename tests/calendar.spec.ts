@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { zipSync, strToU8 } from 'fflate'
-import { calendarBusyPeriods, overlapsCalendar } from '../lib/calendar'
+import { calendarBusyPeriods, firstFreeValue, overlapsCalendar } from '../lib/calendar'
 import { readCalendarFileTexts } from '../lib/calendar-files'
 
 const calendar = (...events: string[]) => ({
@@ -58,4 +58,31 @@ test('calendar file and expanded ZIP limits reject oversized inputs without read
   const result = await readCalendarFileTexts(new File([new Uint8Array(valid)], 'small.zip'))
   expect(result.texts).toEqual([{name:'work.ics',text:'BEGIN:VCALENDAR'}])
   expect(result.skippedBirthdayNames).toEqual(['birthday.ics'])
+})
+
+test('free-window rules give the first symbol whose time has no overlapping event', () => {
+  const busy = (start: string, end: string, isAllDay = false) => ({ start: new Date(start), end: new Date(end), isAllDay })
+  // the legend "◎ all day / ○ 20:00-24:00 / △ 23:00-26:00 / ✕ none", written top to bottom
+  const rules = [
+    { value: '◎', window: 'allDay' as const },
+    { value: '○', window: { start: '20:00', end: '00:00' } },
+    { value: '△', window: { start: '23:00', end: '02:00' } },
+  ]
+  const periods = [
+    busy('2026-10-02T10:00:00', '2026-10-02T12:00:00'),
+    busy('2026-10-03T19:00:00', '2026-10-03T21:00:00'),
+    busy('2026-10-04T22:00:00', '2026-10-04T23:30:00'),
+    // a daytime event plus one after midnight leaves 20:00-24:00 free
+    busy('2026-10-05T10:00:00', '2026-10-05T12:00:00'),
+    busy('2026-10-06T00:30:00', '2026-10-06T01:30:00'),
+    // ends exactly when the 20:00 window starts, so it does not overlap it
+    busy('2026-10-07T18:00:00', '2026-10-07T20:00:00'),
+    busy('2026-10-08T00:00:00', '2026-10-09T00:00:00', true),
+  ]
+  const pick = (date: string) => firstFreeValue(date, rules, '✕', periods)
+  expect(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08'].map(pick))
+    .toEqual(['◎', '○', '△', '✕', '○', '○', '○', '✕'])
+  // order decides: the same free date takes whichever rule comes first
+  expect(firstFreeValue('2026-10-01', [...rules].reverse(), '✕', periods)).toBe('△')
+  expect(firstFreeValue('2026-10-01', [], '✕', periods)).toBe('✕')
 })
