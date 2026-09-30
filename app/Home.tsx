@@ -1312,9 +1312,9 @@ export default function Home() {
                           isWeekdaySelected
                             ? 'bg-rose-700 font-bold text-white'
                             : i === 0
-                            ? 'text-rose-400 hover:bg-rose-50'
+                            ? 'text-rose-700 hover:bg-rose-50'
                             : i === 6
-                            ? 'text-blue-400 hover:bg-blue-50'
+                            ? 'text-blue-600 hover:bg-blue-50'
                             : 'text-stone-600 hover:bg-stone-100'
                         }`}
                       >
@@ -1352,9 +1352,9 @@ export default function Home() {
                           isSelected
                             ? 'bg-rose-700 font-bold text-white'
                             : dow === 0
-                            ? 'text-rose-400 hover:bg-rose-50'
+                            ? 'text-rose-700 hover:bg-rose-50'
                             : dow === 6
-                            ? 'text-blue-400 hover:bg-blue-50'
+                            ? 'text-blue-600 hover:bg-blue-50'
                             : 'text-stone-700 hover:bg-stone-100'
                         }`}
                       >
