@@ -10,7 +10,7 @@ import {
 import { ThemeToggle } from "./ThemeToggle";
 import { LocaleProvider } from './LocaleProvider';
 import type { Locale } from '@/lib/i18n';
-import { englishDescription } from '@/lib/i18n/metadata';
+import { appIcons, englishDescription, shareImage } from '@/lib/i18n/metadata';
 import { LANGUAGE_SWITCH_EVENT, RELOAD_DETAIL } from '@/lib/draft-events';
 import "./globals.css";
 
@@ -53,12 +53,15 @@ export const metadata: Metadata = {
     siteName,
     locale: "ja_JP",
     type: "website",
+    images: [shareImage('ja')],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
+    images: [shareImage('ja')],
   },
+  icons: appIcons,
 };
 
 // Google検索の「サイト名」表示にはWebSite型が使われる（ないと workers.dev の持ち主名が出る）
