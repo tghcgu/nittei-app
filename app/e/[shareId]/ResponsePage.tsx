@@ -354,7 +354,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   // 共有URLコピー
   const [copied, setCopied] = useState(false)
-  const [resultsCopied, setResultsCopied] = useState(false)
 
   useLanguageDraft(`response-${shareId}`, {
     name, sharedNote, answers, detailNotes, editingResponseId, editingAnswerIds, pendingResponse,
@@ -876,36 +875,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         lastSetAllAnswers: null,
       }
     })
-  }
-
-  async function handleCopyResults() {
-    // このイベントの記号と、回答で使われている記号を載せる。「-」は誰かが使っているときだけ
-    const isUsed = (value: AnswerValue) =>
-      candidates.some((c) => (answerCountsByCandidate.get(c.id)?.[value] ?? 0) > 0)
-    const options = ANSWER_OPTIONS.filter((option) =>
-      isUsed(option.value) || (option.value !== '-' && answerOptions.some((allowed) => allowed.value === option.value)))
-    const lines = candidates.map((c) => {
-      const counts = options
-        .map((option) => `${option.value === '-' ? '−' : option.value}${answerCountsByCandidate.get(c.id)?.[option.value] ?? 0}`)
-        .join(' ')
-      return `${bestCandidateIds.has(c.id) ? '★' : ''}${formatDate(c.date)}${c.time_label ? ` ${c.time_label}` : ''} ${counts}`
-    })
-    const text = [
-      event.name,
-      `${t("回答人数：")}${responseRows.length}${t("人")}`,
-      ...lines,
-      ...(bestCandidateIds.size > 0 ? [t("★は参加できる人が最も多い日")] : []),
-      `${window.location.origin}${path(`/e/${shareId}`)}`,
-    ].join('\n')
-    try {
-      if (!navigator.clipboard) throw new Error('clipboard unavailable')
-      await navigator.clipboard.writeText(text)
-      setResultsCopied(true)
-      setTimeout(() => setResultsCopied(false), 2000)
-    } catch {
-      // クリップボードが使えない環境では手動コピー用に提示する
-      window.prompt(t("このテキストをコピーしてください"), text)
-    }
   }
 
   function updateFreeRuleInput(value: AnswerValue, index: number, patch: Partial<TimeWindowInput>) {
@@ -2520,15 +2489,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 ))}
               </ul>
             </section>
-          )}
-          {hasResponses && (
-            <div className="mt-1.5">
-              <button
-                type="button"
-                onClick={handleCopyResults}
-                className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
-              >{resultsCopied ? t("✓ コピーしました") : t("⧉ 集計をテキストでコピー")}</button>
-            </div>
           )}
         </div>
 
