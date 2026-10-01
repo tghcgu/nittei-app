@@ -12,7 +12,7 @@ Source `fix/remove-copy-totals` → main `eb8532e`; compatible `preview/remove-c
 
 **Production is live:** `npm run deploy` from the release worktree made Worker `3a8c16ad-6fd7-492d-a0fc-fbd6d5efb455` 100% at 2026-10-01T06:30:05Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `4b989880-dc91-40ca-83fe-d99df6e48995`. The September 30 checks were rerun on production and all passed: the copy button is gone, the info block has the three remaining lines, the update history no longer mentions copying, and a full sweep found no errors or overflow.
 
-No SQL, storage, Cron or runtime changes. The secure migration is still pending.
+No SQL, storage, Cron or runtime changes. The secure migration is still pending. The Worker prepared on September 30 (`ceb357aa`) still contains both removed items, so do not promote it; rebuild and upload from current main right before the cutover.
 
 ## 2026-09-30: Calendar Bulk Answers And Polish Released
 
