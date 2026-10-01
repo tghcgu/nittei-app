@@ -122,7 +122,6 @@ Tests start a separate Next.js server on port `3100` and a PostgREST-shaped endp
 - 入力欄の横に他の人の回答を並べて確認
 - 回答一覧の縦表示・横表示切り替え
 - 記号ごとの回答数サマリーの表示切り替え
-- 集計をチャットに貼れるテキストとしてコピー
 - 候補日の列を横スクロール時に固定する切り替え
 - これらの表示設定をブラウザに記憶
 
@@ -862,7 +861,6 @@ Production: https://nittei-app.qoj.workers.dev/
 - See other participants' answers beside your own input
 - Vertical and horizontal result views
 - Toggle the per-symbol count summary
-- Copy the totals as text for a chat message
 - Toggle pinning the candidate column while scrolling sideways
 - Remember these view settings in the browser
 
