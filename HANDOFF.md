@@ -4,6 +4,16 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-10-01: Copy Totals And Viewing Time Removed
+
+The owner decided the totals-as-text button added on September 30 is not needed, so it was removed with its translations, test, README lines and release-note line. The page-information block no longer shows the time the page was opened; it keeps created, last updated and the response count. This came from a clutter review. Other candidates were offered and left unchanged: grouping the tools above the answer list, repeating the event description in the results, the general-note position switch, the home page's jump-to-top/bottom buttons, and the long calendar-settings text.
+
+Source `fix/remove-copy-totals` → main `eb8532e`; compatible `preview/remove-copy-totals` → release `78a7ef9`. TypeScript and `npx eslint .` pass on both. Related tests pass on both: spacing, service-share and the info-block checks. `service-share.spec.ts` needed `--timeout=240000` because the machine was heavily loaded (OBS and other apps); all tests ran 4-5x slower than usual.
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `3a8c16ad-6fd7-492d-a0fc-fbd6d5efb455` 100% at 2026-10-01T06:30:05Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `4b989880-dc91-40ca-83fe-d99df6e48995`. The September 30 checks were rerun on production and all passed: the copy button is gone, the info block has the three remaining lines, the update history no longer mentions copying, and a full sweep found no errors or overflow.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending.
+
 ## 2026-09-30: Calendar Bulk Answers And Polish Released
 
 Requested by the owner and shipped together.
