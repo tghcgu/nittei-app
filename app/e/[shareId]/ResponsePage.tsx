@@ -629,6 +629,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     for (const response of responseRows) for (const answer of response.answers) values.add(answer.value)
     return ANSWER_OPTIONS.filter(option => values.has(option.value))
   }, [event.answer_choices, responseRows])
+  const viewedAt = useMemo(() => (infoMounted ? new Date() : null), [infoMounted])
   const localUpdatedAt =
     localUpdatedOverride ?? (infoMounted ? readLocalUpdatedAt(shareId) : null)
   // 最終更新は「イベントの更新」と「いちばん新しい回答の投稿」の遅いほうを採る
@@ -2511,6 +2512,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         {infoMounted && (
           <div className="mt-2 rounded-2xl bg-white/50 px-4 py-2 text-[11px] leading-relaxed text-stone-600">
             <p className="mb-1 font-medium text-stone-700">{t("【このページについての情報】")}</p>
+            <p>{t("ページ表示日時：")}{formatDateTime(viewedAt)}</p>
             <p>{t("作成日時：")}{formatDateTime(event.created_at)}</p>
             <p>{t("最終更新日時：")}{formatDateTime(lastUpdatedAt)}</p>
             {localUpdatedAt && (
