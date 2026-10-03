@@ -4,6 +4,18 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-10-03: Contact Form Released And Viewing Time Restored
+
+The owner wanted the page-viewing time back in the page information, so the October 1 removal was reverted.
+
+Inquiries now go to a Google Form, `contactFormUrl` in `lib/site.ts`. The owner made it from a short Apps Script: no sign-in, no email collection, five questions, and an installable on-submit trigger that emails each submission to the owner. File upload was left out on purpose, because it would force every sender to sign in to Google. The operator's personal address is no longer published anywhere: it is gone from the contact page (both languages), README, the maintenance page in `custom-worker.mjs`, and this file. Earlier commits in the public GitHub repository still contain it. The owner was told that making the repository private, or replying from a separate address, would close those gaps. The privacy policy lists the form under collected information and external services, the terms mention it, and both are dated 2026-10-03. `tests/contact.spec.ts` checks the form link and that no address or mailto appears.
+
+Source `fix/restore-viewed-time` → main `318e4c0`; compatible `preview/restore-viewed-time` → release `d88eeab`. TypeScript and `npx eslint .` pass on both. Related tests pass on both, release 16 and main 16: contact, English, updates, spacing and service-share.
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `fb9f7fa6-0e7a-493c-b68a-6fae8d6937f3` 100% at 2026-10-03T01:12:29Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `3a8c16ad-6fd7-492d-a0fc-fbd6d5efb455`. Production checks passed: the form link in both languages, no email address on any of 19 public URLs, the policy wording and dates, the four-line info block, all earlier checks, and a sweep with no errors.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending; rebuild the cutover Worker from current main when it happens.
+
 ## 2026-10-01: Copy Totals And Viewing Time Removed
 
 The owner decided the totals-as-text button added on September 30 is not needed, so it was removed with its translations, test, README lines and release-note line. The page-information block no longer shows the time the page was opened; it keeps created, last updated and the response count. This came from a clutter review. Other candidates were offered and left unchanged: grouping the tools above the answer list, repeating the event description in the results, the general-note position switch, the home page's jump-to-top/bottom buttons, and the long calendar-settings text.
