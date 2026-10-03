@@ -4,6 +4,22 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-10-03 (later): Image Form, Text-Only Link Previews And Readable Results Description
+
+Three changes shipped together.
+
+**Images with inquiries.** The contact page links a second Google Form, `contactImageFormUrl` in `lib/site.ts`. The owner copied the text form and added a file-upload question. Google requires sign-in for uploads and records the sender's name, email address and photo; the contact page says so next to the button. The text form stays sign-in free. The privacy policy says the image form records the images and the sender's Google account details, and lists Google Drive next to Google Forms (the date stays 2026-10-03). The first form's installable on-submit trigger does not carry over to a copy. The owner was asked to turn on the copy's own 「新しい回答についてのメール通知を受け取る」, remove 「のコピー」 from its title, label the upload question in both languages, and allow only images up to 10 MB.
+
+**Text-only link previews.** The owner found the large preview image in Discord embeds too loud. Pages no longer set `og:image` or `twitter:image`, `twitter:card` is `summary` again (as before September 30), `public/og.png` and `public/og-en.png` are deleted, and the 9/30 release note mentions only the home-screen icon. Comments in `app/SiteLayout.tsx`, `app/e/[shareId]/EventPage.tsx` and `lib/i18n/metadata.ts` record the decision. Links posted earlier may keep the old image in Discord's cache. The 略して日組 wording stays: the owner asked to remove only the image.
+
+**Readable description in the results on PC.** On PC the results card fits its table (`lg:w-fit`), and the repeated event details used `contain: inline-size` so they never widened it. With no answers yet, the description wrapped at the heading's width (193px on a 1440px screen). The details now use `max-w-2xl` instead. They may widen the card up to 42rem, so lines break only where the author broke them unless they are longer than that. The tables keep their own width (`w-max`), and phones are unchanged. `tests/results-event-details.spec.ts` covers it, including a no-answers case at 1440px.
+
+Source `fix/contact-images` → main `8304828`; compatible `preview/contact-images` → release `41ad52f`. TypeScript and `npx eslint .` pass on both. The full Playwright suite passes on release (99) and main (99). Preview alias `oct3` (Worker `54ea7a8e`) was checked first.
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `4dfab05d-b3c2-4739-b28b-92129b5f8513` 100% at 2026-10-03T10:20:35Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `fb9f7fa6-0e7a-493c-b68a-6fae8d6937f3`. Production checks passed: both contact forms in both languages, no email address, text-only previews on seven pages, the old images returning 404, the description at its natural width with no answers (512px instead of 193px) and wrapping at 672px for long lines, the earlier release checks, and a sweep with no errors.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending; rebuild the cutover Worker from current main when it happens.
+
 ## 2026-10-03: Contact Form Released And Viewing Time Restored
 
 The owner wanted the page-viewing time back in the page information, so the October 1 removal was reverted.
@@ -284,7 +300,7 @@ This UI-only production backport preserves legacy storage. Main's secure persist
 - 回答者ごとの編集・削除
 - 「全部これに揃える」で入力済を残すチェック
 - イベントページURLのメタタイトルにイベント名を入れる
-- 問い合わせ: /contact は Google フォームへのリンク（2026-10-03〜）。運営者のメールアドレスはサイト・README に載せない。2026-07-16 に作って撤回した自前フォームの inquiries テーブルが Supabase に未使用のまま残っている
+- 問い合わせ: /contact は Google フォーム2つへのリンク（2026-10-03〜。文章用はログイン不要、画像を添付できる方は Google ログインが必要）。運営者のメールアドレスはサイト・README に載せない。2026-07-16 に作って撤回した自前フォームの inquiries テーブルが Supabase に未使用のまま残っている
 
 ユーザーへの返答スタイル:
 - まず短く結論。
