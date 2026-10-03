@@ -2305,11 +2305,11 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             )}
           </div>
 
-          {/* Keep the description from determining the content-sized table width. */}
-          <div className="response-event-details mb-1.5 min-w-0 [contain:inline-size] [overflow-wrap:anywhere]">
+          {/* On PC the card fits the table. The details may widen it up to a readable line length, so a narrow table (or no answers yet) does not squeeze them into a thin column. The table keeps its own width. */}
+          <div className="response-event-details mb-1.5 min-w-0 max-w-2xl [overflow-wrap:anywhere]">
             <h3 className="event-title text-base leading-5">{event.name}</h3>
             {event.description?.trim() && (
-              <p className="mt-1 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-stone-700">{event.description}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">{event.description}</p>
             )}
           </div>
 

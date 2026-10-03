@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getI18n } from '../lib/i18n'
 
 for (const locale of ['ja', 'en'] as const) {
-  test(`${locale}: results repeat event details without widening or scrolling them with the table`, async ({ page, request }) => {
+  test(`${locale}: results repeat event details at a readable width without changing or scrolling with the table`, async ({ page, request }) => {
     const { t, path } = getI18n(locale)
     const api = 'http://127.0.0.1:54329/rest/v1'
     const shareId = `results-details-${locale}`
@@ -41,7 +41,8 @@ for (const locale of ['ja', 'en'] as const) {
           const panel = element.parentElement!
           const table = panel.querySelector('table')!
           const box = element.getBoundingClientRect()
-          const width = panel.getBoundingClientRect().width
+          const style = getComputedStyle(panel)
+          const inner = panel.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
           const tableWidth = table.getBoundingClientRect().width
           const textFits = [...element.children].every(child => {
             const range = document.createRange()
@@ -49,13 +50,15 @@ for (const locale of ['ja', 'en'] as const) {
             return [...range.getClientRects()].every(rect => rect.left >= box.left - 1 && rect.right <= box.right + 1)
           })
           element.style.display = 'none'
-          const withoutDetails = panel.getBoundingClientRect().width
           const tableWithoutDetails = table.getBoundingClientRect().width
           element.removeAttribute('style')
-          return { width, withoutDetails, tableWidth, tableWithoutDetails, textFits }
+          return { detailsWidth: box.width, inner, tableWidth, tableWithoutDetails, textFits }
         })
-        expect(Math.abs(geometry.width - geometry.withoutDetails)).toBeLessThan(1)
+        // the details never change the table, and get a readable width: the whole card on phones,
+        // 42rem on PC even when the table is narrower (they used to be squeezed to the table's width)
         expect(Math.abs(geometry.tableWidth - geometry.tableWithoutDetails)).toBeLessThan(1)
+        expect(geometry.detailsWidth).toBeLessThanOrEqual(672 + 1)
+        expect(geometry.detailsWidth).toBeGreaterThanOrEqual(Math.min(672, geometry.inner) - 1)
         expect(geometry.textFits).toBe(true)
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
         const scroller = results.locator('table').locator('..')
@@ -77,6 +80,22 @@ for (const locale of ['ja', 'en'] as const) {
     await results.getByRole('button', { name: t('↑ 回答へ'), exact: true }).click()
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
     expect(errors).toEqual([])
+  })
+
+  test(`${locale}: on PC the description keeps a readable width before anyone answers`, async ({ page, request }) => {
+    const { t, path } = getI18n(locale)
+    const shareId = `wide-details-${locale}`
+    const description = '開始時間と終了時間の事前調査です。'.repeat(8) + '\n' + 'Lines keep a readable length. '.repeat(8)
+    const seeded = await request.post('http://127.0.0.1:54329/rest/v1/events', { data: { share_id: shareId, name: 'Event', description } })
+    expect(seeded.ok()).toBe(true)
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto(path(`/e/${shareId}`))
+    const results = page.locator('#responses-section')
+    await expect(results.getByText(t('まだ回答がありません。'), { exact: true })).toBeVisible()
+    const box = (await results.locator('.response-event-details p').boundingBox())!
+    expect(box.width).toBeGreaterThan(640)
+    expect(box.width).toBeLessThanOrEqual(672 + 1)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440)
   })
 
   test(`${locale}: empty results still show the name and omit an empty description`, async ({ page, request }) => {
