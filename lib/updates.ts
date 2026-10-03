@@ -3,6 +3,11 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-10-03',
+    title: 'お問い合わせフォームを追加',
+    changes: ['お問い合わせを、メールアプリがなくても送れるフォーム（Google フォーム）で受け付けるようにしました。'],
+  },
+  {
     date: '2026-09-30',
     title: 'カレンダーを使った一括回答と、見やすさの改善',
     changes: [
