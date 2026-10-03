@@ -33,7 +33,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答とコメント")}</li>
             <li>{t("自動的に収集する情報: アクセス状況の統計（Cloudflare Web Analytics による閲覧ページ・ブラウザ種別など）。個人を特定する情報は含まれず、Cookieも使用していません。")}</li>
-            <li>{t("お問い合わせフォームに入力された情報: お問い合わせの種類と内容、任意で書かれたメールアドレスなど。Google フォームに保存され、お問い合わせへの対応にのみ使用します。")}</li>
+            <li>{t("お問い合わせフォームに入力された情報: お問い合わせの種類と内容、任意で書かれたメールアドレスなど。画像を添付できるフォームでは、添付された画像と、送信者の Google アカウントの名前・メールアドレス・写真も記録されます。いずれも Google フォーム（画像は Google ドライブ）に保存され、お問い合わせへの対応にのみ使用します。")}</li>
           </ul>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("2. カレンダーファイル（.ics）の扱い")}</h2>
@@ -59,7 +59,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("法令に基づく場合を除き、収集した情報を第三者に提供しません。広告目的での利用・提供も行っていません。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("7. 外部サービスの利用")}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を、お問い合わせの受付に Google フォームを利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を、お問い合わせの受付に Google フォームと Google ドライブを利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("8. イベントページの公開範囲")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("イベントページは、URLを知っている人なら誰でも閲覧・回答できます。 ログインの仕組みがないため、URLを知っている人はイベントの内容の編集や、 他の人の回答の編集・削除も行えます。検索エンジンに登録されない設定にしていますが、 URLの共有範囲にはご注意ください。本名を知られたくない場合は、ニックネームでの回答をおすすめします。")}</p>

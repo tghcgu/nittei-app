@@ -10,6 +10,8 @@ export const siteDescription =
 export const siteUrl = 'https://nittei-app.qoj.workers.dev'
 
 // お問い合わせは Google フォーム（ログインなしで送れる）。運営者のメールアドレスは公開しない
+// 画像を添付できるフォームは Google のファイル添付を使うため、送る人に Google へのログインが必要
+export const contactImageFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSdRslbrQ_9mCwRVBOclGGyvHsnNUvPd22CRFkMSTXY_iTi9ng/viewform'
 export const contactFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfs7Y18jKm8-xVUJIrgySDCUD5ux36WAm_FqkYhgewlGAZOMA/viewform'
 
 export const siteKeywords = [

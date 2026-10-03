@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LanguageSwitch } from '../LanguageSwitch'
 import { getI18n, type Locale } from '@/lib/i18n'
-import { contactFormUrl } from '@/lib/site'
+import { contactFormUrl, contactImageFormUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'お問い合わせ',
@@ -48,7 +48,16 @@ export default function ContactPage({ locale = 'ja' }: { locale?: Locale }) {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("すべてそろっていなくても大丈夫です。わかる範囲でお知らせください。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("画像を送りたいとき")}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("フォームには画像を添付できません。画像が必要なときは、フォームに返信先メールアドレスを書いていただければ、こちらからご連絡します。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("スクリーンショットなどの画像は、下のフォームで添付できます。Google アカウントでのログインが必要です。送ると、アカウントの名前・メールアドレス・写真が運営者に伝わります。")}</p>
+          <p className="mt-2">
+            <a
+              href={contactImageFormUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-white px-4 py-2 text-sm text-stone-700 underline-offset-2 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 hover:underline"
+            >{t("画像を添付できるフォームを開く ↗")}</a>
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-stone-600">{t("ログインしたくない場合は、上のフォームに返信先メールアドレスを書いてください。こちらからご連絡します。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("お問い合わせの前に")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
