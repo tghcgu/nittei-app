@@ -33,6 +33,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("利用者が入力する情報: イベント名・説明・候補日、回答者の名前、出欠の回答とコメント")}</li>
             <li>{t("自動的に収集する情報: アクセス状況の統計（Cloudflare Web Analytics による閲覧ページ・ブラウザ種別など）。個人を特定する情報は含まれず、Cookieも使用していません。")}</li>
+            <li>{t("お問い合わせフォームに入力された情報: お問い合わせの種類と内容、任意で書かれたメールアドレスなど。Google フォームに保存され、お問い合わせへの対応にのみ使用します。")}</li>
           </ul>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("2. カレンダーファイル（.ics）の扱い")}</h2>
@@ -60,7 +61,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("法令に基づく場合を除き、収集した情報を第三者に提供しません。広告目的での利用・提供も行っていません。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("7. 外部サービスの利用")}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を、お問い合わせの受付に Google フォームを利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("8. イベントページの公開範囲")}</h2>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("イベントページは、共有URLを知っている人なら誰でも閲覧・回答できます。新規イベントと回答の編集には、それぞれの編集キーが必要です。主催者はそのイベントの回答も管理できます。移行前のイベント・回答は従来どおり共有URLで編集できます。検索エンジンへの登録を防ぐ設定はアクセス制限ではありません。共有URLと編集用URLの取り扱いにご注意ください。")}</p>
@@ -74,7 +75,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
               className="underline underline-offset-2 transition-colors hover:text-rose-700"
             >{t("お問い合わせページ")}</Link>{t("からお送りください。")}</p>
 
-          <p className="mt-3 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月8日")}</p>
+          <p className="mt-3 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年10月3日")}</p>
         </div>
       </div>
     </div>

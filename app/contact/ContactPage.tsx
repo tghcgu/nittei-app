@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { LanguageSwitch } from '../LanguageSwitch'
 import { getI18n, type Locale } from '@/lib/i18n'
+import { contactFormUrl } from '@/lib/site'
 
 export const metadata: Metadata = {
   title: 'お問い合わせ',
@@ -26,27 +27,28 @@ export default function ContactPage({ locale = 'ja' }: { locale?: Locale }) {
 
         <div className="rounded-2xl bg-white/70 px-6 py-3 shadow-sm backdrop-blur">
           <h1 className="font-serif text-2xl text-rose-800">{t("お問い合わせ")}</h1>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("日程組は個人が運営するサービスです。不具合のご報告・ご要望・ご質問などは、 下記のメールアドレスまでお気軽にお送りください。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("日程組は個人が運営するサービスです。不具合のご報告・ご要望・ご質問などは、下のフォームからお気軽にお送りください。")}</p>
 
-          <h2 className="mt-3 font-serif text-base text-rose-800">{t("連絡先")}</h2>
-          <p className="mt-1">
+          <p className="mt-2">
             <a
-              href="mailto:knihud@gmail.com"
+              href={contactFormUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-700 underline-offset-2 transition-colors hover:bg-rose-50 hover:underline"
-            >
-              ✉ knihud@gmail.com
-            </a>
+            >{t("お問い合わせフォームを開く ↗")}</a>
           </p>
-          <p className="mt-1 text-xs leading-relaxed text-stone-400">{t("押すとメールアプリが開きます。開かない場合は、上記アドレスを宛先にコピーしてお送りください。")}</p>
+          <p className="mt-1 text-xs leading-relaxed text-stone-600">{t("Google フォームが別のタブで開きます。ログインは不要です。返信が必要な場合は、フォームの最後にメールアドレスを書いてください。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("不具合のご報告に書き添えていただきたいこと")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
             <li>{t("対象のイベントページのURL（あれば）")}</li>
             <li>{t("どの操作をしたときに、何が起きたか")}</li>
             <li>{t("お使いの端末（スマートフォン / PC）とブラウザ")}</li>
-            <li>{t("画面のスクリーンショット（あれば）")}</li>
           </ul>
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("すべてそろっていなくても大丈夫です。わかる範囲でお知らせください。")}</p>
+
+          <h2 className="mt-3 font-serif text-base text-rose-800">{t("画像を送りたいとき")}</h2>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("フォームには画像を添付できません。画像が必要なときは、フォームに返信先メールアドレスを書いていただければ、こちらからご連絡します。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("お問い合わせの前に")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">

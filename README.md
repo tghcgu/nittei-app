@@ -165,7 +165,7 @@ Tests start a separate Next.js server on port `3100` and a PostgREST-shaped endp
 | Google所有権確認 | https://nittei-app.qoj.workers.dev/googlecc8378481687d5f8.html | Search Console用 |
 | プライバシー | https://nittei-app.qoj.workers.dev/privacy | 利用者向け |
 | 利用規約 | https://nittei-app.qoj.workers.dev/terms | 利用者向け |
-| お問い合わせ | https://nittei-app.qoj.workers.dev/contact | `knihud@gmail.com` を案内 |
+| お問い合わせ | https://nittei-app.qoj.workers.dev/contact | Google フォームを案内 |
 | ページ表示履歴 | https://nittei-app.qoj.workers.dev/history | 端末内の履歴一覧。`noindex` |
 
 旧Vercelプロジェクトは、Google Search Consoleのアドレス変更と既存リンクの維持に使っています。移行が完全に落ち着くまでは削除しないでください。
@@ -812,7 +812,7 @@ HANDOFF.md                         AI・開発引き継ぎメモ
 
 現在、このリポジトリには `LICENSE` ファイルがありません。明示的な許諾なしに再配布・商用利用できるとはみなさないでください。
 
-不具合・要望: `knihud@gmail.com`
+不具合・要望: https://nittei-app.qoj.workers.dev/contact のフォーム
 
 ---
 
@@ -1294,4 +1294,4 @@ vercel.json                          Legacy URL redirects
 
 No `LICENSE` file is currently included. Do not assume redistribution or commercial-use permission without explicit authorization.
 
-Contact: `knihud@gmail.com`
+Contact: the form at https://nittei-app.qoj.workers.dev/contact

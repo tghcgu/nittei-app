@@ -9,6 +9,9 @@ export const siteDescription =
 
 export const siteUrl = 'https://nittei-app.qoj.workers.dev'
 
+// お問い合わせは Google フォーム（ログインなしで送れる）。運営者のメールアドレスは公開しない
+export const contactFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSfs7Y18jKm8-xVUJIrgySDCUD5ux36WAm_FqkYhgewlGAZOMA/viewform'
+
 export const siteKeywords = [
   '日程組',
   siteShortName,

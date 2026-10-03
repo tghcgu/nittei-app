@@ -282,7 +282,7 @@ Read `SECURE-ROLLOUT.md` before deployment. The new client requires the database
 - 回答者ごとの編集・削除
 - 「全部これに揃える」で入力済を残すチェック
 - イベントページURLのメタタイトルにイベント名を入れる
-- 問い合わせ: /contact ページに knihud@gmail.com を記載（フォーム方式は 2026-07-16 に一度作って撤回。Supabase に未使用の inquiries テーブルが残っている）
+- 問い合わせ: /contact は Google フォームへのリンク（2026-10-03〜）。運営者のメールアドレスはサイト・README に載せない。2026-07-16 に作って撤回した自前フォームの inquiries テーブルが Supabase に未使用のまま残っている
 
 ユーザーへの返答スタイル:
 - まず短く結論。

@@ -72,7 +72,7 @@ export default function TermsPage({ locale = 'ja' }: { locale?: Locale }) {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("本サービスには、運営者への任意の支援窓口として外部サイトへのリンクを掲載しています。 支援は完全に任意であり、支援の有無によって本サービスの機能や利用条件が変わることはありません。 支援は対価の支払いではなく、返金の対象にもなりません。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("第8条（外部サービス）")}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("本サービスは、データの保存やサイトの配信のために外部サービスを利用しており、 外部サイトへのリンクも掲載しています。リンク先の内容について、運営者は責任を負いません。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("本サービスは、データの保存・サイトの配信・お問い合わせの受付のために外部サービスを利用しており、 外部サイトへのリンクも掲載しています。リンク先の内容について、運営者は責任を負いません。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("第9条（免責事項）")}</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-stone-600">
@@ -98,7 +98,7 @@ export default function TermsPage({ locale = 'ja' }: { locale?: Locale }) {
               className="underline underline-offset-2 transition-colors hover:text-rose-700"
             >{t("お問い合わせページ")}</Link>{t("からお送りください。")}</p>
 
-          <p className="mt-3 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年9月8日")}</p>
+          <p className="mt-3 text-xs text-stone-600">{t("制定日: 2026年7月9日")}<span className="mx-2">·</span>{t("最終改定日: 2026年10月3日")}</p>
         </div>
       </div>
     </div>

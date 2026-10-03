@@ -34,7 +34,7 @@ const maintenanceHtml = `<!doctype html>
   <h1>ただいまメンテナンス中です</h1>
   <p>日程組は現在、緊急メンテナンスのため一時的にご利用いただけません。</p>
   <p>データは保持されています。しばらく時間をおいて、再度アクセスしてください。</p>
-  <p class="small">お問い合わせ: knihud@gmail.com</p>
+  <p class="small"><a href="https://docs.google.com/forms/d/e/1FAIpQLSfs7Y18jKm8-xVUJIrgySDCUD5ux36WAm_FqkYhgewlGAZOMA/viewform">お問い合わせフォーム</a></p>
 </div>
 </body>
 </html>`
