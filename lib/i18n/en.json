@@ -450,11 +450,14 @@
   "お問い合わせフォームを開く ↗": "Open the contact form ↗",
   "Google フォームが別のタブで開きます。ログインは不要です。返信が必要な場合は、フォームの最後にメールアドレスを書いてください。": "The Google Form opens in a new tab. No sign-in is needed. If you would like a reply, add your email address at the end of the form.",
   "画像を送りたいとき": "Sending images",
-  "フォームには画像を添付できません。画像が必要なときは、フォームに返信先メールアドレスを書いていただければ、こちらからご連絡します。": "The form cannot take attachments. If an image would help, add your email address to the form and we will get in touch.",
-  "お問い合わせフォームに入力された情報: お問い合わせの種類と内容、任意で書かれたメールアドレスなど。Google フォームに保存され、お問い合わせへの対応にのみ使用します。": "Information entered in the contact form: the type and content of the inquiry and, if given, an email address. It is stored in Google Forms and used only to respond.",
-  "データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を、お問い合わせの受付に Google フォームを利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。": "We use Supabase for data storage, Cloudflare for hosting and analytics, Vercel for redirects from the old URL, and Google Forms for inquiries, only as needed to operate the Service.",
   "本サービスは、データの保存・サイトの配信・お問い合わせの受付のために外部サービスを利用しており、 外部サイトへのリンクも掲載しています。リンク先の内容について、運営者は責任を負いません。": "The Service uses external providers for data storage, hosting and inquiries, and contains links to external websites. The operator is not responsible for their content.",
   "最終改定日: 2026年10月3日": "Last updated: October 3, 2026",
   "お問い合わせフォームを追加": "Added a contact form",
-  "お問い合わせを、メールアプリがなくても送れるフォーム（Google フォーム）で受け付けるようにしました。": "Inquiries can now be sent through a form (Google Forms), with no email app needed."
+  "お問い合わせを、メールアプリがなくても送れるフォーム（Google フォーム）で受け付けるようにしました。": "Inquiries can now be sent through a form (Google Forms), with no email app needed.",
+  "スクリーンショットなどの画像は、下のフォームで添付できます。Google アカウントでのログインが必要です。送ると、アカウントの名前・メールアドレス・写真が運営者に伝わります。": "Screenshots and other images can be attached with the form below. It requires signing in to a Google account. Sending it shares your account's name, email address and photo with the operator.",
+  "画像を添付できるフォームを開く ↗": "Open the form with image upload ↗",
+  "ログインしたくない場合は、上のフォームに返信先メールアドレスを書いてください。こちらからご連絡します。": "If you would rather not sign in, put your email address in the form above and we will contact you.",
+  "お問い合わせフォームに入力された情報: お問い合わせの種類と内容、任意で書かれたメールアドレスなど。画像を添付できるフォームでは、添付された画像と、送信者の Google アカウントの名前・メールアドレス・写真も記録されます。いずれも Google フォーム（画像は Google ドライブ）に保存され、お問い合わせへの対応にのみ使用します。": "Information entered in the contact forms: the type and content of the inquiry and, if given, an email address. The form with image upload also records the attached images and the sender's Google account name, email address and photo. Everything is stored in Google Forms (images in Google Drive) and used only to respond to inquiries.",
+  "データの保存に Supabase を、サイトの配信とアクセス解析に Cloudflare を、 旧URLからの転送に Vercel を、お問い合わせの受付に Google フォームと Google ドライブを利用しています。いずれも本サービスの運営に必要な範囲でのみ利用しています。": "We use Supabase for data storage, Cloudflare for hosting and analytics, Vercel for redirects from the old URL, and Google Forms and Google Drive for inquiries, only as needed to operate the Service.",
+  "Google アカウントにログインすれば、スクリーンショットなどの画像を添付して送れるフォームも用意しました。文章だけなら、これまでどおりログインなしで送れます。": "Added a second form for screenshots and other images, for people signed in to Google. Text-only messages still need no sign-in."
 }
