@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { siteDescription, siteName, siteTitle, siteUrl } from '@/lib/site'
 import { ResponsePage } from './ResponsePage'
 import { localizedPath, type Locale } from '@/lib/i18n'
-import { englishDescription, englishTitle, shareImage } from '@/lib/i18n/metadata'
+import { englishDescription, englishTitle } from '@/lib/i18n/metadata'
 
 type Props = {
   params: Promise<{ shareId: string }>
@@ -58,6 +58,7 @@ export async function generateEventMetadata({ params, locale = 'ja' }: Props): P
       canonical: url,
       languages: { ja: `/e/${shareId}`, en: `/en/e/${shareId}` },
     },
+    // 共有リンクのプレビューは文字だけにする（画像は付けない）
     openGraph: {
       title,
       description,
@@ -65,13 +66,11 @@ export async function generateEventMetadata({ params, locale = 'ja' }: Props): P
       siteName: locale === 'en' ? 'Nitteigumi' : siteName,
       locale: locale === 'en' ? 'en_US' : 'ja_JP',
       type: 'website',
-      images: [shareImage(locale)],
     },
     twitter: {
-      card: 'summary_large_image',
+      card: 'summary',
       title,
       description,
-      images: [shareImage(locale)],
     },
   }
 }

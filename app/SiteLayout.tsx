@@ -10,7 +10,7 @@ import {
 import { ThemeToggle } from "./ThemeToggle";
 import { LocaleProvider } from './LocaleProvider';
 import type { Locale } from '@/lib/i18n';
-import { appIcons, englishDescription, shareImage } from '@/lib/i18n/metadata';
+import { appIcons, englishDescription } from '@/lib/i18n/metadata';
 import { LANGUAGE_SWITCH_EVENT, RELOAD_DETAIL } from '@/lib/draft-events';
 import "./globals.css";
 
@@ -46,6 +46,7 @@ export const metadata: Metadata = {
   verification: {
     google: "D8IL6531W2fqD0YQrgOz-ODECBHjxCAeoyet1LAC34U",
   },
+  // 共有リンクのプレビューは文字だけにする。大きな画像は 2026-10-03 にやめた
   openGraph: {
     title: siteTitle,
     description: siteDescription,
@@ -53,13 +54,11 @@ export const metadata: Metadata = {
     siteName,
     locale: "ja_JP",
     type: "website",
-    images: [shareImage('ja')],
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: siteTitle,
     description: siteDescription,
-    images: [shareImage('ja')],
   },
   icons: appIcons,
 };

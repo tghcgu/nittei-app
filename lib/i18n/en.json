@@ -433,7 +433,7 @@
   "指定した時間にカレンダーの予定が少しでもかぶる日を、選んだ記号にまとめて変更できるようにしました。": "You can now change every date where a calendar event overlaps a chosen time to the symbol you pick.",
   "ダークモードで選択中の ✕ が見えにくかったのを直し、作成画面のカレンダーの土日も読みやすい色にしました。": "Fixed the selected ✕ being hard to see in dark mode, and made weekend dates on the calendar easier to read.",
   "存在しないイベントのURLを開いたときに、案内と作成ページへのリンクを表示するようにしました。": "Opening a link to an event that no longer exists now shows an explanation and a link to create a new one.",
-  "URLを共有したときに表示される画像と、iPhoneのホーム画面用アイコンを追加しました。": "Added a preview image for shared links and an icon for the iPhone home screen.",
+  "iPhoneのホーム画面用アイコンを追加しました。": "Added an icon for the iPhone home screen.",
   "開始時刻だけの候補を、時間帯の一括回答でも3時間の予定として扱うようにしました（カレンダーの自動入力と同じ扱いです）。": "Dates with only a start time now count as three hours in the time-range bulk answer too, matching the calendar import.",
   "日付ごとに上の記号から順に確かめ、その時間に予定がなければ、その記号を入れます。": "For each date, the symbols are checked from the top. The first one with no events in its time is entered.",
   "時間が空欄の記号は飛ばします。26時は 02:00 と入力します。対象は上の日付範囲・曜日です。": "Symbols without a time are skipped. For 26:00, enter 02:00. This applies to the dates and weekdays above.",
