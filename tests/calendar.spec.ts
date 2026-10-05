@@ -64,9 +64,9 @@ test('free-window rules give the first symbol whose time has no overlapping even
   const busy = (start: string, end: string, isAllDay = false) => ({ start: new Date(start), end: new Date(end), isAllDay })
   // the legend "◎ all day / ○ 20:00-24:00 / △ 23:00-26:00 / ✕ none", written top to bottom
   const rules = [
-    { value: '◎', window: 'allDay' as const },
-    { value: '○', window: { start: '20:00', end: '00:00' } },
-    { value: '△', window: { start: '23:00', end: '02:00' } },
+    { value: '◎', windows: ['allDay' as const] },
+    { value: '○', windows: [{ start: '20:00', end: '00:00' }] },
+    { value: '△', windows: [{ start: '23:00', end: '02:00' }] },
   ]
   const periods = [
     busy('2026-10-02T10:00:00', '2026-10-02T12:00:00'),
@@ -85,8 +85,12 @@ test('free-window rules give the first symbol whose time has no overlapping even
   // order decides: the same free date takes whichever rule comes first
   expect(firstFreeValue('2026-10-01', [...rules].reverse(), '✕', periods)).toBe('△')
   expect(firstFreeValue('2026-10-01', [], '✕', periods)).toBe('✕')
+  // a rule with two times applies when either is free: "△ = the morning or the evening"
+  const halfDay = [{ value: '△', windows: [{ start: '10:00', end: '12:00' }, { start: '19:00', end: '21:00' }] }]
+  expect(['2026-10-02', '2026-10-03', '2026-10-08'].map(date => firstFreeValue(date, halfDay, '✕', periods)))
+    .toEqual(['△', '△', '✕'])
 
-  // the single-window check behind "dates with an overlapping event"
+  // the single-window check each rule is built on
   const late = { start: '23:00', end: '02:00' }
   expect(['2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'].map(date => overlapsWindow(date, late, periods)))
     .toEqual([false, true, true, false])

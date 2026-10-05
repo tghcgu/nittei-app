@@ -8,7 +8,7 @@ import { ServiceShareLink } from '@/app/ServiceShareLink'
 import { eventClient } from '@/lib/supabase'
 import { newEditToken, readEditToken, storeEditToken, consumeEditKey } from '@/lib/edit-keys'
 import { useLanguageDraft } from '@/app/useLanguageDraft'
-import { OPEN_ENDED_HOURS, calendarBusyPeriods, firstFreeValue, overlapsCalendar, overlapsWindow, type BusyPeriod, type FreeWindowRule, type TimeWindow } from '@/lib/calendar'
+import { OPEN_ENDED_HOURS, calendarBusyPeriods, firstFreeValue, overlapsCalendar, type BusyPeriod, type FreeWindowRule, type TimeWindow } from '@/lib/calendar'
 import { siteShortName } from '@/lib/site'
 import { recordHistory } from '@/lib/history'
 import { answerValuesFor } from '@/lib/answer-choices'
@@ -84,11 +84,43 @@ function toTimeWindow(input: TimeWindowInput): TimeWindow | null {
   return { start: input.start, end: input.end }
 }
 
-// 記号ごとの空き時間は、いちばん上の記号だけ、はじめから「終日」にしておく
-const defaultFreeRuleInput = (index: number): TimeWindowInput => ({ allDay: index === 0, start: '', end: '' })
+// .ics 取り込みを「空いている時間で記号を決める」ときの、記号1つ分の入力。
+// 時間は2つまで入れられ、どちらかが空いていればその記号にする
+type IcsRuleInput = { allDay: boolean; ranges: { start: string; end: string }[] }
+const MAX_ICS_RULE_RANGES = 2
+const emptyIcsRange = { start: '', end: '' }
+const emptyIcsRule: IcsRuleInput = { allDay: false, ranges: [emptyIcsRange] }
 
-// ファイルを選んだあとに行う入力。取り込みボタンは 'auto'、一括回答の2つはそれぞれの適用
-type CalendarFillTarget = 'auto' | 'freeRules' | 'busyWindow'
+// .ics 取り込みで、予定のある日・ない日などに入れる記号を選ぶ。選んでいる記号をもう一度押すと「入れない」
+function CalendarValuePicker({ label, options, value, onChange, setLabel, clearLabel }: {
+  label: string
+  options: (typeof ANSWER_OPTIONS)[number][]
+  value: AnswerValue | null
+  onChange: (value: AnswerValue | null) => void
+  setLabel: (value: AnswerValue) => string
+  clearLabel: string
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="shrink-0">{label}</span>
+      <div className="flex gap-0.5">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(value === opt.value ? null : opt.value)}
+            aria-label={value === opt.value ? clearLabel : setLabel(opt.value)}
+            className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
+              value === opt.value ? opt.active : opt.idle
+            }`}
+          >
+            {opt.value === '-' ? '−' : opt.value}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 type AnswerHistorySnapshot = {
   answers: Record<string, AnswerValue>
@@ -330,17 +362,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // 一括回答パネル共通の曜日フィルター（空＝全曜日が対象）
   const [bulkWeekdays, setBulkWeekdays] = useState<Set<number>>(new Set())
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
-  // カレンダーの空き時間で一括回答
-  const [freeRuleInputs, setFreeRuleInputs] = useState<Partial<Record<AnswerValue, TimeWindowInput>>>({})
-  const [freeFallbackValue, setFreeFallbackValue] = useState<AnswerValue>('✕')
-  const [freeRuleMessage, setFreeRuleMessage] = useState('')
-  // カレンダーの予定がかぶる日を一括回答
-  const [busyWindowInput, setBusyWindowInput] = useState<TimeWindowInput>({ allDay: false, start: '', end: '' })
-  const [busyWindowValue, setBusyWindowValue] = useState<AnswerValue>('✕')
-  const [busyWindowMessage, setBusyWindowMessage] = useState('')
   // 読み込んだカレンダーの予定（開始・終了だけ）。ページを開いている間だけ持ち、保存も送信もしない
   const calendarPeriodsRef = useRef<BusyPeriod[]>([])
-  const [hasCalendar, setHasCalendar] = useState(false)
   // カレンダーから自動で入れた値。手で直していない行は「入力済」とみなさず、入れ直せるようにする
   const calendarFilledRef = useRef<Record<string, AnswerValue>>({})
   const [lastSetAllAnswers, setLastSetAllAnswers] = useState<LastSetAllAnswers | null>(null)
@@ -529,6 +552,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
   const [icsBusyValue, setIcsBusyValue] = useState<AnswerValue | null>('✕')
   const [icsFreeValue, setIcsFreeValue] = useState<AnswerValue | null>('○')
+  // 記号の決め方。'busy' は日程の時間に予定があるか、'rules' は記号ごとに決めた時間が空いているか
+  const [icsMode, setIcsMode] = useState<'busy' | 'rules'>('busy')
+  const [icsRuleInputs, setIcsRuleInputs] = useState<Partial<Record<AnswerValue, IcsRuleInput>>>({})
+  const [icsFallbackValue, setIcsFallbackValue] = useState<AnswerValue | null>('✕')
   const loadResponses = useCallback(async () => {
     setIsLoadingResponses(true)
     setResponsesError(null)
@@ -615,13 +642,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const allowed = answerValuesFor(event.answer_choices)
     return ANSWER_OPTIONS.filter((opt) => allowed.includes(opt.value))
   }, [event.answer_choices])
-  // ✕ と「-」以外の記号に、上から順に「この時間が空いていれば」を設定できる
-  const freeRuleOptions = answerOptions.filter((opt) => opt.value !== '✕' && opt.value !== '-')
-  const freeRules = freeRuleOptions.flatMap((opt, index): FreeWindowRule<AnswerValue>[] => {
-    const window = toTimeWindow(freeRuleInputs[opt.value] ?? defaultFreeRuleInput(index))
-    return window ? [{ value: opt.value, window }] : []
+  // 空いている時間で決めるときは、✕ と「-」以外の記号に、上から順に時間を決められる
+  const icsRuleOptions = answerOptions.filter((opt) => opt.value !== '✕' && opt.value !== '-')
+  const icsRules = icsRuleOptions.flatMap((opt): FreeWindowRule<AnswerValue>[] => {
+    const input = icsRuleInputs[opt.value] ?? emptyIcsRule
+    const windows = input.allDay
+      ? ['allDay' as const]
+      : input.ranges.flatMap((range) => {
+        const window = toTimeWindow({ allDay: false, ...range })
+        return window ? [window] : []
+      })
+    return windows.length > 0 ? [{ value: opt.value, windows }] : []
   })
-  const busyWindow = toTimeWindow(busyWindowInput)
   // 時刻のある候補がなければ、候補の時刻と比べる一括回答は使えない
   const hasTimedCandidates = candidates.some((c) => parseCandidateClockRange(c.time_label) !== null)
   const countOptions = useMemo(() => {
@@ -727,27 +759,41 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
   // ---- .ics ファイルから日程を読み取り ----
   const icsInputRef = useRef<HTMLInputElement>(null)
-  const icsTargetRef = useRef<CalendarFillTarget>('auto')
 
-  function chooseCalendarFile(target: CalendarFillTarget) {
-    icsTargetRef.current = target
-    icsInputRef.current?.click()
+  function updateIcsRule(value: AnswerValue, update: (rule: IcsRuleInput) => IcsRuleInput) {
+    setIcsRuleInputs((current) => ({ ...current, [value]: update(current[value] ?? emptyIcsRule) }))
   }
 
+  function updateIcsRange(value: AnswerValue, index: number, patch: Partial<typeof emptyIcsRange>) {
+    updateIcsRule(value, (rule) => ({
+      ...rule,
+      ranges: rule.ranges.map((range, i) => (i === index ? { ...range, ...patch } : range)),
+    }))
+  }
+
+  // busyPeriods は、これまでに読み込んだカレンダーすべての予定
   function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
     const newAnswers: Record<string, AnswerValue | null> = {}
     for (const c of candidates) {
+      if (icsMode === 'rules') {
+        // 上の記号から順に、その時間が空いている最初の記号にする
+        newAnswers[c.id] = firstFreeValue<AnswerValue | null>(c.date, icsRules, icsFallbackValue, busyPeriods)
+        continue
+      }
+      // 日程の時間（時間がなければ終日）に予定があるかで決める
       const isBusy = overlapsCalendar({ date: c.date, timeLabel: c.time_label }, busyPeriods)
-
       newAnswers[c.id] = isBusy ? icsBusyValue : icsFreeValue
     }
 
-    // 複数の .ics を読むとき、先に「予定あり」になった候補は次の読み込みで戻さない
+    // 手で「予定あり」（空いている時間で決めるときは「どれも空いていない日」）の記号にした日程は戻さない。
+    // カレンダーで入れたままの日程は、今の設定で入れ直す
+    const busyValue = icsMode === 'rules' ? icsFallbackValue : icsBusyValue
     commitAnswerChange((current) => {
       const merged: Record<string, AnswerValue> = { ...current.answers }
       for (const [id, val] of Object.entries(newAnswers)) {
         if (val === null) continue
-        if (current.answers[id] === icsBusyValue && val === icsFreeValue) continue
+        const setByHand = current.answers[id] !== calendarFilledRef.current[id]
+        if (setByHand && current.answers[id] === busyValue && val !== busyValue) continue
         merged[id] = val
         calendarFilledRef.current[id] = val
       }
@@ -765,9 +811,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    const target = icsTargetRef.current
-    icsTargetRef.current = 'auto'
-    void processIcsFile(file, target)
+    void processIcsFile(file)
   }
 
   // ファイルをフォームに落としても読み込めるようにする
@@ -790,10 +834,15 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     if (file) void processIcsFile(file)
   }
 
-  async function processIcsFile(file: File, target: CalendarFillTarget = 'auto') {
+  async function processIcsFile(file: File) {
     if (candidates.length === 0) {
       setIcsStatus('error')
       setIcsMessage(t("候補日がないため自動入力できません。"))
+      return
+    }
+    if (icsMode === 'rules' && icsRules.length === 0) {
+      setIcsStatus('error')
+      setIcsMessage(t("時間を入れた記号がありません。記号ごとに、空いていてほしい時間を入れてください。"))
       return
     }
 
@@ -805,24 +854,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       const busyPeriods = await calendarBusyPeriods(calendarFiles, candidates.map(c => ({ date: c.date, timeLabel: c.time_label })))
       // 複数のカレンダーを続けて読んだときは、予定を足し合わせて判定する
       calendarPeriodsRef.current = [...calendarPeriodsRef.current, ...busyPeriods]
-      setHasCalendar(true)
       const doneMessage = t("{0} 内容を確認してから送信してください。", describeCalendarFileRead(calendarFiles, locale))
 
-      if (target === 'auto') {
-        applyBusyPeriodsToAnswers(busyPeriods, doneMessage)
-        return
-      }
-      setIcsStatus('done')
-      setIcsMessage(doneMessage)
-      if (target === 'freeRules') applyFreeWindowRules(calendarPeriodsRef.current)
-      else applyBusyWindowAnswer(calendarPeriodsRef.current)
+      applyBusyPeriodsToAnswers(calendarPeriodsRef.current, doneMessage)
     } catch (err) {
       const message = describeCalendarFileError(err, locale) ??
         t("読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。")
       setIcsStatus('error')
       setIcsMessage(message)
-      if (target === 'freeRules') setFreeRuleMessage(message)
-      if (target === 'busyWindow') setBusyWindowMessage(message)
     }
   }
 
@@ -910,81 +949,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         lastSetAllAnswers: null,
       }
     })
-  }
-
-  function updateFreeRuleInput(value: AnswerValue, index: number, patch: Partial<TimeWindowInput>) {
-    setFreeRuleInputs((current) => ({
-      ...current,
-      [value]: { ...(current[value] ?? defaultFreeRuleInput(index)), ...patch },
-    }))
-  }
-
-  // カレンダーをもとに決めた記号を入れ、結果を伝える文を返す
-  function fillFromCalendar(targets: Candidate[], valueFor: (candidate: Candidate) => AnswerValue) {
-    const calendarFilled = calendarFilledRef.current
-    const updates: Record<string, AnswerValue> = {}
-    let keptByHand = 0
-    commitAnswerChange((current) => {
-      for (const c of targets) {
-        const existing = current.answers[c.id]
-        // 「入力済の行は変更しない」がONでも、カレンダーから自動で入れたままの行は入れ直す
-        if (keepExistingAnswers && existing !== undefined && existing !== calendarFilled[c.id]) {
-          keptByHand += 1
-          continue
-        }
-        updates[c.id] = valueFor(c)
-      }
-
-      const nextDetailNotes = { ...current.detailNotes }
-      for (const [id, value] of Object.entries(updates)) {
-        if (value !== '-') delete nextDetailNotes[id]
-      }
-
-      return {
-        answers: { ...current.answers, ...updates },
-        detailNotes: nextDetailNotes,
-        lastSetAllAnswers: null,
-      }
-    })
-    Object.assign(calendarFilled, updates)
-
-    const filledCount = Object.keys(updates).length
-    return filledCount === 0
-      ? t("手で入力した{0}件は変更していません。書き換えるには「入力済の行は変更しない」を外してください。", keptByHand)
-      : keptByHand > 0
-      ? t("{0}件の候補に入力しました（手で入力した{1}件は変更していません）。", filledCount, keptByHand)
-      : t("{0}件の候補に入力しました。内容を確認してから送信してください。", filledCount)
-  }
-
-  function calendarFillTargets() {
-    return candidates.filter(
-      (c) => c.date >= bulkStart && c.date <= bulkEnd && matchesBulkWeekdays(c.date)
-    )
-  }
-
-  function applyFreeWindowRules(periods: BusyPeriod[]) {
-    if (!bulkStart || !bulkEnd || bulkStart > bulkEnd || freeRules.length === 0) return
-    const targets = calendarFillTargets()
-    setFreeRuleMessage(
-      targets.length === 0
-        ? t("この日付範囲・曜日に候補日がありません。")
-        // 上の記号から順に見て、その時間に予定が少しもかぶらない最初の記号にする
-        : fillFromCalendar(targets, (c) => firstFreeValue(c.date, freeRules, freeFallbackValue, periods))
-    )
-  }
-
-  function applyBusyWindowAnswer(periods: BusyPeriod[]) {
-    if (!bulkStart || !bulkEnd || bulkStart > bulkEnd || !busyWindow) return
-    const targets = calendarFillTargets()
-    // 指定した時間に予定が少しでもかぶる日だけを変える
-    const busyTargets = targets.filter((c) => overlapsWindow(c.date, busyWindow, periods))
-    setBusyWindowMessage(
-      targets.length === 0
-        ? t("この日付範囲・曜日に候補日がありません。")
-        : busyTargets.length === 0
-        ? t("この時間に予定がかぶる日はありませんでした。")
-        : fillFromCalendar(busyTargets, () => busyWindowValue)
-    )
   }
 
   function handleSetAllAnswers(value: AnswerValue) {
@@ -1564,7 +1528,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <button
                 type="button"
-                onClick={() => chooseCalendarFile('auto')}
+                onClick={() => icsInputRef.current?.click()}
                 disabled={icsStatus === 'loading'}
                 className="flex items-center gap-2 rounded-full border border-stone-300 px-4 py-2 text-sm text-stone-700 transition-colors hover:border-rose-300 hover:bg-rose-50 hover:text-rose-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -1598,45 +1562,123 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <p className="mt-1 hidden text-[11px] text-stone-600 sm:block">{t(".ics / zip ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
             {icsOptionsOpen && (
               <div className="mt-1 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs leading-none text-stone-600">
-                  <div className="flex items-center gap-1.5">
-                    <span className="shrink-0">{t("予定あり：")}</span>
-                    <div className="flex gap-0.5">
-                      {answerOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setIcsBusyValue((current) => current === opt.value ? null : opt.value)}
-                          aria-label={icsBusyValue === opt.value ? t("予定ありの入力を解除する") : t("予定ありを{0}にする", opt.value)}
-                          className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
-                            icsBusyValue === opt.value ? opt.active : opt.idle
-                          }`}
-                        >
-                          {opt.value === '-' ? '−' : opt.value}
-                        </button>
-                      ))}
+                {/* 記号の決め方。日程の時間に予定があるか、記号ごとに決めた時間が空いているか */}
+                <div role="radiogroup" aria-label={t("記号の決め方")} className="space-y-2 text-xs text-stone-600">
+                  <label className="flex w-fit cursor-pointer items-center gap-1.5">
+                    <input
+                      type="radio"
+                      name="ics-mode"
+                      checked={icsMode === 'busy'}
+                      onChange={() => setIcsMode('busy')}
+                      className="h-3.5 w-3.5 accent-rose-700"
+                    />{t("予定があるかないかで入れる")}</label>
+                  {icsMode === 'busy' && (
+                    <div className="ml-5 flex flex-wrap items-center gap-x-4 gap-y-2 leading-none">
+                      <CalendarValuePicker
+                        label={t("予定あり：")}
+                        options={answerOptions}
+                        value={icsBusyValue}
+                        onChange={setIcsBusyValue}
+                        setLabel={(value) => t("予定ありを{0}にする", value)}
+                        clearLabel={t("予定ありの入力を解除する")}
+                      />
+                      <CalendarValuePicker
+                        label={t("予定なし：")}
+                        options={answerOptions}
+                        value={icsFreeValue}
+                        onChange={setIcsFreeValue}
+                        setLabel={(value) => t("予定なしを{0}にする", value)}
+                        clearLabel={t("予定なしの入力を解除する")}
+                      />
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="shrink-0">{t("予定なし：")}</span>
-                    <div className="flex gap-0.5">
-                      {answerOptions.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setIcsFreeValue((current) => current === opt.value ? null : opt.value)}
-                          aria-label={icsFreeValue === opt.value ? t("予定なしの入力を解除する") : t("予定なしを{0}にする", opt.value)}
-                          className={`h-6 w-6 rounded-full border text-[11px] transition-all ${
-                            icsFreeValue === opt.value ? opt.active : opt.idle
-                          }`}
-                        >
-                          {opt.value === '-' ? '−' : opt.value}
-                        </button>
-                      ))}
+                  )}
+                  <label className="flex w-fit cursor-pointer items-center gap-1.5">
+                    <input
+                      type="radio"
+                      name="ics-mode"
+                      checked={icsMode === 'rules'}
+                      onChange={() => setIcsMode('rules')}
+                      className="h-3.5 w-3.5 accent-rose-700"
+                    />{t("空いている時間で記号を決める")}</label>
+                  {icsMode === 'rules' && (
+                    <div data-ics-rules className="ml-5 space-y-1.5">
+                      <p className="leading-relaxed">{t("その時間が空いていたら、その記号を入れます。上の記号から順に確かめます。")}</p>
+                      <p className="leading-relaxed">{t("例：◎ 1日OK、○ 夜だけOK、△ 遅れて参加 なら、◎ 10:00〜22:00、○ 18:00〜22:00、△ 20:00〜22:00。")}</p>
+                      {icsRuleOptions.map((opt) => {
+                        const rule = icsRuleInputs[opt.value] ?? emptyIcsRule
+                        const isUsed = icsRules.some((item) => item.value === opt.value)
+                        return (
+                          <div key={opt.value} data-ics-rule={opt.value} role="group" aria-label={t("{0}にする時間", opt.value)} className="flex items-start gap-1.5">
+                            <span
+                              className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] ${
+                                isUsed ? opt.active : 'border-stone-300 text-stone-400'
+                              }`}
+                            >
+                              {opt.value}
+                            </span>
+                            {/* 折り返しても記号の右にそろえる */}
+                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                              <label className="flex items-center gap-1">
+                                <input
+                                  type="checkbox"
+                                  checked={rule.allDay}
+                                  onChange={(e) => updateIcsRule(opt.value, (current) => ({ ...current, allDay: e.target.checked }))}
+                                  className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
+                                />{t("終日")}</label>
+                              {!rule.allDay && rule.ranges.map((range, index) => (
+                                <span key={index} className="flex items-center gap-1">
+                                  {index > 0 && <span>{t("か")}</span>}
+                                  <input
+                                    type="time"
+                                    value={range.start}
+                                    onChange={(e) => updateIcsRange(opt.value, index, { start: e.target.value })}
+                                    aria-label={index === 0 ? t("{0}の開始時刻", opt.value) : t("{0}の2つ目の開始時刻", opt.value)}
+                                    className="rounded-lg border border-stone-300 bg-white px-2 py-1 text-xs text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                                  />
+                                  <span>〜</span>
+                                  <input
+                                    type="time"
+                                    value={range.end}
+                                    onChange={(e) => updateIcsRange(opt.value, index, { end: e.target.value })}
+                                    aria-label={index === 0 ? t("{0}の終了時刻", opt.value) : t("{0}の2つ目の終了時刻", opt.value)}
+                                    className="rounded-lg border border-stone-300 bg-white px-2 py-1 text-xs text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
+                                  />
+                                  {index > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => updateIcsRule(opt.value, (current) => ({ ...current, ranges: current.ranges.filter((_, i) => i !== index) }))}
+                                      aria-label={t("{0}の2つ目の時間を消す", opt.value)}
+                                      className="flex h-6 w-6 items-center justify-center rounded-full text-stone-500 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                                    >✕</button>
+                                  )}
+                                </span>
+                              ))}
+                              {!rule.allDay && rule.ranges.length < MAX_ICS_RULE_RANGES && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateIcsRule(opt.value, (current) => ({ ...current, ranges: [...current.ranges, emptyIcsRange] }))}
+                                  className="rounded-full border border-stone-300 px-2 py-0.5 text-[11px] text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                                >{t("＋別の時間")}</button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      <div className="flex flex-wrap items-center pt-0.5 leading-none">
+                        <CalendarValuePicker
+                          label={t("どれも空いていない日：")}
+                          options={answerOptions}
+                          value={icsFallbackValue}
+                          onChange={setIcsFallbackValue}
+                          setLabel={(value) => t("どれも空いていない日を{0}にする", value)}
+                          clearLabel={t("どれも空いていない日の入力を解除する")}
+                        />
+                      </div>
+                      <p className="text-[11px] leading-relaxed">{t("時間を2つ入れた記号は、どちらかが空いていれば入れます。26時は 02:00 と入力します。")}</p>
                     </div>
-                  </div>
+                  )}
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-stone-600">{t("カレンダーから書き出した .ics / .zip ファイルをアップロードできます（この枠にドラッグ&ドロップしても読み込めます）。zip内の誕生日カレンダーは自動で除外されます。予定と重なる日程・空いている日程を選んだ記号でまとめて入力できます。ファイルは端末内で処理され、送信・保存されません。")}</p>
+                <p className="mt-2 text-xs leading-relaxed text-stone-600">{t("ファイルはこの端末の中だけで読み取り、送信も保存もしません。zip の中の誕生日カレンダーは自動で除きます。")}</p>
               </div>
             )}
             {icsGuideOpen && (
@@ -1876,171 +1918,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     </div>
                   </div>
                 )}
-                <div data-busy-window className="mt-2 border-t border-stone-300 pt-1.5">
-                  <p className="mb-1.5 text-xs font-medium text-stone-600">{t("カレンダーの予定がかぶる日を一括回答")}</p>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <label className="flex items-center gap-1.5 text-xs text-stone-600">
-                      <input
-                        type="checkbox"
-                        checked={busyWindowInput.allDay}
-                        onChange={(e) => setBusyWindowInput((current) => ({ ...current, allDay: e.target.checked }))}
-                        className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
-                      />{t("終日")}</label>
-                    {!busyWindowInput.allDay && (
-                      <>
-                        <input
-                          type="time"
-                          value={busyWindowInput.start}
-                          onChange={(e) => setBusyWindowInput((current) => ({ ...current, start: e.target.value }))}
-                          aria-label={t("予定を調べる時間の開始")}
-                          className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                        />
-                        <span className="text-stone-600">〜</span>
-                        <input
-                          type="time"
-                          value={busyWindowInput.end}
-                          onChange={(e) => setBusyWindowInput((current) => ({ ...current, end: e.target.value }))}
-                          aria-label={t("予定を調べる時間の終了")}
-                          className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                        />
-                      </>
-                    )}
-                  </div>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-stone-600">{t("予定がかぶる日を：")}</span>
-                    {answerOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setBusyWindowValue(opt.value)}
-                        aria-label={t("予定がかぶる日を{0}にする", opt.value)}
-                        aria-pressed={busyWindowValue === opt.value}
-                        className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${
-                          busyWindowValue === opt.value ? opt.active : opt.idle
-                        }`}
-                      >
-                        {opt.value === '-' ? '−' : opt.value}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => hasCalendar ? applyBusyWindowAnswer(calendarPeriodsRef.current) : chooseCalendarFile('busyWindow')}
-                      disabled={
-                        !bulkStart ||
-                        !bulkEnd ||
-                        bulkStart > bulkEnd ||
-                        !busyWindow ||
-                        icsStatus === 'loading'
-                      }
-                      className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
-                    >{hasCalendar ? t("かぶる日に適用") : t("カレンダーを選んで適用")}</button>
-                    {hasCalendar && (
-                      <button
-                        type="button"
-                        onClick={() => chooseCalendarFile('busyWindow')}
-                        disabled={icsStatus === 'loading'}
-                        className="text-xs text-stone-600 underline hover:text-rose-700"
-                      >{t("別のカレンダーも読み込む")}</button>
-                    )}
-                    <span className="text-xs text-stone-600">{t("この時間に予定が少しでも入っている日を、選んだ記号に変えます。")}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-stone-600">{t("26時は 02:00 と入力します。対象は上の日付範囲・曜日です。")}</p>
-                  {busyWindowMessage && (
-                    <p role="status" className="mt-1.5 text-xs text-stone-700">{busyWindowMessage}</p>
-                  )}
-                </div>
-                <div data-free-rules className="mt-2 border-t border-stone-300 pt-1.5">
-                  <p className="mb-1.5 text-xs font-medium text-stone-600">{t("カレンダーの空き時間で一括回答")}</p>
-                  <div className="mb-2 space-y-1.5">
-                    {freeRuleOptions.map((opt, index) => {
-                      const input = freeRuleInputs[opt.value] ?? defaultFreeRuleInput(index)
-                      const isUsed = freeRules.some((rule) => rule.value === opt.value)
-                      return (
-                        <div key={opt.value} data-free-rule={opt.value} role="group" aria-label={t("{0}にする時間", opt.value)} className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-sm ${
-                              isUsed ? opt.active : 'border-stone-300 text-stone-400'
-                            }`}
-                          >
-                            {opt.value}
-                          </span>
-                          <label className="flex items-center gap-1.5 text-xs text-stone-600">
-                            <input
-                              type="checkbox"
-                              checked={input.allDay}
-                              onChange={(e) => updateFreeRuleInput(opt.value, index, { allDay: e.target.checked })}
-                              className="h-3.5 w-3.5 rounded border-stone-300 text-rose-800 focus:ring-rose-200"
-                            />{t("終日")}</label>
-                          {!input.allDay && (
-                            <>
-                              <input
-                                type="time"
-                                value={input.start}
-                                onChange={(e) => updateFreeRuleInput(opt.value, index, { start: e.target.value })}
-                                aria-label={t("{0}の開始時刻", opt.value)}
-                                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                              />
-                              <span className="text-stone-600">〜</span>
-                              <input
-                                type="time"
-                                value={input.end}
-                                onChange={(e) => updateFreeRuleInput(opt.value, index, { end: e.target.value })}
-                                aria-label={t("{0}の終了時刻", opt.value)}
-                                className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-100"
-                              />
-                            </>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-stone-600">{t("どれも空いていない日：")}</span>
-                    {answerOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setFreeFallbackValue(opt.value)}
-                        aria-label={t("どれも空いていない日を{0}にする", opt.value)}
-                        aria-pressed={freeFallbackValue === opt.value}
-                        className={`h-8 w-8 rounded-full border-2 text-sm transition-all ${
-                          freeFallbackValue === opt.value ? opt.active : opt.idle
-                        }`}
-                      >
-                        {opt.value === '-' ? '−' : opt.value}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => hasCalendar ? applyFreeWindowRules(calendarPeriodsRef.current) : chooseCalendarFile('freeRules')}
-                      disabled={
-                        !bulkStart ||
-                        !bulkEnd ||
-                        bulkStart > bulkEnd ||
-                        freeRules.length === 0 ||
-                        icsStatus === 'loading'
-                      }
-                      className="rounded-full bg-rose-800 px-4 py-1.5 text-sm text-white transition-colors hover:bg-rose-900 disabled:cursor-not-allowed disabled:opacity-70"
-                    >{hasCalendar ? t("空き時間で適用") : t("カレンダーを選んで適用")}</button>
-                    {hasCalendar && (
-                      <button
-                        type="button"
-                        onClick={() => chooseCalendarFile('freeRules')}
-                        disabled={icsStatus === 'loading'}
-                        className="text-xs text-stone-600 underline hover:text-rose-700"
-                      >{t("別のカレンダーも読み込む")}</button>
-                    )}
-                    <span className="text-xs text-stone-600">{t("日付ごとに上の記号から順に確かめ、その時間に予定がなければ、その記号を入れます。")}</span>
-                  </div>
-                  <p className="mt-1 text-xs text-stone-600">{t("時間が空欄の記号は飛ばします。26時は 02:00 と入力します。対象は上の日付範囲・曜日です。")}</p>
-                  {freeRuleMessage && (
-                    <p role="status" className="mt-1.5 text-xs text-stone-700">{freeRuleMessage}</p>
-                  )}
-                </div>
               </div>
             )}
           </div>

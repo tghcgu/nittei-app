@@ -3,6 +3,11 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-10-07',
+    title: 'カレンダーの空き時間で記号を決められるように',
+    changes: ['「.ics / zip から自動入力」の「設定」で、記号ごとに「この時間が空いていればこの記号」を決められるようにしました。「◎ 1日OK、○ 夜だけOK」のように記号ごとに時間が違う書き方でも、カレンダーを読み込むだけで入力できます。1つの記号に時間を2つ入れることもできます。「範囲で一括回答」にあったカレンダーの機能は、ここにまとめました。'],
+  },
+  {
     date: '2026-10-03',
     title: 'お問い合わせフォームを追加',
     changes: [
