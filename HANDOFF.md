@@ -4,6 +4,22 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-10-07: Calendar Input Gathered In The Import Settings
+
+The owner asked to bring back the free-time rules in an improved form, then to tidy up the two calendar blocks in 「範囲で一括回答」. A "time slots" design (busy in all, some or none of the slots) was tried on the branch first, but it cannot tell "day only" from "night only", and the owner preferred "if this time is free, use this symbol".
+
+The settings of 「.ics / zip から自動入力」 now have a radio choice (`icsMode`). 'busy' keeps the old check at each date's own time, with the 予定あり／予定なし pickers. 'rules' gives each symbol except ✕ and − one or two time ranges, or 終日, checked from the top with `firstFreeValue` in `lib/calendar.ts`; a rule with two ranges applies when either is free, and dates where none is free get 「どれも空いていない日」. Rules mode without any time shows an error instead of importing. Every import judges from all calendars loaded on the page (`calendarPeriodsRef`), so events in different files add up. A date set by hand to the busy (or fallback) symbol keeps it, while dates the calendar filled are redone with the current settings (`calendarFilledRef`). Both calendar blocks (`data-busy-window`, `data-free-rules`) and their helpers (`fillFromCalendar`, `hasCalendar`, `CalendarFillTarget`) are gone, so 「範囲で一括回答」 is back to its form before September 30. The settings texts are short, with one made-up example (「◎ 1日OK、○ 夜だけOK、△ 遅れて参加」); the owner found it 「一瞬で理解できる」.
+
+Never put wording from users' event pages into examples, tests, commit messages or this file: the owner pointed out that it shows the operator looked at those pages. A test added on October 3 had a description close to a real event's; it now uses a generic sentence, but the older text stays in Git history.
+
+Tests: `tests/calendar-rules.spec.ts` (new), `tests/time-range.spec.ts` (the time-range test that used to sit in `free-rules.spec.ts`), and the unit test in `tests/calendar.spec.ts`. The release note is dated 2026-10-07.
+
+Source `fix/calendar-slots` → main `18c155b`; compatible `preview/calendar-slots` → release `77cd3da`. TypeScript and `npx eslint .` pass on both. The full Playwright suite passes on release (99) and main (99).
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `b3d2d0f8-0b22-4a08-b588-cf23d760dd97` 100% at 2026-10-07T08:41:03Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `4dfab05d-b3c2-4739-b28b-92129b5f8513`. Production checks passed: the import settings in both modes, a synthetic calendar filled through the free-time rules, no calendar block left in 「範囲で一括回答」, the made-up example on screen and in the update history, all earlier checks, and a sweep with no errors.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending; rebuild the cutover Worker from current main when it happens.
+
 ## 2026-10-03 (later): Image Form, Text-Only Link Previews And Readable Results Description
 
 Three changes shipped together.
