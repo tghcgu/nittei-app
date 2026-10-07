@@ -4,6 +4,18 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-10-07 (later): One-Sentence Calendar Block Back In 「範囲で一括回答」
+
+Right after the release above, the owner said they want to keep the time-based calendar block in 「範囲で一括回答」. It came back improved as 「カレンダーで一括回答」 (`data-calendar-window`), laid out to read as one sentence: 「[19:00]〜[23:00] に [予定がある日|予定がない日] を [✕] にする」. It acts only on the dates and weekdays chosen above in the panel (the difference from the import settings, which fill every date). Busy or free can be picked; switching flips the usual symbol (✕ for busy, ○ for free) unless the user chose another. With both times empty it checks the whole day; with only one time the button stays disabled. It reuses a calendar the import already loaded (`hasCalendar`, button 「カレンダーで適用」), or asks for a file first (「カレンダーを選んで適用」, `CalendarFillTarget` 'window'). Rows typed by hand stay while 「入力済の行は変更しない」 is on; rows the calendar filled are redone (`fillFromCalendar`). The October 7 release note now says 「空き時間で一括回答」 moved to the settings, and has a second line for this block. Test: `tests/calendar-window.spec.ts`.
+
+Lesson: the owner's own idea (this block) was removed with their OK and missed within the hour. When consolidating, keep the owner's ideas unless they explicitly say to drop that exact thing.
+
+Source `fix/calendar-window` → main `e07bb9f`; compatible `preview/calendar-window` → release `59d5030`. TypeScript and `npx eslint .` pass on both. The full Playwright suite passes on release (101) and main (101).
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `6a1fe389-4a9b-45ba-91c7-1163a8bf1752` 100% at 2026-10-07T11:14:39Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `b3d2d0f8-0b22-4a08-b588-cf23d760dd97`. Production checks passed: the one-sentence block in the range panel (busy all day on the first date turned to △ from the loaded calendar), the import settings, the update history, all earlier checks, and a sweep with no errors.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending; rebuild the cutover Worker from current main when it happens.
+
 ## 2026-10-07: Calendar Input Gathered In The Import Settings
 
 The owner asked to bring back the free-time rules in an improved form, then to tidy up the two calendar blocks in 「範囲で一括回答」. A "time slots" design (busy in all, some or none of the slots) was tried on the branch first, but it cannot tell "day only" from "night only", and the owner preferred "if this time is free, use this symbol".
