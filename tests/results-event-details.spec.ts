@@ -85,7 +85,7 @@ for (const locale of ['ja', 'en'] as const) {
   test(`${locale}: on PC the description keeps a readable width before anyone answers`, async ({ page, request }) => {
     const { t, path } = getI18n(locale)
     const shareId = `wide-details-${locale}`
-    const description = '開始時間と終了時間の事前調査です。'.repeat(8) + '\n' + 'Lines keep a readable length. '.repeat(8)
+    const description = '集まれる時間を教えてください。'.repeat(8) + '\n' + 'Lines keep a readable length. '.repeat(8)
     const seeded = await request.post('http://127.0.0.1:54329/rest/v1/events', { data: { share_id: shareId, name: 'Event', description } })
     expect(seeded.ok()).toBe(true)
     await page.setViewportSize({ width: 1440, height: 900 })
