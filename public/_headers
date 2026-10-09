@@ -3,3 +3,7 @@
 # https://opennext.js.org/cloudflare/caching#static-assets-caching
 /_next/static/*
   Cache-Control: public,max-age=31536000,immutable
+
+# Static files (scripts, styles, images) are served without the Worker, so next.config.ts headers do not reach them.
+/*
+  X-Content-Type-Options: nosniff
