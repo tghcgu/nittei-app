@@ -31,17 +31,18 @@ export function overlapsCalendar(candidate: CalendarCandidate, periods: BusyPeri
 
 // A time of day on one date. As with candidate times, an end at or before the start is the next day.
 export type TimeWindow = 'allDay' | { start: string; end: string }
-export type FreeWindowRule<T> = { value: T; windows: readonly TimeWindow[] }
+export type WindowRule<T> = { value: T; windows: readonly TimeWindow[] }
 
 export function overlapsWindow(date: string, window: TimeWindow, periods: BusyPeriod[]) {
   const timeLabel = window === 'allDay' ? null : `${window.start}〜${window.end}`
   return overlapsCalendar({ date, timeLabel }, periods)
 }
 
-// Rules are checked in order. A rule applies when any of its windows has no overlapping event.
-export function firstFreeValue<T>(date: string, rules: readonly FreeWindowRule<T>[], fallback: T, periods: BusyPeriod[]): T {
+// Rules are checked in order. With 'free', a rule applies when any of its windows has no overlapping
+// event; with 'busy', when any of its windows has one.
+export function firstMatchingValue<T>(date: string, rules: readonly WindowRule<T>[], fallback: T, periods: BusyPeriod[], when: 'free' | 'busy' = 'free'): T {
   for (const rule of rules) {
-    if (rule.windows.some(window => !overlapsWindow(date, window, periods))) return rule.value
+    if (rule.windows.some(window => overlapsWindow(date, window, periods) === (when === 'busy'))) return rule.value
   }
   return fallback
 }

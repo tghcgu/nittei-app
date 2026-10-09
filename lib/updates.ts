@@ -3,6 +3,15 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-10-09',
+    title: '時間で入れる機能を使いやすく',
+    changes: [
+      '「.ics / zip から自動入力」の「設定」の「時間で記号を決める」で、「その時間が空いていたら」と「埋まっていたら」を選べるようにしました。',
+      '「範囲で一括回答」の時間の一括回答を、「19:00〜23:00 にかぶる日程を ✕ にする」のように1行で使えるようにしました。カレンダーは使わず、日程の時間で決めます。かぶらない日程を選ぶこともできます。',
+      '「範囲で一括回答」で「適用」を押したとき、何件に入れたかを出すようにしました。',
+    ],
+  },
+  {
     date: '2026-10-07',
     title: 'カレンダーの空き時間で記号を決められるように',
     changes: [

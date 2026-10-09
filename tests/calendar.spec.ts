@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { zipSync, strToU8 } from 'fflate'
-import { calendarBusyPeriods, firstFreeValue, overlapsCalendar, overlapsWindow } from '../lib/calendar'
+import { calendarBusyPeriods, firstMatchingValue, overlapsCalendar, overlapsWindow } from '../lib/calendar'
 import { readCalendarFileTexts } from '../lib/calendar-files'
 
 const calendar = (...events: string[]) => ({
@@ -79,16 +79,20 @@ test('free-window rules give the first symbol whose time has no overlapping even
     busy('2026-10-07T18:00:00', '2026-10-07T20:00:00'),
     busy('2026-10-08T00:00:00', '2026-10-09T00:00:00', true),
   ]
-  const pick = (date: string) => firstFreeValue(date, rules, '✕', periods)
+  const pick = (date: string) => firstMatchingValue(date, rules, '✕', periods)
   expect(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08'].map(pick))
     .toEqual(['◎', '○', '△', '✕', '○', '○', '○', '✕'])
   // order decides: the same free date takes whichever rule comes first
-  expect(firstFreeValue('2026-10-01', [...rules].reverse(), '✕', periods)).toBe('△')
-  expect(firstFreeValue('2026-10-01', [], '✕', periods)).toBe('✕')
+  expect(firstMatchingValue('2026-10-01', [...rules].reverse(), '✕', periods)).toBe('△')
+  expect(firstMatchingValue('2026-10-01', [], '✕', periods)).toBe('✕')
   // a rule with two times applies when either is free: "△ = the morning or the evening"
   const halfDay = [{ value: '△', windows: [{ start: '10:00', end: '12:00' }, { start: '19:00', end: '21:00' }] }]
-  expect(['2026-10-02', '2026-10-03', '2026-10-08'].map(date => firstFreeValue(date, halfDay, '✕', periods)))
+  expect(['2026-10-02', '2026-10-03', '2026-10-08'].map(date => firstMatchingValue(date, halfDay, '✕', periods)))
     .toEqual(['△', '△', '✕'])
+  // with 'busy', the first rule whose time has an event applies: "✕ busy in the evening, △ busy in the morning"
+  const busyRules = [{ value: '✕', windows: [{ start: '19:00', end: '22:00' }] }, { value: '△', windows: [{ start: '10:00', end: '12:00' }] }]
+  expect(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-08'].map(date => firstMatchingValue(date, busyRules, '○', periods, 'busy')))
+    .toEqual(['○', '△', '✕', '✕'])
 
   // the single-window check each rule is built on
   const late = { start: '23:00', end: '02:00' }

@@ -50,13 +50,15 @@ for (const locale of ['ja', 'en'] as const) {
     await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '✕', '✕', '✕'])
 
     await page.getByRole('button', { name: `${t('設定')}▼`, exact: true }).click()
-    await page.getByLabel(t('空いている時間で記号を決める')).check()
+    await page.getByLabel(t('時間で記号を決める')).check()
     await expect(page.getByText(t('予定あり：'), { exact: true })).toHaveCount(0)
     const rules = page.locator('[data-ics-rules]')
+    // the example uses only the symbols of this event
+    await expect(rules.getByText(t('例：◎ 1日OK、○ 夜だけOK、△ 遅れて参加 なら、◎ 10:00〜22:00、○ 18:00〜22:00、△ 20:00〜22:00。'), { exact: true })).toBeVisible()
 
     // with no time entered, nothing changes and the reason is shown
     await file.setInputFiles(calendar)
-    await expect(page.getByText(t('時間を入れた記号がありません。記号ごとに、空いていてほしい時間を入れてください。'), { exact: true })).toBeVisible()
+    await expect(page.getByText(t('時間を入れた記号がありません。記号ごとに時間を入れてください。'), { exact: true })).toBeVisible()
     expect(await selectedAnswers(page, ids)).toEqual(['○', '✕', '✕', '✕', '✕'])
 
     for (const [value, start, end] of [['◎', '10:00', '23:00'], ['○', '10:00', '17:00'], ['△', '18:00', '23:00']]) {
@@ -95,9 +97,10 @@ for (const locale of ['ja', 'en'] as const) {
       event('evening', '20261005T190000', '20261005T200000'),
     )
     await page.getByRole('button', { name: `${t('設定')}▼`, exact: true }).click()
-    await page.getByLabel(t('空いている時間で記号を決める')).check()
+    await page.getByLabel(t('時間で記号を決める')).check()
     const rules = page.locator('[data-ics-rules]')
     await expect(rules.locator('[data-ics-rule]')).toHaveCount(2)
+    await expect(rules.getByText(t('例：○ 1日OK、△ 夜だけOK なら、○ 10:00〜22:00、△ 18:00〜22:00。'), { exact: true })).toBeVisible()
     await rules.getByLabel(t('{0}の開始時刻', '○')).fill('09:00')
     await rules.getByLabel(t('{0}の終了時刻', '○')).fill('17:00')
     await rules.getByLabel(t('{0}の開始時刻', '△')).fill('09:00')
@@ -113,5 +116,42 @@ for (const locale of ['ja', 'en'] as const) {
     await rules.getByRole('button', { name: t('{0}の2つ目の時間を消す', '△'), exact: true }).click()
     await page.locator('input[type="file"]').setInputFiles(calendar)
     await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '△', '✕', '○'])
+  })
+
+  // "✕ busy in the evening, △ busy late in the afternoon", checked from the top
+  test(`${locale}: the time rules can check busy times instead of free ones`, async ({ page, request }) => {
+    const { t, path } = getI18n(locale)
+    const ids = await seed(request, `calendar-rules-busy-${locale}`, '○△✕')
+    await page.goto(path(`/e/calendar-rules-busy-${locale}`))
+    // 10/01 free, 10/02 an evening event, 10/03 a late-afternoon event, 10/04 both, 10/05 a morning event
+    const calendar = ics(
+      event('evening', '20261002T200000', '20261002T210000'),
+      event('afternoon', '20261003T173000', '20261003T180000'),
+      event('both-afternoon', '20261004T173000', '20261004T180000'),
+      event('both-evening', '20261004T200000', '20261004T210000'),
+      event('morning', '20261005T100000', '20261005T110000'),
+    )
+    await page.getByRole('button', { name: `${t('設定')}▼`, exact: true }).click()
+    await page.getByLabel(t('時間で記号を決める')).check()
+    const rules = page.locator('[data-ics-rules]')
+    await rules.getByRole('button', { name: t('埋まっていたら'), exact: true }).click()
+    // busy rules use ✕ first and then △; dates with nothing busy get ○
+    expect(await rules.locator('[data-ics-rule]').evaluateAll(rows => rows.map(row => row.getAttribute('data-ics-rule')))).toEqual(['✕', '△'])
+    await expect(rules.getByText(t('例：✕ 夜に予定あり、△ 夕方に予定あり なら、✕ 19:00〜22:00、△ 17:00〜19:00。'), { exact: true })).toBeVisible()
+    await expect(rules.getByRole('button', { name: t('どれも埋まっていない日を{0}にする', '○'), exact: true })).toHaveCount(0)
+    await expect(rules.getByRole('button', { name: t('どれも埋まっていない日の入力を解除する'), exact: true })).toHaveCount(1)
+    await rules.getByLabel(t('{0}の開始時刻', '✕')).fill('19:00')
+    await rules.getByLabel(t('{0}の終了時刻', '✕')).fill('22:00')
+    await rules.getByLabel(t('{0}の開始時刻', '△')).fill('17:00')
+    await rules.getByLabel(t('{0}の終了時刻', '△')).fill('19:00')
+    await page.locator('input[type="file"]').setInputFiles(calendar)
+    await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '△', '✕', '○'])
+
+    // each direction keeps its own times
+    await rules.getByRole('button', { name: t('空いていたら'), exact: true }).click()
+    expect(await rules.locator('[data-ics-rule]').evaluateAll(rows => rows.map(row => row.getAttribute('data-ics-rule')))).toEqual(['○', '△'])
+    await expect(rules.getByLabel(t('{0}の開始時刻', '△'))).toHaveValue('')
+    await rules.getByRole('button', { name: t('埋まっていたら'), exact: true }).click()
+    await expect(rules.getByLabel(t('{0}の開始時刻', '△'))).toHaveValue('17:00')
   })
 }
