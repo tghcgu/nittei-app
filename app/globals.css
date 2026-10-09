@@ -25,6 +25,25 @@ body {
   }
 }
 
+/* 小さい文字のボタンやリンクの、押せる範囲だけを縦横24px以上に広げる（見た目と並びは変えない） */
+/* 横スクロールする欄の中で使うときは、欄に overflow-y-hidden を付ける（広げた分のはみ出しで縦にスクロールしないように） */
+/* 広げた範囲は中身の下に敷く。ラベルの中のチェックボックスなどは、それ自体を押したときにそのまま押せる */
+.hit-area {
+  position: relative;
+  isolation: isolate;
+}
+
+.hit-area::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 24px);
+  height: max(100%, 24px);
+  transform: translate(-50%, -50%);
+}
+
 .candidate-default-times {
   flex: 1 1 100%;
   min-width: 0;

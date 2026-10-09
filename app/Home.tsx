@@ -708,6 +708,7 @@ export default function Home() {
     if (!e.dataTransfer.types.includes('Files')) return
     e.preventDefault()
     setIsIcsDragOver(false)
+    if (isLoadingEdit) return
     const file = e.dataTransfer.files?.[0]
     if (file) void processIcsFile(file)
   }
@@ -1125,6 +1126,8 @@ export default function Home() {
             isIcsDragOver ? 'ring-2 ring-rose-400' : ''
           }`}
         >
+          {/* 編集する日程を読み込んでいる間は入力できないようにする（読み込みが終わると、保存済みの内容で上書きされるため） */}
+          <fieldset disabled={isLoadingEdit} className="m-0 min-w-0 border-0 p-0 transition-opacity disabled:opacity-60">
           {/* イベント名 */}
           <div className="mb-1">
             <div className="mb-1 flex items-center justify-between gap-3">
@@ -1434,7 +1437,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setIcsGuideOpen((v) => !v)}
-              className="mt-1 text-xs text-stone-600 underline hover:text-rose-700"
+              className="hit-area mt-1 text-xs text-stone-600 underline hover:text-rose-700"
             >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
             </button>
             {icsGuideOpen && (
@@ -1514,6 +1517,7 @@ export default function Home() {
           >
             {isSubmitting ? submittingLabel : submitLabel}
           </button>
+          </fieldset>
         </form>
 
         <div className="mt-1 text-center">
@@ -1525,7 +1529,7 @@ export default function Home() {
         </div>
         <p className="mt-1 text-center text-[11px] text-stone-600">{t("※ 最後の更新から1年が経過したイベントは自動的に削除されます")}</p>
         <p className="mt-1 text-center text-xs text-stone-600">
-          <Link href={path("/contact")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("お問い合わせ")}</Link>
+          <Link href={path("/contact")} className="hit-area underline underline-offset-2 transition-colors hover:text-rose-700">{t("お問い合わせ")}</Link>
         </p>
         <p className="footer-links mt-1 text-center text-[11px] text-stone-600">
           <Link href={path("/terms")} className="underline-offset-2 transition-colors hover:text-rose-700 hover:underline">{t("利用規約")}</Link>

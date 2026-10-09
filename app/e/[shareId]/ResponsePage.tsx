@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useI18n } from '@/app/LocaleProvider'
 import { LanguageSwitch } from '@/app/LanguageSwitch'
 import { ServiceShareLink } from '@/app/ServiceShareLink'
+import { LinkifiedText } from '@/app/LinkifiedText'
 import { useLanguageDraft } from '@/app/useLanguageDraft'
 import { supabase } from '@/lib/supabase'
 import { siteShortName } from '@/lib/site'
@@ -178,6 +179,77 @@ function writeTablePrefs(prefs: TablePrefs) {
     window.localStorage.setItem(TABLE_PREFS_KEY, JSON.stringify(prefs))
   } catch {
     // 保存できなくても表示には影響しない
+  }
+}
+
+// 「.ics / zip から自動入力」の設定。回答を直しに来たときに入れ直さなくて済むよう、イベントごとに端末内に覚えておく
+type IcsSettings = {
+  // 記号の決め方。'busy' は日程の時間に予定があるか、'rules' は記号ごとに決めた時間が空いているか（埋まっているか）
+  mode: 'busy' | 'rules'
+  busyValue: AnswerValue | null
+  freeValue: AnswerValue | null
+  // 時間で決めるとき、その時間が「空いていたら」か「埋まっていたら」か。時間の入力と「どれも…」の記号は向きごとに持つ
+  ruleWhen: 'free' | 'busy'
+  ruleInputs: Record<'free' | 'busy', Partial<Record<AnswerValue, IcsRuleInput>>>
+  fallbackValues: Record<'free' | 'busy', AnswerValue | null>
+}
+const DEFAULT_ICS_SETTINGS: IcsSettings = {
+  mode: 'busy',
+  busyValue: '✕',
+  freeValue: '○',
+  ruleWhen: 'free',
+  ruleInputs: { free: {}, busy: {} },
+  fallbackValues: { free: '✕', busy: '○' },
+}
+const icsSettingsKey = (shareId: string) => `nittei-ics-${shareId}`
+
+// 壊れた値や、このイベントで使えない記号は捨てて既定値に戻す
+function readIcsSettings(shareId: string, allowed: readonly AnswerValue[]): IcsSettings | null {
+  try {
+    const raw = window.localStorage.getItem(icsSettingsKey(shareId))
+    if (!raw) return null
+    const parsed: Record<string, unknown> = JSON.parse(raw)
+    const symbol = (value: unknown, fallback: AnswerValue | null) =>
+      value === null ? null : allowed.includes(value as AnswerValue) ? value as AnswerValue : fallback
+    const clock = (value: unknown) => typeof value === 'string' && /^\d{2}:\d{2}$/.test(value) ? value : ''
+    const rules = (value: unknown) => {
+      const result: Partial<Record<AnswerValue, IcsRuleInput>> = {}
+      if (!value || typeof value !== 'object') return result
+      for (const [key, rule] of Object.entries(value as Record<string, unknown>)) {
+        if (!allowed.includes(key as AnswerValue) || !rule || typeof rule !== 'object') continue
+        const { allDay, ranges } = rule as Record<string, unknown>
+        const kept = (Array.isArray(ranges) ? ranges : []).slice(0, MAX_ICS_RULE_RANGES).map((range: unknown) => {
+          const { start, end } = (range ?? {}) as Record<string, unknown>
+          return { start: clock(start), end: clock(end) }
+        })
+        result[key as AnswerValue] = { allDay: allDay === true, ranges: kept.length > 0 ? kept : [emptyIcsRange] }
+      }
+      return result
+    }
+    const inputs = (parsed.ruleInputs ?? {}) as Record<string, unknown>
+    const fallbacks = (parsed.fallbackValues ?? {}) as Record<string, unknown>
+    return {
+      mode: parsed.mode === 'rules' ? 'rules' : 'busy',
+      busyValue: symbol(parsed.busyValue, DEFAULT_ICS_SETTINGS.busyValue),
+      freeValue: symbol(parsed.freeValue, DEFAULT_ICS_SETTINGS.freeValue),
+      ruleWhen: parsed.ruleWhen === 'busy' ? 'busy' : 'free',
+      ruleInputs: { free: rules(inputs.free), busy: rules(inputs.busy) },
+      fallbackValues: {
+        free: symbol(fallbacks.free, DEFAULT_ICS_SETTINGS.fallbackValues.free),
+        busy: symbol(fallbacks.busy, DEFAULT_ICS_SETTINGS.fallbackValues.busy),
+      },
+    }
+  } catch {
+    // localStorage が使えない環境では既定値のまま
+    return null
+  }
+}
+
+function writeIcsSettings(shareId: string, settings: IcsSettings) {
+  try {
+    window.localStorage.setItem(icsSettingsKey(shareId), JSON.stringify(settings))
+  } catch {
+    // 保存できなくても読み込みには影響しない
   }
 }
 
@@ -365,8 +437,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   // 一括回答パネル共通の曜日フィルター（空＝全曜日が対象）
   const [bulkWeekdays, setBulkWeekdays] = useState<Set<number>>(new Set())
   const [keepExistingAnswers, setKeepExistingAnswers] = useState(true)
-  // 読み込んだカレンダーの予定（開始・終了だけ）。ページを開いている間だけ持ち、保存も送信もしない
-  const calendarPeriodsRef = useRef<BusyPeriod[]>([])
+  // 読み込んだカレンダーの予定（開始・終了だけ）をファイルごとに。ページを開いている間だけ持ち、保存も送信もしない。
+  // 同じ名前のファイルを読み直したとき（設定を変えたときや、書き出し直したとき）は、足さずに置き換える
+  const calendarFilesRef = useRef(new Map<string, BusyPeriod[]>())
+  const [calendarFileCount, setCalendarFileCount] = useState(0)
   // カレンダーから自動で入れた値。手で直していない行は「入力済」とみなさず、入れ直せるようにする
   const calendarFilledRef = useRef<Record<string, AnswerValue>>({})
   const [lastSetAllAnswers, setLastSetAllAnswers] = useState<LastSetAllAnswers | null>(null)
@@ -527,14 +601,26 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const [icsMessage, setIcsMessage] = useState('')
   const [icsOptionsOpen, setIcsOptionsOpen] = useState(false)
   const [icsGuideOpen, setIcsGuideOpen] = useState(false)
-  const [icsBusyValue, setIcsBusyValue] = useState<AnswerValue | null>('✕')
-  const [icsFreeValue, setIcsFreeValue] = useState<AnswerValue | null>('○')
-  // 記号の決め方。'busy' は日程の時間に予定があるか、'rules' は記号ごとに決めた時間が空いているか（埋まっているか）
-  const [icsMode, setIcsMode] = useState<'busy' | 'rules'>('busy')
-  // 時間で決めるとき、その時間が「空いていたら」か「埋まっていたら」か。時間の入力と「どれも…」の記号は向きごとに持つ
-  const [icsRuleWhen, setIcsRuleWhen] = useState<'free' | 'busy'>('free')
-  const [icsRuleInputs, setIcsRuleInputs] = useState<Record<'free' | 'busy', Partial<Record<AnswerValue, IcsRuleInput>>>>({ free: {}, busy: {} })
-  const [icsFallbackValues, setIcsFallbackValues] = useState<Record<'free' | 'busy', AnswerValue | null>>({ free: '✕', busy: '○' })
+  // 設定は端末に覚えさせる。サーバーでは読めないのでマウント後に反映する
+  const [icsSettingsOverride, setIcsSettingsOverride] = useState<IcsSettings | null>(null)
+  const storedIcsSettings = useMemo(
+    () => (infoMounted ? readIcsSettings(shareId, answerValuesFor(event.answer_choices)) : null),
+    [infoMounted, shareId, event.answer_choices]
+  )
+  const icsSettings = icsSettingsOverride ?? storedIcsSettings ?? DEFAULT_ICS_SETTINGS
+  const {
+    mode: icsMode,
+    busyValue: icsBusyValue,
+    freeValue: icsFreeValue,
+    ruleWhen: icsRuleWhen,
+    ruleInputs: icsRuleInputs,
+    fallbackValues: icsFallbackValues,
+  } = icsSettings
+  const updateIcsSettings = (patch: Partial<IcsSettings>) => {
+    const next = { ...icsSettings, ...patch }
+    setIcsSettingsOverride(next)
+    writeIcsSettings(shareId, next)
+  }
   const loadResponses = useCallback(async () => {
     setIsLoadingResponses(true)
     setResponsesError(null)
@@ -748,10 +834,12 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const icsInputRef = useRef<HTMLInputElement>(null)
 
   function updateIcsRule(value: AnswerValue, update: (rule: IcsRuleInput) => IcsRuleInput) {
-    setIcsRuleInputs((current) => ({
-      ...current,
-      [icsRuleWhen]: { ...current[icsRuleWhen], [value]: update(current[icsRuleWhen][value] ?? emptyIcsRule) },
-    }))
+    updateIcsSettings({
+      ruleInputs: {
+        ...icsRuleInputs,
+        [icsRuleWhen]: { ...icsRuleInputs[icsRuleWhen], [value]: update(icsRuleInputs[icsRuleWhen][value] ?? emptyIcsRule) },
+      },
+    })
   }
 
   function updateIcsRange(value: AnswerValue, index: number, patch: Partial<typeof emptyIcsRange>) {
@@ -842,17 +930,47 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     try {
       const calendarFiles = await readCalendarFileTexts(file)
       const busyPeriods = await calendarBusyPeriods(calendarFiles, candidates.map(c => ({ date: c.date, timeLabel: c.time_label })))
-      // 複数のカレンダーを続けて読んだときは、予定を足し合わせて判定する
-      calendarPeriodsRef.current = [...calendarPeriodsRef.current, ...busyPeriods]
+      // 別のファイルを続けて読んだときは、予定を足し合わせて判定する
+      calendarFilesRef.current.set(file.name, busyPeriods)
+      setCalendarFileCount(calendarFilesRef.current.size)
       const doneMessage = t("{0} 内容を確認してから送信してください。", describeCalendarFileRead(calendarFiles, locale))
 
-      applyBusyPeriodsToAnswers(calendarPeriodsRef.current, doneMessage)
+      applyBusyPeriodsToAnswers([...calendarFilesRef.current.values()].flat(), doneMessage)
     } catch (err) {
       const message = describeCalendarFileError(err, locale) ??
         t("読み取りに失敗しました。.ics または .zip ファイルか確認して、手動で入力してください。")
       setIcsStatus('error')
       setIcsMessage(message)
     }
+  }
+
+  // 間違えて読み込んだときのために、読み込んだカレンダーと、それで入れたままの回答を消す（手で直した行は残す）
+  function removeCalendars() {
+    const filled = calendarFilledRef.current
+    commitAnswerChange((current) => {
+      const answers = { ...current.answers }
+      for (const [id, value] of Object.entries(filled)) {
+        if (answers[id] === value) delete answers[id]
+      }
+      return { ...current, answers, lastSetAllAnswers: null }
+    })
+    calendarFilesRef.current = new Map()
+    calendarFilledRef.current = {}
+    setCalendarFileCount(0)
+    setIcsStatus('done')
+    setIcsMessage(t("カレンダーを外して、カレンダーで入れた回答を消しました。"))
+  }
+
+  // 設定を閉じていても、既定から変えた設定が効いていることが分かるようにする
+  function icsSettingsSummary() {
+    if (icsMode === 'rules') {
+      return icsRuleWhen === 'free'
+        ? t("今の設定：時間で記号を決める（その時間が空いていたら）")
+        : t("今の設定：時間で記号を決める（その時間が埋まっていたら）")
+    }
+    if (icsBusyValue === DEFAULT_ICS_SETTINGS.busyValue && icsFreeValue === DEFAULT_ICS_SETTINGS.freeValue) return null
+    const show = (value: AnswerValue | null) => (value === null ? t("入れない") : value === '-' ? '−' : value)
+    return t("今の設定：予定あり {0}、予定なし {1}", show(icsBusyValue), show(icsFreeValue))
   }
 
   function toggleBulkWeekday(weekdayIndex: number) {
@@ -1460,6 +1578,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }
   }
 
+  const icsSummary = icsSettingsSummary()
+
   return (
     <div className="min-h-screen px-4 py-2">
       <div className="w-full">
@@ -1468,7 +1588,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="mb-1 grid min-h-8 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-2">
           <Link
             href={path(`/?edit=${shareId}`)}
-            className="col-start-3 row-start-1 justify-self-end whitespace-nowrap text-xs text-stone-600 transition-colors hover:text-rose-700 sm:ml-8 sm:justify-self-start sm:text-sm"
+            className="hit-area col-start-3 row-start-1 justify-self-end whitespace-nowrap text-xs text-stone-600 transition-colors hover:text-rose-700 sm:ml-8 sm:justify-self-start sm:text-sm"
           >{t("日程を編集")}</Link>
           <Link
             href={path("/")}
@@ -1487,13 +1607,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
         <div className="mb-1 min-w-0">
           <h1 className="event-title py-0.5 text-lg leading-6">{event.name}</h1>
           {event.description && (
-            <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-stone-700">{event.description}</p>
+            <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-stone-700"><LinkifiedText text={event.description} /></p>
           )}
           <div id="answer-actions" className="mt-0.5 flex scroll-mt-4 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleCopyUrl}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+              className="hit-area inline-flex items-center gap-1.5 rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
             >
               {copied ? (
                 <>{t("✓ コピーしました")}</>
@@ -1504,7 +1624,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             <button
               type="button"
               onClick={scrollToResponses}
-              className="inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+              className="hit-area inline-flex items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
             >{t("↓ みんなの回答へ")}</button>
           </div>
         </div>
@@ -1599,22 +1719,23 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   type="button"
                   onClick={() => setIcsGuideOpen((v) => !v)}
                   aria-expanded={icsGuideOpen}
-                  className="shrink-0 whitespace-nowrap text-[11px] text-stone-600 underline hover:text-rose-700"
+                  className="hit-area shrink-0 whitespace-nowrap text-[11px] text-stone-600 underline hover:text-rose-700"
                 >{t("書き出し方法を見る")}{icsGuideOpen ? '▲' : '▼'}
                 </button>
               </div>
             </div>
             <p className="mt-1 hidden text-[11px] text-stone-600 sm:block">{t(".ics / zip ファイルはこの枠にドラッグ&ドロップしても読み込めます。")}</p>
+            {!icsOptionsOpen && icsSummary && <p data-ics-summary className="mt-1 text-[11px] text-stone-600">{icsSummary}</p>}
             {icsOptionsOpen && (
               <div className="mt-1 rounded-xl border border-stone-300 bg-stone-50/70 px-3 py-2">
                 {/* 記号の決め方。日程の時間に予定があるか、記号ごとに決めた時間が空いているか */}
                 <div role="radiogroup" aria-label={t("記号の決め方")} className="space-y-2 text-xs text-stone-600">
-                  <label className="flex w-fit cursor-pointer items-center gap-1.5">
+                  <label className="hit-area flex w-fit cursor-pointer items-center gap-1.5">
                     <input
                       type="radio"
                       name="ics-mode"
                       checked={icsMode === 'busy'}
-                      onChange={() => setIcsMode('busy')}
+                      onChange={() => updateIcsSettings({ mode: 'busy' })}
                       className="h-3.5 w-3.5 accent-rose-700"
                     />{t("予定があるかないかで入れる")}</label>
                   {icsMode === 'busy' && (
@@ -1623,7 +1744,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         label={t("予定あり：")}
                         options={answerOptions}
                         value={icsBusyValue}
-                        onChange={setIcsBusyValue}
+                        onChange={(value) => updateIcsSettings({ busyValue: value })}
                         setLabel={(value) => t("予定ありを{0}にする", value)}
                         clearLabel={t("予定ありの入力を解除する")}
                       />
@@ -1631,18 +1752,18 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         label={t("予定なし：")}
                         options={answerOptions}
                         value={icsFreeValue}
-                        onChange={setIcsFreeValue}
+                        onChange={(value) => updateIcsSettings({ freeValue: value })}
                         setLabel={(value) => t("予定なしを{0}にする", value)}
                         clearLabel={t("予定なしの入力を解除する")}
                       />
                     </div>
                   )}
-                  <label className="flex w-fit cursor-pointer items-center gap-1.5">
+                  <label className="hit-area flex w-fit cursor-pointer items-center gap-1.5">
                     <input
                       type="radio"
                       name="ics-mode"
                       checked={icsMode === 'rules'}
-                      onChange={() => setIcsMode('rules')}
+                      onChange={() => updateIcsSettings({ mode: 'rules' })}
                       className="h-3.5 w-3.5 accent-rose-700"
                     />{t("時間で記号を決める")}</label>
                   {icsMode === 'rules' && (
@@ -1655,7 +1776,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                             <button
                               key={when}
                               type="button"
-                              onClick={() => setIcsRuleWhen(when)}
+                              onClick={() => updateIcsSettings({ ruleWhen: when })}
                               aria-pressed={icsRuleWhen === when}
                               className={`px-2.5 py-1 transition-colors ${when === 'busy' ? 'border-l border-stone-300 ' : ''}${
                                 icsRuleWhen === when ? 'bg-rose-800 text-white' : 'text-stone-600 hover:bg-stone-50'
@@ -1680,7 +1801,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                             </span>
                             {/* 折り返しても記号の右にそろえる */}
                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                              <label className="flex items-center gap-1">
+                              <label className="hit-area flex items-center gap-1">
                                 <input
                                   type="checkbox"
                                   checked={rule.allDay}
@@ -1719,7 +1840,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                                 <button
                                   type="button"
                                   onClick={() => updateIcsRule(opt.value, (current) => ({ ...current, ranges: [...current.ranges, emptyIcsRange] }))}
-                                  className="rounded-full border border-stone-300 px-2 py-0.5 text-[11px] text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                                  className="hit-area rounded-full border border-stone-300 px-2 py-0.5 text-[11px] text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                                 >{t("＋別の時間")}</button>
                               )}
                             </div>
@@ -1731,7 +1852,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           label={icsRuleWhen === 'free' ? t("どれも空いていない日：") : t("どれも埋まっていない日：")}
                           options={answerOptions}
                           value={icsFallbackValue}
-                          onChange={(value) => setIcsFallbackValues((current) => ({ ...current, [icsRuleWhen]: value }))}
+                          onChange={(value) => updateIcsSettings({ fallbackValues: { ...icsFallbackValues, [icsRuleWhen]: value } })}
                           setLabel={(value) => (icsRuleWhen === 'free' ? t("どれも空いていない日を{0}にする", value) : t("どれも埋まっていない日を{0}にする", value))}
                           clearLabel={icsRuleWhen === 'free' ? t("どれも空いていない日の入力を解除する") : t("どれも埋まっていない日の入力を解除する")}
                         />
@@ -1783,6 +1904,16 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 {icsMessage}
               </p>
             )}
+            {calendarFileCount > 0 && (
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-stone-600">
+                {calendarFileCount > 1 && <span>{t("{0}つのファイルの予定を合わせて入れています。", calendarFileCount)}</span>}
+                <button
+                  type="button"
+                  onClick={removeCalendars}
+                  className="rounded-full border border-stone-300 px-3 py-1 text-xs text-stone-600 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                >{t("読み込んだカレンダーを外す")}</button>
+              </div>
+            )}
           </div>
 
           {/* 一括回答ボタン群 */}
@@ -1819,7 +1950,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     )
                   })}
               </div>
-              <label className="flex items-center gap-1.5 text-xs text-stone-600">
+              <label className="hit-area flex items-center gap-1.5 text-xs text-stone-600">
                 <input
                   type="checkbox"
                   checked={keepExistingAnswers}
@@ -1852,7 +1983,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   <button
                     type="button"
                     onClick={() => setBulkOpen(false)}
-                    className="text-xs text-stone-600 hover:text-stone-700"
+                    className="hit-area text-xs text-stone-600 hover:text-stone-700"
                   >{t("閉じる")}</button>
                 </div>
                 {/* 日付範囲 */}
@@ -2014,7 +2145,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowPeerAnswers((value) => !value)}
-                  className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                  className={`hit-area rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
                     hasVisiblePeerAnswers
                       ? 'border-rose-400 bg-rose-50 text-rose-800'
                       : 'border-stone-300 text-stone-600 hover:border-rose-200 hover:text-rose-700'
@@ -2109,6 +2240,9 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
             {hasVisiblePeerAnswers && (
               <div
                 ref={answerScrollRef}
+                tabIndex={0}
+                role="region"
+                aria-label={t("他の人の回答")}
                 className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain"
               >
                 <div
@@ -2203,7 +2337,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
               <button
                 type="button"
                 onClick={scrollToAnswerForm}
-                className="inline-flex shrink-0 items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                className="hit-area inline-flex shrink-0 items-center rounded-lg bg-white/50 px-2 py-0.5 text-xs text-stone-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
               >{t("↑ 回答へ")}</button>
             </div>
             {hasResponses && (
@@ -2269,7 +2403,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           <div className="response-event-details mb-1.5 min-w-0 max-w-2xl [overflow-wrap:anywhere]">
             <h3 className="event-title text-base leading-5">{event.name}</h3>
             {event.description?.trim() && (
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">{event.description}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-stone-700"><LinkifiedText text={event.description} /></p>
             )}
           </div>
 
@@ -2286,7 +2420,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           ) : tableLayout === 'h' ? (
 
             /* ── 横向きテーブル：行=回答者、列=候補日 ── */
-            <div className="relative isolate overflow-x-auto">
+            <div className="relative isolate overflow-x-auto overflow-y-hidden">
               <table className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
@@ -2367,7 +2501,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
-                          className="text-xs text-stone-500 transition-colors hover:text-rose-700"
+                          className="hit-area text-xs text-stone-500 transition-colors hover:text-rose-700"
                         >{t("編集")}</button>
                       </td>
                     </tr>
@@ -2379,7 +2513,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           ) : (
 
             /* ── 縦向きテーブル：行=候補日、列=回答者 ── */
-            <div className="relative isolate overflow-x-auto">
+            <div className="relative isolate overflow-x-auto overflow-y-hidden">
               <table ref={resultsTableRef} className="response-results-table w-max text-center text-sm leading-tight">
                 <thead>
                   <tr>
@@ -2402,7 +2536,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         <button
                           type="button"
                           onClick={() => handleEdit(r)}
-                          className="text-xs font-normal text-stone-500 transition-colors hover:text-rose-700"
+                          className="hit-area text-xs font-normal text-stone-500 transition-colors hover:text-rose-700"
                         >{t("編集")}</button>
                       </th>
                     ))}

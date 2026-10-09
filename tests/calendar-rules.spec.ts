@@ -154,4 +154,63 @@ for (const locale of ['ja', 'en'] as const) {
     await rules.getByRole('button', { name: t('埋まっていたら'), exact: true }).click()
     await expect(rules.getByLabel(t('{0}の開始時刻', '△'))).toHaveValue('17:00')
   })
+
+  test(`${locale}: settings are remembered and shown while closed, and loaded calendars can be removed`, async ({ page, request }) => {
+    const { t, path } = getI18n(locale)
+    const ids = await seed(request, `calendar-settings-${locale}`, '○△✕')
+    await page.goto(path(`/e/calendar-settings-${locale}`))
+    const file = page.locator('input[type="file"]')
+    const summary = page.locator('[data-ics-summary]')
+    const settings = page.getByRole('button', { name: `${t('設定')}▼`, exact: true })
+    const remove = page.getByRole('button', { name: t('読み込んだカレンダーを外す'), exact: true })
+    const combined = page.getByText(t('{0}つのファイルの予定を合わせて入れています。', 2), { exact: true })
+    // the default settings are not repeated next to the button
+    await expect(page.locator('[data-answer-candidate-id]').first()).toBeVisible()
+    await expect(summary).toHaveCount(0)
+
+    await settings.click()
+    await page.getByLabel(t('時間で記号を決める')).check()
+    const rules = page.locator('[data-ics-rules]')
+    await rules.getByLabel(t('{0}の開始時刻', '○')).fill('18:00')
+    await rules.getByLabel(t('{0}の終了時刻', '○')).fill('22:00')
+    await page.getByRole('button', { name: `${t('設定')}▲`, exact: true }).click()
+    await expect(summary).toHaveText(t('今の設定：時間で記号を決める（その時間が空いていたら）'))
+
+    // 10/02 is busy in the evening in one file, 10/03 in another
+    const first = { ...ics(event('first', '20261002T190000', '20261002T200000')), name: 'first.ics' }
+    const second = { ...ics(event('second', '20261003T200000', '20261003T210000')), name: 'second.ics' }
+    await expect(remove).toHaveCount(0)
+    await file.setInputFiles(first)
+    await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '○', '○', '○'])
+    await expect(remove).toBeVisible()
+    // loading the same file again replaces it instead of adding it twice (otherwise the next count would be 3)
+    await file.setInputFiles(first)
+    await file.setInputFiles(second)
+    await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '✕', '○', '○'])
+    await expect(combined).toBeVisible()
+
+    // removing clears what the calendars filled, but keeps a date changed by hand
+    await page.locator(`[data-answer-candidate-id="${ids[4]}"][data-answer-value="△"]`).click()
+    await remove.click()
+    await expect.poll(() => selectedAnswers(page, ids)).toEqual([null, null, null, null, '△'])
+    await expect(page.getByText(t('カレンダーを外して、カレンダーで入れた回答を消しました。'), { exact: false })).toBeVisible()
+    await expect(remove).toHaveCount(0)
+    // and it can be undone like other changes
+    await page.getByRole('button', { name: t('↶ 戻す'), exact: true }).click()
+    await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '✕', '○', '△'])
+
+    // the settings come back after reopening the page
+    await page.reload()
+    await expect(summary).toHaveText(t('今の設定：時間で記号を決める（その時間が空いていたら）'))
+    await settings.click()
+    await expect(page.getByLabel(t('時間で記号を決める'))).toBeChecked()
+    await expect(rules.getByLabel(t('{0}の開始時刻', '○'))).toHaveValue('18:00')
+    await expect(rules.getByLabel(t('{0}の終了時刻', '○'))).toHaveValue('22:00')
+    await page.getByLabel(t('予定があるかないかで入れる')).check()
+    await page.getByRole('button', { name: t('予定ありを{0}にする', '△'), exact: true }).click()
+    await page.getByRole('button', { name: `${t('設定')}▲`, exact: true }).click()
+    await expect(summary).toHaveText(t('今の設定：予定あり {0}、予定なし {1}', '△', '○'))
+    await page.reload()
+    await expect(summary).toHaveText(t('今の設定：予定あり {0}、予定なし {1}', '△', '○'))
+  })
 }
