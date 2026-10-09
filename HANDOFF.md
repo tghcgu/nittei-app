@@ -4,6 +4,21 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## オーナーとの約束（Claude の記憶の写し）
+
+PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`）も消えるので、ここに写しておく。新しい環境では作業の前に必ず読む。
+
+- 「マージ」は、main と release の両方を fast-forward して push し、release の作業ツリーで `npm run deploy`、公開サイトで確認し、このファイルに記録するところまで。本番に出すのは「マージ」と言われたときだけ。
+- 返事は日本語で、結論を先に短く。「君はどう思う」と聞かれたら、正直な意見と理由を短く言う。長い説明や表を並べた比較は「よくわからない」と言われた。
+- 画面の説明文は短く平易に。1文に1つの内容。決まりは「26時は 02:00 と入力します」のように具体例で書く。似た機能を別々の場所に並べない。
+- オーナー自身が出した案（機能）は、代案やまとめる提案のときも勝手に消さない。消すならその機能名を挙げて確かめる（2026-09-30 と 2026-10-07 に失敗した）。
+- オーナーが見せてくれた利用者のイベントの文面（スクリーンショット・凡例・説明文・名前）を、画面の例・テスト・コミットメッセージ・このファイルに使わない（「ページ見たことがばれる」）。例は自分で作り、push の前に検索して確かめる。
+- 共有リンクのプレビューは文字だけ。大きな画像（og:image）は付けない（「きもすぎる」）。宣伝っぽい目立つ要素を足さない。
+- 見た目の確認には `/e/ohbcvs2j` を使う。確認用URL（プレビュー）も本番DBにつながっているので、手で保存すると本物のデータになる。
+- 運営者の個人メールアドレスはどこにも載せない（リポジトリは公開）。問い合わせは Google フォーム。
+- `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
+- main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
+
 ## 2026-10-09: Busy Or Free Time Rules, And A Calendar-Free 「範囲で一括回答」
 
 The owner asked for three things, agreed to a plan after asking for an honest opinion, and then asked for a review pass before merging.
@@ -286,109 +301,101 @@ This UI-only production backport preserves legacy storage. Main's secure persist
 
 ## 最初に貼る文章
 
-以下を新しいチャットの最初に貼ると、このプロジェクトの文脈をかなり引き継げます。
+新しいPCや新しいチャットで作業を始めるとき、最初にこれを貼る。
 
 ```text
-あなたは「日程組」という日程調整Webアプリの開発を引き継ぎます。
+あなたは「日程組」という日程調整Webアプリ（ログイン不要。伝助のようなもの）の開発を引き継ぎます。
+作業の前に CLAUDE.md、AGENTS.md、HANDOFF.md（先頭が最新。「オーナーとの約束」は必ず）、SECURE-ROLLOUT.md を読んでください。
 
-ユーザーは細かいUI調整や不具合修正を短く依頼することが多いです。
-専門用語はかみ砕いて説明し、変更後は「何が変わったか」を簡単に伝えてください。
-ユーザーは本番URLで確認することが多いので、必要なら lint / typecheck / build を通してから、ユーザーの指示で `npm run deploy` を実行して Cloudflare へ反映してください(git push では本番は変わりません)。
+- 本番URL: https://nittei-app.qoj.workers.dev/（旧URL nittei-app-five.vercel.app からは自動で転送）
+- GitHub: https://github.com/tghcgu/nittei-app（公開リポジトリ）
+- 技術: Next.js 16 / React 19 / TypeScript / Tailwind 4 / Supabase / Cloudflare Workers（OpenNext。ビルドは webpack）
+- 作業フォルダ: main の作業ツリー（例 Desktop\nittei-app）と、本番用 release/ui-20260910 の作業ツリー（例 Desktop\nittei-app-ui-release）
+- 本番で動いているのは release/ui-20260910。main は DB 移行（supabase/secure-scheduling.sql）前提の保存処理を含むので、移行が済むまで本番に出さない。
+- 作業は main から fix/… を作り、同じ変更を release から作った preview/… にも入れる。「マージ」と言われたら、両方を fast-forward して push し、release の作業ツリーで npm run deploy、公開サイトで確認して HANDOFF.md に記録する。
+- 確認: npm run lint / .\node_modules\.bin\tsc.cmd --noEmit / npm test（Playwright）/ npx next build --webpack
+- 本番の確認: node scripts/production-checks/features.mjs と node scripts/production-checks/sweep.mjs
+- オーナーは短い日本語で頼む。返事は結論から短く。
 
-プロジェクト:
-- 名前: 日程組
-- 本番URL: https://nittei-app.qoj.workers.dev/ (旧URL nittei-app-five.vercel.app からは自動転送)
-- GitHub: https://github.com/tghcgu/nittei-app
-- 主な技術: Next.js 16 / React 19 / TypeScript / Supabase / Cloudflare Workers(OpenNext)
-- 作業場所: C:\Users\tkt01\Desktop\nittei-app
-
-重要:
-- .env.local の値は絶対に公開しない。
-- .env.local は Git に入れない。
-- 必要な環境変数名は NEXT_PUBLIC_SUPABASE_URL、NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY、NEXT_PUBLIC_GOOGLE_CLIENT_ID、GEMINI_API_KEY。
-- AGENTS.md にある通り、このNext.jsは新しい版なので、コード変更前に node_modules/next/dist/docs/ の関連ドキュメントを読む。
-- 既存のユーザー変更を勝手に戻さない。
-
-よく使う確認:
-- npm.cmd run lint
-- .\node_modules\.bin\tsc.cmd --noEmit --pretty false
-- npm.cmd run build
-- git status -sb
-
-最近の実運用(2026-07-09 に Vercel から Cloudflare へ移行):
-- develop で実装し、lint / typecheck / build を通す。
-- ローカル確認は npm run preview (Cloudflare 実行環境 workerd、http://localhost:8787)。
-- 本番反映はユーザーの指示で npm run deploy (ローカルから Cloudflare へ直接)。
-- main へのマージはソース同期のため、ユーザーの指示で行う。
-- Cloudflare 用ビルドは webpack (Turbopack 成果物は OpenNext 非対応。スクリプトに組み込み済み)。
-
-アプリの主なファイル:
-- app/Home.tsx: 日英共通のイベント作成・編集画面
-- app/e/[shareId]/EventPage.tsx: 回答ページのサーバー側データ取得とメタデータ
-- app/e/[shareId]/ResponsePage.tsx: 回答ページのUIと操作
-- app/(ja)/ と app/(en)/en/: 日本語・英語のルート入口。日本語URLは変更しない
-- app/SiteLayout.tsx: 共通レイアウト。言語ごとにhtmlのlangをサーバーで設定する
-- lib/i18n/: 英語辞書・日付書式・言語別リンク。DB内の文字列は翻訳しない
-- tests/: 独立したメモリ内DBで行うPlaywrightテスト。npm testで実行、本番データは触らない
-- lib/supabase.ts: Supabaseクライアント
-- lib/database.types.ts: Supabaseテーブル型
-- lib/site.ts: サイト名、タイトル、URL、説明文
-- supabase/rls-policies.sql: Supabase RLSポリシー
-
-現在入っている主な機能:
-- イベント作成
-- 候補日の追加、範囲追加、カレンダー選択
-- .ics から予定のある日を避ける
-- 回答ページで .ics を読み込み、予定がある日をまとめて×にする
-- 回答一覧の縦/横切り替え
-- 回答者ごとの編集・削除
-- 「全部これに揃える」で入力済を残すチェック
-- イベントページURLのメタタイトルにイベント名を入れる
-- 問い合わせ: /contact は Google フォーム2つへのリンク（2026-10-03〜。文章用はログイン不要、画像を添付できる方は Google ログインが必要）。運営者のメールアドレスはサイト・README に載せない。2026-07-16 に作って撤回した自前フォームの inquiries テーブルが Supabase に未使用のまま残っている
-
-ユーザーへの返答スタイル:
-- まず短く結論。
-- 難しい言葉は使ったら説明する。
-- 「安全にやる」と言われたら、UIやDB構造を大きく変えず、確認コマンドを通す。
-- 変更後は「lint OK / typecheck OK / build OK / デプロイ OK」を簡潔に伝える。
-- URLを求められたら https://nittei-app.qoj.workers.dev/ を出す。
+主なファイル:
+- app/Home.tsx: イベント作成・編集画面（日英共通）
+- app/e/[shareId]/EventPage.tsx: 回答ページのデータ取得とメタデータ
+- app/e/[shareId]/ResponsePage.tsx: 回答ページの画面と操作（.ics 読み込みの「設定」、範囲で一括回答、回答一覧）
+- lib/calendar.ts: .ics の予定と時間帯の判定
+- lib/i18n/: 英語辞書（日本語の文がキー）
+- lib/updates.ts: 公開している更新履歴
+- lib/site.ts: サイト名・URL・お問い合わせフォームのURL
+- tests/: Playwright のテスト（独立したメモリ内DBを使い、本番DBには触れない）
+- scripts/production-checks/: 本番の確認スクリプト（読み取りだけ）
 ```
 
-## 新しいPCで必要なもの
+## 新しいPCで続けるとき（PCが壊れたとき）
 
-GitHub からコードを取得します。
+PCが壊れても、コード（GitHub）・本番サイト（Cloudflare）・データ（Supabase）・お問い合わせフォーム（オーナーの Google アカウント）は残る。このPCにしかないのは `.env.local` と、各サービスへのログイン状態と、Claude の記憶だけ。記憶の中身は上の「オーナーとの約束」に写してある。詳しい手順は README の「新しいPCへの完全引き継ぎ」。
+
+| もの | ある場所 | PCが壊れたら |
+| --- | --- | --- |
+| コード・履歴・このファイル | GitHub `tghcgu/nittei-app`（全ブランチ push 済み） | 残る |
+| 本番サイト（Worker `nittei-app`）と毎日の自動削除 | Cloudflare | 残る |
+| 秘密の値 `SUPABASE_SERVICE_ROLE_KEY`・`CRON_SECRET` | Cloudflare の Worker の Secrets | 残る（値は読み戻せない。作り直すときは新しい値を `npx wrangler secret put`） |
+| イベント・回答のデータ | Supabase | 残る |
+| `.env.local`（Supabase の URL と公開用キーの2つ） | このPCだけ | 消える。Supabase の管理画面の Project Settings → API から取り直す |
+| お問い合わせフォーム2つと、通知の Apps Script | オーナーの Google アカウント | 残る |
+| 旧URLの転送 | Vercel（`vercel.json`） | 残る |
+| 本番の確認スクリプト | `scripts/production-checks/` | 残る |
+| Claude の記憶 | このPCだけ | 消える。上の「オーナーとの約束」を見る |
+
+新しいPCでの手順（Windows）:
 
 ```powershell
-cd Desktop
+cd $HOME\Desktop
 git clone https://github.com/tghcgu/nittei-app.git
 cd nittei-app
-npm install
+npm.cmd ci
+git worktree add ..\nittei-app-ui-release release/ui-20260910
+cd ..\nittei-app-ui-release
+npm.cmd ci
 ```
 
-`.env.local` を作り、古いPCで控えた値を貼ります。
-
-```powershell
-notepad .env.local
-```
-
-必要な環境変数名:
+`.env.local` を両方のフォルダに作る。値は Supabase の管理画面から取り、チャットや Git には貼らない。
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=
-GEMINI_API_KEY=
 ```
 
-起動:
+古い `.env.local` にあった `NEXT_PUBLIC_GOOGLE_CLIENT_ID` と `GEMINI_API_KEY` は、今のアプリでは使っていないので要らない。
+
+Cloudflare とテストの準備:
 
 ```powershell
-npm run dev
+npx.cmd wrangler login
+npx.cmd wrangler deployments status   # いま本番で動いている Version ID を確かめる
+npx.cmd wrangler secret list          # SUPABASE_SERVICE_ROLE_KEY と CRON_SECRET があること
+npx.cmd playwright install chromium   # テストと本番確認に使うブラウザー
 ```
+
+本番が動いていれば、PCを替えただけで deploy し直す必要はない。
+
+## 本番に出す・戻す
+
+- 出す: release の作業ツリーで `npm.cmd run deploy`。終わったら `npx.cmd wrangler deployments status` で新しい Version ID が 100% になっているか確かめ、`node scripts/production-checks/features.mjs` と `node scripts/production-checks/sweep.mjs` を流す。画面や文言を変えたリリースでは、同じ変更の中で確認スクリプトも直す。
+- 確認用URL: release 側の preview ブランチで `npx next build --webpack` → `npx opennextjs-cloudflare build --skipNextBuild` → `npx opennextjs-cloudflare upload -- --preview-alias 名前`。URL は `https://名前-nittei-app.qoj.workers.dev`。
+- 戻す: `npx.cmd wrangler versions list` か、このファイルの各リリースに書いた「previous compatible Worker」で前の Version ID を確かめ、`npx.cmd wrangler rollback <Version ID>`。戻したら公開サイトを確認し、このファイルに書く。
+- main は DB 移行が済むまで deploy しない（`check:database` で止まる）。
+
+## 宿題（まだ終わっていないこと）
+
+- DB 移行（`supabase/secure-scheduling.sql`）は未適用。オーナーが SQL を実行する。手順は `SECURE-ROLLOUT.md`。移行と同時に、最新の main から Worker を作り直して出す（9/30 に用意した `ceb357aa` は古いので使わない）。移行が済めば release ブランチの役目は終わる。
+- 画像を添付できるお問い合わせフォーム（日程組のフォームのコピー）について、オーナーに次をお願いした。済んだかは未確認: タイトルの「のコピー」を消す、質問名を「画像 / Images」にする、画像だけ・10MB までにする、「新しい回答についてのメール通知を受け取る」をオンにする（コピーには元のフォームの Apps Script の通知が付いていない）。
+- 2026-07-16 に作って撤回した自前フォームの `inquiries` テーブルが、Supabase に使われないまま残っている。
+- 365日での自動削除（毎日 19:00 UTC）が動いているかは、Cloudflare の管理画面で Worker `nittei-app` の Cron の実行履歴を見れば確かめられる。
+- Discord などに前に貼ったリンクは、しばらく古いプレビュー（大きな画像つき）のまま残ることがある。
 
 ## 注意
 
 - `.env.local` の実際の値は、このファイルにもチャットにも貼らない。
 - `node_modules`、`.next`、`.open-next`、`.wrangler`、`.vercel` はコピー不要。
-- Supabase のデータと Cloudflare の本番サイトはクラウド側にあるので、PCを変えても残ります。
+- Supabase のデータと Cloudflare の本番サイトはクラウド側にあるので、PCを変えても残る。
 - 新しいPCでデプロイするには `npx wrangler login` で Cloudflare に再ログインする。
+- 外付けドライブにも控えるなら `git bundle create nittei-app-backup.bundle --all`（README の「GitHubにもアクセスできない場合」）。
