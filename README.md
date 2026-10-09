@@ -306,7 +306,10 @@ Windows PowerShell:
 cd $HOME\Desktop
 git clone https://github.com/tghcgu/nittei-app.git
 cd nittei-app
-git switch develop
+npm.cmd ci
+# 本番用ブランチは別フォルダ（作業ツリー）に置く
+git worktree add ..\nittei-app-ui-release release/ui-20260910
+cd ..\nittei-app-ui-release
 npm.cmd ci
 ```
 
@@ -316,9 +319,14 @@ macOS / Linux:
 cd ~/Desktop
 git clone https://github.com/tghcgu/nittei-app.git
 cd nittei-app
-git switch develop
+npm ci
+# 本番用ブランチは別フォルダ（作業ツリー）に置く
+git worktree add ../nittei-app-ui-release release/ui-20260910
+cd ../nittei-app-ui-release
 npm ci
 ```
+
+`main` はソースの正本、`release/ui-20260910` は本番で動いているコードです（下の「ブランチ運用」）。`.env.local` は両方のフォルダに置きます。
 
 `npm ci` は `package-lock.json` に固定された依存関係を再現します。通常は `npm install` よりこちらを使います。
 
@@ -370,6 +378,7 @@ Windows PowerShell:
 ```powershell
 npm.cmd run lint
 .\node_modules\.bin\tsc.cmd --noEmit --pretty false
+npm.cmd test
 npm.cmd run build
 git status --short
 ```
@@ -379,9 +388,12 @@ macOS / Linux:
 ```bash
 npm run lint
 npx tsc --noEmit --pretty false
+npm test
 npm run build
 git status --short
 ```
+
+`npm test` は Playwright のテストで、本番DBには触れません。初回は `npx playwright install chromium` でブラウザーを入れます。
 
 最低限、次の手動確認も行います。
 
@@ -477,6 +489,8 @@ npx.cmd wrangler secret put CRON_SECRET
 
 #### 本番デプロイ
 
+本番に出すのは `release/ui-20260910` の作業ツリー（例 `..\nittei-app-ui-release`）からです。`main` は DB 移行（`supabase/secure-scheduling.sql`）が前提の保存処理を含むため、移行が済むまで本番に出しません（`main` の `npm run deploy` は最初の `check:database` で止まります）。
+
 ```powershell
 npm.cmd run lint
 .\node_modules\.bin\tsc.cmd --noEmit --pretty false
@@ -502,27 +516,31 @@ git status --short
 
 | ブランチ | 役割 |
 | --- | --- |
-| `develop` | 開発・確認 |
-| `main` | 公開済みソースの基準 |
+| `main` | ソースの正本。DB 移行が前提の保存処理を含むので、移行が済むまで本番に出さない |
+| `release/ui-20260910` | 本番で動いているコード（今のDBで動く版）。別フォルダの作業ツリーに置く |
+| `fix/…`・`ui/…` | main から作る作業ブランチ |
+| `preview/…` | release から作り、同じ変更を入れる確認用ブランチ |
+| `develop` | 旧来の開発用。今は使っていない |
 
-推奨フロー:
+本番に出すとき（オーナーが「マージ」と言ったとき）の流れ:
 
 ```powershell
-git switch develop
-git pull --ff-only origin develop
-# 実装・確認・コミット
-git push origin develop
-
+# main 側（作業ツリー nittei-app）
 git switch main
-git pull --ff-only origin main
-git merge develop
+git merge --ff-only fix/変更名
 git push origin main
 
-# mainで最終確認後、明示的に本番デプロイ
+# 本番側（作業ツリー nittei-app-ui-release）
+git switch release/ui-20260910
+git merge --ff-only preview/変更名
+git push origin release/ui-20260910
 npm.cmd run deploy
+npx.cmd wrangler deployments status
+node scripts/production-checks/features.mjs
+node scripts/production-checks/sweep.mjs
 ```
 
-マージ競合が起きた場合は、内容を理解せず強制上書きしないでください。
+release の古い保存処理を main へ戻さないでください。マージ競合が起きた場合は、内容を理解せず強制上書きしないでください。
 
 ### 運用
 
@@ -544,6 +562,17 @@ npx.cmd wrangler rollback VERSION_ID
 ```
 
 `VERSION_ID` は戻したい正常なバージョンのIDへ置き換えます。ロールバック後は本番URLで、トップページ・イベント作成・既存イベント表示を確認します。
+
+#### 本番確認スクリプト
+
+本番に出したあと、読み取りだけの確認を流します（回答の送信・保存はしません）。
+
+```powershell
+node scripts/production-checks/features.mjs   # 主な機能と文言
+node scripts/production-checks/sweep.mjs      # 全ページ × 4つの幅 × ライト・ダークで、エラーと横あふれ
+```
+
+確認用イベント `/e/ohbcvs2j` を使います。本番DBにつながっているので、そのページで手で「送信」しないでください。専用ブラウザーがなければ `npx.cmd playwright install chromium` で入れるか、`PLAYWRIGHT_CHROMIUM_EXECUTABLE` に Chromium のパスを入れます。画面や文言を変えたら、同じ変更の中でこのスクリプトも直します。
 
 #### メンテナンス表示
 
@@ -602,14 +631,14 @@ npx.cmd wrangler rollback VERSION_ID
 - Cloudflareの `CRON_SECRET` は値を保管するか、失ったら再生成する方針
 - Google Search Consoleを管理しているGoogleアカウント
 - 各サービスの2段階認証用バックアップコード
-- 問い合わせ用メールアカウント
+- お問い合わせフォーム（Google フォーム2つ）と、通知の Apps Script を持つ Google アカウント
 
 #### 故障した直後の最短復旧手順
 
 1. 新しいPCへGit、Node.js、VS Codeをインストールします。
 2. GitHub、Supabase、Cloudflare、Googleへログインできることを確認します。
 3. リポジトリをcloneします。
-4. `develop` と `main` の両ブランチが見えることを確認します。
+4. `main` と `release/ui-20260910` の両ブランチが見えることを確認します。本番用の `release/ui-20260910` は別フォルダの作業ツリーに置きます（下のコマンド）。
 5. `.env.local` を安全な控えから復元します。
 6. `npm ci` を実行します。
 7. lint、typecheck、buildを実行します。
@@ -627,7 +656,6 @@ cd $HOME\Desktop
 git clone https://github.com/tghcgu/nittei-app.git
 cd nittei-app
 git fetch --all --prune
-git switch develop
 npm.cmd ci
 notepad .env.local
 npm.cmd run lint
@@ -639,9 +667,14 @@ npm.cmd run dev
 ローカル確認後:
 
 ```powershell
+git worktree add ..\nittei-app-ui-release release/ui-20260910
+cd ..\nittei-app-ui-release
+npm.cmd ci
+copy ..\nittei-app\.env.local .env.local
 npx.cmd wrangler login
 npx.cmd wrangler whoami
 npx.cmd wrangler secret list
+npx.cmd wrangler deployments status
 npm.cmd run preview
 ```
 
@@ -1021,7 +1054,10 @@ Windows PowerShell:
 cd $HOME\Desktop
 git clone https://github.com/tghcgu/nittei-app.git
 cd nittei-app
-git switch develop
+npm.cmd ci
+# the production branch lives in a second folder (a worktree)
+git worktree add ..\nittei-app-ui-release release/ui-20260910
+cd ..\nittei-app-ui-release
 npm.cmd ci
 ```
 
@@ -1030,7 +1066,10 @@ macOS / Linux:
 ```bash
 git clone https://github.com/tghcgu/nittei-app.git
 cd nittei-app
-git switch develop
+npm ci
+# the production branch lives in a second folder (a worktree)
+git worktree add ../nittei-app-ui-release release/ui-20260910
+cd ../nittei-app-ui-release
 npm ci
 ```
 
@@ -1121,6 +1160,8 @@ npx.cmd wrangler secret put CRON_SECRET
 
 #### Production deploy
 
+Production is deployed from the `release/ui-20260910` worktree. `main` needs the database migration in `supabase/secure-scheduling.sql` and is not deployed until it is applied (its `npm run deploy` stops at `check:database`).
+
 ```powershell
 npm.cmd run lint
 .\node_modules\.bin\tsc.cmd --noEmit --pretty false
@@ -1131,8 +1172,10 @@ npm.cmd run deploy
 
 The branch convention is:
 
-- `develop`: development and verification
-- `main`: released source baseline
+- `main`: source of truth. Not deployed until the database migration is applied.
+- `release/ui-20260910`: the code running in production, kept in a second worktree. Production is deployed from there.
+- `fix/…`, `ui/…`: work branches from `main`; `preview/…`: the same change on top of `release/ui-20260910`.
+- `develop`: legacy, unused.
 
 ### Operations
 
@@ -1147,6 +1190,13 @@ Rollback:
 ```powershell
 npx.cmd wrangler versions list
 npx.cmd wrangler rollback VERSION_ID
+```
+
+Read-only checks after a release (they never submit answers; `/e/ohbcvs2j` lives in the production database):
+
+```powershell
+node scripts/production-checks/features.mjs
+node scripts/production-checks/sweep.mjs
 ```
 
 Maintenance mode is controlled by `MAINTENANCE` in `custom-worker.mjs`. Set it to `true`, deploy, and later restore it to `false`. The scheduled cleanup continues while maintenance mode is active.
@@ -1179,7 +1229,7 @@ When changing the retention period, update all of the following together:
 
 1. Install Git, Node.js, and an editor.
 2. Verify access to GitHub, Supabase, Cloudflare, and Google accounts.
-3. Clone the repository and switch to `develop`.
+3. Clone the repository and add `release/ui-20260910` as a second worktree.
 4. Restore `.env.local` from secure storage.
 5. Run `npm ci`.
 6. Run lint, typecheck, and build.
@@ -1197,15 +1247,19 @@ cd $HOME\Desktop
 git clone https://github.com/tghcgu/nittei-app.git
 cd nittei-app
 git fetch --all --prune
-git switch develop
 npm.cmd ci
 notepad .env.local
 npm.cmd run lint
 .\node_modules\.bin\tsc.cmd --noEmit --pretty false
 npm.cmd run build
+git worktree add ..\nittei-app-ui-release release/ui-20260910
+cd ..\nittei-app-ui-release
+npm.cmd ci
+copy ..\nittei-app\.env.local .env.local
 npx.cmd wrangler login
 npx.cmd wrangler whoami
 npx.cmd wrangler secret list
+npx.cmd wrangler deployments status
 npm.cmd run preview
 ```
 
