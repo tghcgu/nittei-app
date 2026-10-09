@@ -4,6 +4,22 @@
 
 「マージ」は、指示対象の変更をマージし、GitHubへのpush・本番反映・公開サイトでの動作確認まで行う意味です。ソースのマージだけで止めないこと。別途保留中の変更は含めず、以下の本番DB互換性の制約を守って反映します。
 
+## 2026-10-09: Busy Or Free Time Rules, And A Calendar-Free 「範囲で一括回答」
+
+The owner asked for three things, agreed to a plan after asking for an honest opinion, and then asked for a review pass before merging.
+
+**Import settings.** 「時間で記号を決める」 (formerly 「空いている時間で記号を決める」) has a switch, 「その時間が [空いていたら|埋まっていたら]」 (`icsRuleWhen`). Free rules list ◎ ○ △ and fall back to ✕ (「どれも空いていない日」); busy rules list ✕ then △ and fall back to ○ (「どれも埋まっていない日」). Each direction keeps its own times and fallback (`icsRuleInputs`, `icsFallbackValues`). `firstMatchingValue` in `lib/calendar.ts` (formerly `firstFreeValue`; type `WindowRule`, formerly `FreeWindowRule`) takes the direction. For busy rules, the symbol a hand-set date keeps is the first rule's symbol. The example line is chosen from the event's own symbols (three free variants, two busy ones), so a ○✕ event never sees ◎ or △ in it. All help lines in the rules share one font size: the 11px line rendered at about 16px on the owner's phone, which could not be reproduced in Chromium.
+
+**「範囲で一括回答」 reads no calendar any more.** The old 「日付範囲 + 時間帯で一括回答」 and the 「カレンダーで一括回答」 block from October 7 became one block, 「時間で一括回答」 (`data-time-window`, shown only when some date has a time): 「[19:00]〜[23:00] に [かぶる日程|かぶらない日程] を [✕] にする」. It compares the window with each date's own time (`parseCandidateClockRange`, `clockRangesOverlap`, start-only times count as three hours), leaves dates without a time alone, and flips the usual symbol (✕ ↔ ○) when the switch changes. The calendar target, `hasCalendar` and `fillFromCalendar` are gone. Both 「適用」 buttons in the panel now print a result line (`bulkResultMessage`): how many dates were filled, how many answered ones 「入力済の行は変更しない」 kept, or that nothing matched — before, a press that changed nothing said nothing.
+
+Tests: `tests/time-range.spec.ts` (rewritten), `tests/calendar-rules.spec.ts` (busy direction, examples), `tests/calendar.spec.ts` (`firstMatchingValue` both ways); `tests/calendar-window.spec.ts` was removed with its block. The release note for 2026-10-09 has three lines.
+
+Source `fix/time-directions` → main `249c16e`; compatible `preview/time-directions` → release `82800c1`. TypeScript and `npx eslint .` pass on both. The full Playwright suite passes on release (103) and main (103).
+
+**Production is live:** `npm run deploy` from the release worktree made Worker `a09b625f-07ab-4e6d-a6d5-004cdadbd10e` 100% at 2026-10-09T06:50:16Z; `wrangler deployments status` confirmed it. The previous compatible Worker is `6a1fe389-4a9b-45ba-91c7-1163a8bf1752`. Production checks passed: both rule directions from a synthetic calendar, the range panel without any calendar text and with its result line, the update history, phone and PC layouts in the dark theme, all earlier checks, and a sweep with no errors.
+
+No SQL, storage, Cron or runtime changes. The secure migration is still pending; rebuild the cutover Worker from current main when it happens.
+
 ## 2026-10-07 (later): One-Sentence Calendar Block Back In 「範囲で一括回答」
 
 Right after the release above, the owner said they want to keep the time-based calendar block in 「範囲で一括回答」. It came back improved as 「カレンダーで一括回答」 (`data-calendar-window`), laid out to read as one sentence: 「[19:00]〜[23:00] に [予定がある日|予定がない日] を [✕] にする」. It acts only on the dates and weekdays chosen above in the panel (the difference from the import settings, which fill every date). Busy or free can be picked; switching flips the usual symbol (✕ for busy, ○ for free) unless the user chose another. With both times empty it checks the whole day; with only one time the button stays disabled. It reuses a calendar the import already loaded (`hasCalendar`, button 「カレンダーで適用」), or asks for a file first (「カレンダーを選んで適用」, `CalendarFillTarget` 'window'). Rows typed by hand stay while 「入力済の行は変更しない」 is on; rows the calendar filled are redone (`fillFromCalendar`). The October 7 release note now says 「空き時間で一括回答」 moved to the settings, and has a second line for this block. Test: `tests/calendar-window.spec.ts`.
