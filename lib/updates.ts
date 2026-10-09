@@ -3,6 +3,14 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-10-10',
+    title: '安全のための設定を追加',
+    changes: [
+      '他のサイトが、日程組のページを自分のページに埋め込めないようにしました。見えないように重ねて、だまして押させる手口を防ぎます。',
+      'サイトの土台にしている Next.js を、問題が直った新しい版に更新しました。',
+    ],
+  },
+  {
     date: '2026-10-09',
     title: '時間で入れる機能を使いやすく',
     changes: [

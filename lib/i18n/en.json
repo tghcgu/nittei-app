@@ -484,5 +484,8 @@
   "入力済みの{0}件は変えていません。変えるには「入力済の行は変更しない」を外してください。": "{0} answered dates were left as they are. To change them, turn off \"Keep existing answers\".",
   "{0}件に入れました（入力済みの{1}件は変えていません）。": "Filled {0} dates ({1} answered dates were left as they are).",
   "{0}件に入れました。": "Filled {0} dates.",
-  "「範囲で一括回答」で「適用」を押したとき、何件に入れたかを出すようにしました。": "Applying in \"Fill date range\" now says how many dates were filled."
+  "「範囲で一括回答」で「適用」を押したとき、何件に入れたかを出すようにしました。": "Applying in \"Fill date range\" now says how many dates were filled.",
+  "安全のための設定を追加": "Security protections",
+  "他のサイトが、日程組のページを自分のページに埋め込めないようにしました。見えないように重ねて、だまして押させる手口を防ぎます。": "Other sites can no longer embed Nitteigumi pages in their own. This blocks tricks that hide a page under another so you click it without knowing.",
+  "サイトの土台にしている Next.js を、問題が直った新しい版に更新しました。": "Updated Next.js, which the site is built on, to a newer version with known problems fixed."
 }
