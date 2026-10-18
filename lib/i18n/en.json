@@ -492,5 +492,7 @@
   "「設定」を閉じていても、変えた設定がボタンの下に出るようにしました。": "Changed settings are shown below the buttons even when the settings are closed.",
   "読み込んだカレンダーを外すボタンを付けました。間違えたファイルを読み込んでも、やり直せます。同じ名前のファイルを読み込み直したときは、前の分と入れ替えます。": "Loaded calendars can now be removed, so a wrong file can be undone. Loading a file with the same name again replaces the earlier one.",
   "日程の編集画面で、読み込みが終わるまで入力できないようにしました。読み込み中に打った文字が消えていたためです。": "The event edit page can no longer be typed into until it has loaded. Text typed while loading used to disappear.",
-  "スマホで押しにくかった小さいボタンやリンクを、押しやすくしました。": "Small buttons and links are easier to tap on phones."
+  "スマホで押しにくかった小さいボタンやリンクを、押しやすくしました。": "Small buttons and links are easier to tap on phones.",
+  "今の設定で入れ直しました。内容を確認してから送信してください。": "Filled again with the current settings. Please review your answers before submitting.",
+  "読み込んだカレンダーは、あとから「設定」を変えると、ファイルを選び直さなくてもその場で入れ直すようにしました。": "After a calendar is loaded, changing the settings fills the answers again right away, without choosing the file again."
 }

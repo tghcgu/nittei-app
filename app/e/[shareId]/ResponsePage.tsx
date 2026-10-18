@@ -620,6 +620,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const next = { ...icsSettings, ...patch }
     setIcsSettingsOverride(next)
     writeIcsSettings(shareId, next)
+    reapplyCalendars(next)
   }
   const loadResponses = useCallback(async () => {
     setIsLoadingResponses(true)
@@ -708,10 +709,23 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     return ANSWER_OPTIONS.filter((opt) => allowed.includes(opt.value))
   }, [event.answer_choices])
   // 「空いていたら」は ◎○△、「埋まっていたら」は ✕△ の順に、上から時間を決められる
-  const icsRuleOptions = icsRuleWhen === 'free'
-    ? answerOptions.filter((opt) => opt.value !== '✕' && opt.value !== '-')
-    : answerOptions.filter((opt) => opt.value === '✕' || opt.value === '△').reverse()
-  const icsFallbackValue = icsFallbackValues[icsRuleWhen]
+  function icsRulesFor(settings: IcsSettings) {
+    const options = settings.ruleWhen === 'free'
+      ? answerOptions.filter((opt) => opt.value !== '✕' && opt.value !== '-')
+      : answerOptions.filter((opt) => opt.value === '✕' || opt.value === '△').reverse()
+    const rules = options.flatMap((opt): WindowRule<AnswerValue>[] => {
+      const input = settings.ruleInputs[settings.ruleWhen][opt.value] ?? emptyIcsRule
+      const windows = input.allDay
+        ? ['allDay' as const]
+        : input.ranges.flatMap((range) => {
+          const window = toTimeWindow({ allDay: false, ...range })
+          return window ? [window] : []
+        })
+      return windows.length > 0 ? [{ value: opt.value, windows }] : []
+    })
+    return { options, rules, fallback: settings.fallbackValues[settings.ruleWhen] }
+  }
+  const { options: icsRuleOptions, rules: icsRules, fallback: icsFallbackValue } = icsRulesFor(icsSettings)
   // 例は、このイベントで使える記号だけで書く（◎ のある組み合わせには △ もある）
   function icsRuleExample() {
     const has = (value: AnswerValue) => answerOptions.some((opt) => opt.value === value)
@@ -724,16 +738,6 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     if (has('△')) return t("例：○ 1日OK、△ 夜だけOK なら、○ 10:00〜22:00、△ 18:00〜22:00。")
     return t("例：夜に参加できる日を ○ にするなら、○ 18:00〜22:00。")
   }
-  const icsRules = icsRuleOptions.flatMap((opt): WindowRule<AnswerValue>[] => {
-    const input = icsRuleInputs[icsRuleWhen][opt.value] ?? emptyIcsRule
-    const windows = input.allDay
-      ? ['allDay' as const]
-      : input.ranges.flatMap((range) => {
-        const window = toTimeWindow({ allDay: false, ...range })
-        return window ? [window] : []
-      })
-    return windows.length > 0 ? [{ value: opt.value, windows }] : []
-  })
   // 時刻のある候補がなければ、候補の時刻と比べる一括回答は使えない
   const hasTimedCandidates = candidates.some((c) => parseCandidateClockRange(c.time_label) !== null)
   const viewedAt = useMemo(() => (infoMounted ? new Date() : null), [infoMounted])
@@ -849,23 +853,24 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     }))
   }
 
-  // busyPeriods は、これまでに読み込んだカレンダーすべての予定
-  function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string) {
+  // busyPeriods は、これまでに読み込んだカレンダーすべての予定。settings は、変えたばかりでまだ画面に出ていない設定でもよい
+  function applyBusyPeriodsToAnswers(busyPeriods: BusyPeriod[], doneMessage: string, settings: IcsSettings = icsSettings) {
+    const { rules, fallback } = icsRulesFor(settings)
     const newAnswers: Record<string, AnswerValue | null> = {}
     for (const c of candidates) {
-      if (icsMode === 'rules') {
+      if (settings.mode === 'rules') {
         // 上の記号から順に、その時間が空いている（「埋まっていたら」なら、埋まっている）最初の記号にする
-        newAnswers[c.id] = firstMatchingValue<AnswerValue | null>(c.date, icsRules, icsFallbackValue, busyPeriods, icsRuleWhen)
+        newAnswers[c.id] = firstMatchingValue<AnswerValue | null>(c.date, rules, fallback, busyPeriods, settings.ruleWhen)
         continue
       }
       // 日程の時間（時間がなければ終日）に予定があるかで決める
       const isBusy = overlapsCalendar({ date: c.date, timeLabel: c.time_label }, busyPeriods)
-      newAnswers[c.id] = isBusy ? icsBusyValue : icsFreeValue
+      newAnswers[c.id] = isBusy ? settings.busyValue : settings.freeValue
     }
 
     // 手で「予定あり」にあたる記号にした日程は戻さない。時間で決めるときは、「空いていたら」なら「どれも空いていない日」の記号、
     // 「埋まっていたら」ならいちばん上の記号がそれにあたる。カレンダーで入れたままの日程は、今の設定で入れ直す
-    const busyValue = icsMode !== 'rules' ? icsBusyValue : icsRuleWhen === 'free' ? icsFallbackValue : icsRules[0]?.value ?? null
+    const busyValue = settings.mode !== 'rules' ? settings.busyValue : settings.ruleWhen === 'free' ? fallback : rules[0]?.value ?? null
     commitAnswerChange((current) => {
       const merged: Record<string, AnswerValue> = { ...current.answers }
       for (const [id, val] of Object.entries(newAnswers)) {
@@ -942,6 +947,14 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
       setIcsStatus('error')
       setIcsMessage(message)
     }
+  }
+
+  // 読み込んだカレンダーがあれば、設定を変えたその場で入れ直す（ファイルを選び直さなくてよい）。
+  // 時間で決めるのに時間がまだ1つもないときは、入れ直さずに待つ
+  function reapplyCalendars(settings: IcsSettings) {
+    if (calendarFilesRef.current.size === 0) return
+    if (settings.mode === 'rules' && icsRulesFor(settings).rules.length === 0) return
+    applyBusyPeriodsToAnswers([...calendarFilesRef.current.values()].flat(), t("今の設定で入れ直しました。内容を確認してから送信してください。"), settings)
   }
 
   // 間違えて読み込んだときのために、読み込んだカレンダーと、それで入れたままの回答を消す（手で直した行は残す）
