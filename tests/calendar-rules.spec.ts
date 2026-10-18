@@ -189,6 +189,13 @@ for (const locale of ['ja', 'en'] as const) {
     await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '✕', '○', '○'])
     await expect(combined).toBeVisible()
 
+    // changing a setting fills the answers again right away, without choosing the files again
+    await settings.click()
+    await rules.getByLabel(t('{0}の終了時刻', '○')).fill('19:30')
+    await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '○', '○', '○'])
+    await expect(page.getByText(t('今の設定で入れ直しました。内容を確認してから送信してください。'))).toBeVisible()
+    await page.getByRole('button', { name: `${t('設定')}▲`, exact: true }).click()
+
     // removing clears what the calendars filled, but keeps a date changed by hand
     await page.locator(`[data-answer-candidate-id="${ids[4]}"][data-answer-value="△"]`).click()
     await remove.click()
@@ -197,7 +204,7 @@ for (const locale of ['ja', 'en'] as const) {
     await expect(remove).toHaveCount(0)
     // and it can be undone like other changes
     await page.getByRole('button', { name: t('↶ 戻す'), exact: true }).click()
-    await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '✕', '○', '△'])
+    await expect.poll(() => selectedAnswers(page, ids)).toEqual(['○', '✕', '○', '○', '△'])
 
     // the settings come back after reopening the page
     await page.reload()
@@ -205,7 +212,7 @@ for (const locale of ['ja', 'en'] as const) {
     await settings.click()
     await expect(page.getByLabel(t('時間で記号を決める'))).toBeChecked()
     await expect(rules.getByLabel(t('{0}の開始時刻', '○'))).toHaveValue('18:00')
-    await expect(rules.getByLabel(t('{0}の終了時刻', '○'))).toHaveValue('22:00')
+    await expect(rules.getByLabel(t('{0}の終了時刻', '○'))).toHaveValue('19:30')
     await page.getByLabel(t('予定があるかないかで入れる')).check()
     await page.getByRole('button', { name: t('予定ありを{0}にする', '△'), exact: true }).click()
     await page.getByRole('button', { name: `${t('設定')}▲`, exact: true }).click()
