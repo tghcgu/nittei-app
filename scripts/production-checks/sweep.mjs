@@ -18,11 +18,20 @@ for (const scheme of ['light', 'dark']) {
   for (const path of paths) {
     const started = Date.now()
     const context = await browser.newContext({ colorScheme: scheme })
+    await context.route('**/*', route => {
+      const request = route.request()
+      if (new URL(request.url()).hostname.endsWith('.supabase.co') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
+        problems.push(`Blocked database write: ${request.method()}`)
+        return route.abort()
+      }
+      return route.continue()
+    })
     const page = await context.newPage()
     await bypassLocalFilter(page)
     const errors = []
     page.on('pageerror', e => errors.push(`pageerror: ${e.message}`))
-    page.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text().slice(0, 200)}`) })
+    // Cloudflare's analytics beacon may be blocked by an ad filter on the checking PC; that is not a site problem
+    page.on('console', m => { if (m.type() === 'error' && !m.location().url.includes('cloudflareinsights')) errors.push(`console: ${m.text().slice(0, 200)}`) })
     page.on('requestfailed', r => r.url().includes('cloudflareinsights') || errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`))
     page.on('crash', () => errors.push('RENDERER CRASH'))
     let status = 'ok'

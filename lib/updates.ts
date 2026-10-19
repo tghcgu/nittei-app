@@ -3,7 +3,7 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
-    date: '2026-10-18',
+    date: '2026-10-19',
     title: '安全性と使いやすさの改善',
     changes: [
       '説明文に書いたURLを、押すと開けるリンクにしました。',

@@ -4,6 +4,8 @@
 // Set PLAYWRIGHT_CHROMIUM_EXECUTABLE when Playwright's own browser is not installed.
 // When a release changes what is checked here, update the check in the same change.
 import { chromium } from 'playwright'
+import { expect } from '@playwright/test'
+import en from '../../lib/i18n/en.json' with { type: 'json' }
 
 const base = process.argv[2] ?? 'https://nittei-app.qoj.workers.dev'
 const shots = process.argv[3]
@@ -16,6 +18,25 @@ for (const url of ['/', '/en', '/e/ohbcvs2j', '/en/e/ohbcvs2j', '/history', '/up
   if (status !== 200) ok(`GET ${url}`, false, `HTTP ${status}`)
 }
 ok('public routes respond', !results.some(r => r.startsWith('FAIL')))
+for (const path of ['/', '/en', '/e/ohbcvs2j', '/en/e/ohbcvs2j', '/contact', '/no-such-page']) {
+  const headers = (await fetch(base + path)).headers
+  const required = [
+    ['content-security-policy', "frame-ancestors 'none'"], ['x-frame-options', 'DENY'],
+    ['x-content-type-options', 'nosniff'], ['referrer-policy', 'strict-origin-when-cross-origin'],
+    ['permissions-policy', 'camera=()'], ['strict-transport-security', 'max-age='],
+  ]
+  const missing = required.filter(([key, value]) => !(headers.get(key) ?? '').includes(value)).map(([key]) => key)
+  ok(`${path} security headers`, missing.length === 0 && !headers.has('x-powered-by'), missing.join(', '))
+}
+{
+  const response = await fetch(base + '/favicon.ico')
+  const icon = Buffer.from(await response.arrayBuffer())
+  const sizes = icon.length >= 6
+    ? Array.from({ length: icon.readUInt16LE(4) }, (_, index) => icon[6 + index * 16] || 256)
+    : []
+  ok('favicon holds only tab sizes', response.ok && sizes.join(',') === '16,32,48' && icon.length < 8192, `${sizes.join(',')} / ${icon.length} bytes`)
+  ok('static files disallow MIME sniffing', response.headers.get('x-content-type-options') === 'nosniff')
+}
 for (const [url, max] of [['/icon.png', 100000], ['/icons/icon-192.png', 20000], ['/apple-touch-icon.png', 20000]]) {
   const response = await fetch(base + url)
   const bytes = (await response.arrayBuffer()).byteLength
@@ -58,6 +79,7 @@ for (const [path, text, date] of [['/privacy', 'お問い合わせの受付に G
   ok(`${path} mentions the forms and the current date`, html.includes(text) && html.includes(date))
 }
 const updates = await (await fetch(base + '/updates')).text()
+ok('update history lists the October 19 improvements', updates.includes('安全性と使いやすさの改善') && updates.includes('説明文に書いたURLを、押すと開けるリンクにしました。') && updates.includes('読み込んだカレンダーを外すボタンを付けました。'))
 ok('update history lists 2026-09-30 without the copy note', updates.includes('カレンダーを使った一括回答と、見やすさの改善') && !updates.includes('チャットに貼れるテキスト'))
 ok('update history lists the contact form', updates.includes('お問い合わせフォームを追加'))
 ok('update history lists the image form', updates.includes('スクリーンショットなどの画像を添付して送れるフォームも用意しました'))
@@ -90,7 +112,27 @@ const selected = (page) => page.evaluate(() => {
 })
 
 const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {})
+try {
 const context = await browser.newContext({ viewport: { width: 390, height: 1000 } })
+const writes = []
+await context.route('**/*', route => {
+  const request = route.request()
+  if (new URL(request.url()).hostname.endsWith('.supabase.co') && !['GET', 'HEAD', 'OPTIONS'].includes(request.method())) {
+    writes.push(request.method())
+    return route.abort()
+  }
+  return route.continue()
+})
+const framingPage = await context.newPage()
+try {
+  await bypassLocalFilter(framingPage)
+  await framingPage.setContent('<iframe title="Embedding check"></iframe>')
+  await framingPage.locator('iframe').evaluate((frame, url) => { frame.src = url }, base + '/')
+  await expect.poll(() => framingPage.frames().some(frame => frame.url().startsWith('chrome-error:')), { timeout: 30000 }).toBe(true)
+  ok('the browser refuses to embed the site', true)
+} finally {
+  await framingPage.close()
+}
 const page = await context.newPage()
 await bypassLocalFilter(page)
 const errors = []
@@ -102,6 +144,19 @@ await page.locator('[data-answer-candidate-id]').first().waitFor({ timeout: 9000
 await page.waitForTimeout(1200)
 const before = await selected(page)
 ok('event page loads with candidates', before.length > 0, `${before.length} dates`)
+const description = page.locator('h1 + p')
+if (await description.count()) {
+  const linked = await description.getByRole('link').evaluateAll(links => links.every(link =>
+    /^https?:$/.test(link.protocol) && link.target === '_blank' && link.rel.includes('noopener') && link.rel.includes('noreferrer')
+  ))
+  ok('description links use safe external-link attributes', linked)
+}
+const tapAreas = await page.locator('.hit-area').evaluateAll(elements => elements.filter(element => element.getBoundingClientRect().width > 0).map(element => {
+  const area = getComputedStyle(element, '::after')
+  const box = element.getBoundingClientRect()
+  return Math.min(Math.max(box.width, parseFloat(area.width)), Math.max(box.height, parseFloat(area.height)))
+}))
+ok('small controls have expanded tap areas', tapAreas.length >= 5 && tapAreas.every(size => size >= 24), `${tapAreas.length} controls`)
 
 // the totals copy button stays removed, and the page information has its four lines
 ok('totals copy button is gone', await page.getByText('集計をテキストでコピー').count() === 0)
@@ -153,6 +208,10 @@ await rules.locator('[data-ics-rule="✕"]').getByLabel('終日').check()
 await page.locator('input[type=file]').setInputFiles(calendar)
 await page.waitForTimeout(1500)
 const afterBusyRules = await selected(page)
+await expect(page.getByRole('button', { name: '読み込んだカレンダーを外す', exact: true })).toBeVisible()
+await page.getByRole('button', { name: '設定▲', exact: true }).click()
+await expect(page.locator('[data-ics-summary]')).toHaveText('今の設定：時間で記号を決める（その時間が埋まっていたら）')
+ok('closed import settings show the active mode', true)
 ok('busy rules fill the busy date with ✕ and the others with ○', afterBusyRules.filter(v => v === '✕').length === afterRules.filter(v => v === '✕').length && afterBusyRules.filter(v => v === '○').length === afterBusyRules.length - afterBusyRules.filter(v => v === '✕').length, `✕: ${afterBusyRules.filter(v => v === '✕').length}, ○: ${afterBusyRules.filter(v => v === '○').length} of ${afterBusyRules.length}`)
 
 // "適用" in the range panel says what it did: every date is answered and kept, so nothing changes
@@ -161,6 +220,37 @@ const rangeMessage = await page.getByRole('status').filter({ hasText: '入力済
 ok('the range "適用" says it kept the answered dates', /^入力済みの\d+件は変えていません。/.test(rangeMessage), rangeMessage)
 ok('event page has no horizontal overflow with the panel open', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
 if (shots) await page.locator('form').first().screenshot({ path: `${shots}/verify-form.png` })
+await page.getByRole('button', { name: '読み込んだカレンダーを外す', exact: true }).click()
+await expect.poll(() => selected(page)).toEqual(before)
+ok('removing imported calendars clears their answers', true)
+await page.reload({ waitUntil: 'load' })
+await expect(page.locator('[data-ics-summary]')).toHaveText('今の設定：時間で記号を決める（その時間が埋まっていたら）', { timeout: 30000 })
+ok('import settings survive reload', true)
+await page.getByRole('link', { name: 'English', exact: true }).click()
+await expect(page.locator('html')).toHaveAttribute('lang', 'en', { timeout: 30000 })
+await expect(page.locator('[data-ics-summary]')).toHaveText(en['今の設定：時間で記号を決める（その時間が埋まっていたら）'], { timeout: 30000 })
+await expect(page.locator('#responses-section table')).toBeVisible({ timeout: 30000 })
+await page.getByRole('link', { name: '日本語', exact: true }).click()
+await expect(page.locator('html')).toHaveAttribute('lang', 'ja', { timeout: 30000 })
+await expect(page.locator('#responses-section table')).toBeVisible({ timeout: 30000 })
+ok('language switching keeps import settings and loads responses', true)
+
+let releaseEvent
+const heldEvent = new Promise(resolve => { releaseEvent = resolve })
+const eventQuery = url => url.pathname.endsWith('/rest/v1/events') && url.searchParams.get('share_id') === 'eq.ohbcvs2j'
+await page.route(eventQuery, async route => { await heldEvent; await route.fallback() })
+try {
+  await page.goto(base + '/?edit=ohbcvs2j', { waitUntil: 'load' })
+  const nameField = page.getByPlaceholder('例：みんなでご飯')
+  await expect(nameField).toBeDisabled()
+  releaseEvent()
+  await expect(nameField).toBeEnabled({ timeout: 30000 })
+  await expect(nameField).not.toHaveValue('')
+  ok('event editing waits for the saved event before accepting input', true)
+} finally {
+  releaseEvent()
+  await page.unroute(eventQuery)
+}
 
 // create page: weekend dates on the calendar
 await page.goto(base + '/', { waitUntil: 'load' })
@@ -174,6 +264,14 @@ for (const theme of ['dark', 'light']) {
   ok(`${theme} weekend dates are readable`, values.every(v => v >= 4.5), `Sunday ${values[0]}:1, Saturday ${values[1]}:1`)
 }
 
+const draftName = 'Language switch check'
+await page.getByPlaceholder('例：みんなでご飯').fill(draftName)
+await page.getByRole('link', { name: 'English', exact: true }).click()
+await expect(page.getByPlaceholder(en['例：みんなでご飯'])).toHaveValue(draftName, { timeout: 30000 })
+await page.getByRole('link', { name: '日本語', exact: true }).click()
+await expect(page.getByPlaceholder('例：みんなでご飯')).toHaveValue(draftName, { timeout: 30000 })
+ok('language switching preserves an unsaved event name', true)
+
 // missing event page in the browser
 await page.goto(base + '/e/zzzzzzzz', { waitUntil: 'load' })
 await page.waitForTimeout(800)
@@ -181,8 +279,11 @@ ok('missing event shows the Japanese page with a way forward', await page.getByR
 if (shots) await page.screenshot({ path: `${shots}/verify-notfound.png`, clip: { x: 0, y: 0, width: 390, height: 330 } })
 
 ok('no page errors', errors.length === 0, errors.join(' | '))
-await browser.close()
+ok('no database writes attempted', writes.length === 0, writes.join(', '))
 console.log(results.join('\n'))
 const failed = results.some(r => r.startsWith('FAIL'))
 console.log(failed ? 'SOME CHECKS FAILED' : 'ALL CHECKS PASSED')
 process.exitCode = failed ? 1 : 0
+} finally {
+  await browser.close()
+}
