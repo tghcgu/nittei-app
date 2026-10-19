@@ -19,6 +19,24 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-10-18/19: Release Rolled Back Twice — The Workers Free Plan CPU Limit
+
+**Production still runs the October 9 Worker `a09b625f-07ab-4e6d-a6d5-004cdadbd10e`. GitHub `release/ui-20260910` (`8cb11fa`) and `main` (`625392a`) hold the new work below, which is NOT live. Do not run `npm run deploy` from the release worktree until the owner has moved the account to Workers Paid (or decided otherwise).**
+
+What happened. The new work was deployed twice: Worker `e07f53fd-1066-4933-baa5-533ee9a50041` (Next.js 16.3.8) on 2026-10-18 13:22Z, rolled back about 15 minutes later, and Worker `b501a30e-693e-47d6-95cc-8de62c01ce1d` (the same work on Next.js 16.3.4) on 2026-10-19 07:49Z, rolled back at 09:32Z. Both times, after the production check scripts had opened many pages in a row, about one request in three hung: 2-5ms of CPU, no answer, cancelled when the client gave up, and "waitUntil() tasks did not complete". `wrangler tail` on the second attempt showed the cause: first `exceededCpu` (503, "Worker exceeded CPU time limit") at exactly 10ms of CPU, then the hangs. The account is on Workers Free, whose limit is 10ms of CPU per request; an isolate may run over it now and then, but when it keeps doing so, requests are cut at 10ms (https://developers.cloudflare.com/workers/platform/limits). This Next.js site uses far more (October 9 Worker: median 23ms, p90 212ms; the new work: median 45ms, p90 365ms, measured at different colos), so it only works on that tolerance. A request cut off mid-way seems to leave the isolate stuck, and later requests there hang until it is recycled. Preview URLs and a 0% version reached with `Cloudflare-Workers-Version-Overrides` did not reproduce it with light traffic. The October 9 Worker is at the same risk under a burst of visitors.
+
+Fix: the owner moves the account to Workers Paid (5 USD a month; Cloudflare dashboard → Workers & Pages → Plans), where the default limit is 30 seconds. Then deploy the release branch, run both production check scripts, probe the top page a few dozen times, and watch `npx wrangler tail nittei-app --format json` for `exceededCpu` or long `canceled` requests, ready to roll back with `npx wrangler versions deploy a09b625f-07ab-4e6d-a6d5-004cdadbd10e@100% -y`. The already built candidate `b501a30e` can be deployed directly (`npx wrangler versions deploy b501a30e-693e-47d6-95cc-8de62c01ce1d@100% -y`) if the release branch has not changed. Note that the hang was not caused by Next.js 16.3.8 after all (16.3.4 hung too); `next` is pinned to exactly 16.3.4 now and can go back to 16.3.8 (its security fixes) once the site runs on Workers Paid.
+
+What the new work contains (tested: full Playwright suite 114 on both branches; TypeScript and lint pass):
+- Security headers from `next.config.ts` on every page (`frame-ancestors 'none'` and `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS) and no `X-Powered-By`; `public/_headers` adds `nosniff` to static files.
+- The event edit form is disabled until the saved event has loaded (`<fieldset disabled>`).
+- http(s) addresses in event descriptions are links (`app/LinkifiedText.tsx`).
+- The .ics import settings are stored per event (`nittei-ics-<shareId>`), a changed setting shows under the buttons while the panel is closed (`data-ics-summary`), loaded calendars can be removed (「読み込んだカレンダーを外す」; a file with the same name replaces the earlier one), and changing a setting re-applies it to the loaded calendars at once.
+- `.hit-area` gives small controls a 24×24px tap area without moving anything; result tables have `overflow-y-hidden`; the answers beside the form are a focusable `role="region"`.
+- favicon.ico holds 16/32/48 only (49KB → 4KB); three unused translations are removed and `tests/assets.spec.ts` guards against new ones.
+- The production check scripts check all of the above, abort any non-GET Supabase request (main's edit page sends a read-only RPC as POST: adjust that guard before main is released), and ignore console errors from Cloudflare's analytics beacon, which an ad filter on the checking PC may block.
+- The release note for these changes is dated 2026-10-19; move it to the real release date when it ships.
+
 ## 2026-10-09: Busy Or Free Time Rules, And A Calendar-Free 「範囲で一括回答」
 
 The owner asked for three things, agreed to a plan after asking for an honest opinion, and then asked for a review pass before merging.
@@ -386,6 +404,8 @@ npx.cmd playwright install chromium   # テストと本番確認に使うブラ�
 
 ## 宿題（まだ終わっていないこと）
 
+- オーナーの判断待ち（2026-10-19）: Cloudflare を Workers Paid（月5ドル）にするか。無料プランの CPU 上限（1回10ms）で、新しい版は2回とも本番で止まった（上の 2026-10-18/19 の記録）。今の 10/9 の版も同じ危険がある。有料にしたら、release を出し直して見張る。
+- オーナーの判断待ち（2026-10-18 に聞いた）: (1) カレンダーの URL（Google の「iCal 形式の非公開アドレス」）を一度貼れば、ボタン1つで読み込めるようにするか。Google はブラウザーから直接読ませない（CORS なし、確認済み）ので日程組のサーバー経由になり、「送信も保存もしません」の約束とプライバシーポリシーが変わる。 (2) 作成画面のカレンダーで今日より前の日付も選べるのを、選べなくするか・薄くするか・そのままか。 (3) `app/e/[shareId]/ResponsePage.tsx`（2,600行超）を分けるか（急ぎではない）。
 - DB 移行（`supabase/secure-scheduling.sql`）は未適用。オーナーが SQL を実行する。手順は `SECURE-ROLLOUT.md`。移行と同時に、最新の main から Worker を作り直して出す（9/30 に用意した `ceb357aa` は古いので使わない）。移行が済めば release ブランチの役目は終わる。
 - 画像を添付できるお問い合わせフォーム（日程組のフォームのコピー）について、オーナーに次をお願いした。済んだかは未確認: タイトルの「のコピー」を消す、質問名を「画像 / Images」にする、画像だけ・10MB までにする、「新しい回答についてのメール通知を受け取る」をオンにする（コピーには元のフォームの Apps Script の通知が付いていない）。
 - 2026-07-16 に作って撤回した自前フォームの `inquiries` テーブルが、Supabase に使われないまま残っている。
