@@ -478,7 +478,6 @@
   "「範囲で一括回答」で「適用」を押したとき、何件に入れたかを出すようにしました。": "Applying in \"Fill date range\" now says how many dates were filled.",
   "安全性と使いやすさの改善": "Security and usability improvements",
   "他のサイトが、日程組のページを自分のページに埋め込めないようにしました。見えないように重ねて、だまして押させる手口を防ぎます。": "Other sites can no longer embed Nitteigumi pages in their own. This blocks tricks that hide a page under another so you click it without knowing.",
-  "サイトの土台にしている Next.js を、問題が直った新しい版に更新しました。": "Updated Next.js, which the site is built on, to a newer version with known problems fixed.",
   "カレンダーを外して、カレンダーで入れた回答を消しました。": "Removed the calendars and cleared the answers they filled.",
   "今の設定：時間で記号を決める（その時間が空いていたら）": "Current setting: by a time for each symbol (when the time is free)",
   "今の設定：時間で記号を決める（その時間が埋まっていたら）": "Current setting: by a time for each symbol (when the time is busy)",
