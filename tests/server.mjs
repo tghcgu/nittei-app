@@ -1,6 +1,7 @@
 import { createServer } from 'node:http'
 import { randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
+import { rmSync } from 'node:fs'
 
 // Isolated PostgREST fixture: no test request can reach the real Supabase project.
 const db = { events: [], candidates: [], responses: [], answers: [] }
@@ -67,6 +68,8 @@ const shutdown = () => { worker?.kill(); api.close() }
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
 try {
+  // start from an empty folder: files from older builds (or the former dev server) can break the type check
+  rmSync(exportDir, { recursive: true, force: true })
   await run(['node_modules/next/dist/bin/next', 'build', '--webpack'], {
     ...process.env,
     NITTEI_TEST_DIST_DIR: exportDir,
