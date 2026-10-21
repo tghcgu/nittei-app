@@ -5,8 +5,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   timeout: 60000,
-  // The test server is `next dev`, which compiles a route on its first visit. Under load that
-  // can exceed the 5s default, so waits for navigations and restored drafts get more room.
+  // Waits for navigations and restored drafts get more room than the 5s default when the machine is busy.
   expect: { timeout: 15000 },
   use: {
     baseURL: 'http://127.0.0.1:3100',
@@ -15,10 +14,12 @@ export default defineConfig({
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
       : {},
   },
+  // tests/server.mjs builds the site as files and serves it with the production Worker (wrangler dev),
+  // which takes a minute or two before the first test.
   webServer: {
     command: 'node tests/server.mjs',
     url: 'http://127.0.0.1:3100/en',
     reuseExistingServer: false,
-    timeout: 180000,
+    timeout: 300000,
   },
 })

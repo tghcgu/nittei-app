@@ -1,20 +1,23 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nittei-app",
+  // イベントのページ（/e/… と /en/e/…）と、毎日の自動削除だけを受け持つ小さな Worker。ほかはファイル
   "main": "./custom-worker.mjs",
   "compatibility_date": "2026-06-01",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // Worker が外へ通信できるのは公開されたアドレス（Supabase）だけにする
+  "compatibility_flags": ["global_fetch_strictly_public"],
   "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    // next build（output: 'export'）と scripts/finish-export.mjs が作るファイル
+    "directory": "./out",
+    "binding": "ASSETS",
+    // どのファイルにも当たらない URL には、いちばん近い 404.html（日本語、/en/ の下は英語）を 404 で返す
+    "not_found_handling": "404-page",
+    // イベントのページだけ、ファイルを探す前に Worker に回す
+    "run_worker_first": ["/e/*", "/en/e/*", "/googlecc8378481687d5f8.html"]
   },
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "nittei-app"
-    }
-  ],
-  // 毎日 19:00 UTC (日本時間 朝4:00) に自動削除を実行 (Vercel Cron から移行)
+  // Supabase の URL と公開用のキー（SUPABASE_URL, SUPABASE_KEY）は .env.local から scripts/cloudflare.mjs が渡す。
+  // 自動削除に使う SUPABASE_SERVICE_ROLE_KEY は npx wrangler secret put で設定済み
+  // 毎日 19:00 UTC (日本時間 朝4:00) に自動削除を実行
   "triggers": {
     "crons": ["0 19 * * *"]
   }

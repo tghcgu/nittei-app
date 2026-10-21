@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useSyncExternalStore } from 'react'
-import Link from 'next/link'
 import { useI18n } from '@/app/LocaleProvider'
 import { clearHistory, readHistory, removeHistory, type HistoryEntry } from '@/lib/history'
 
@@ -30,12 +29,13 @@ export function HistoryList() {
         {entries.map((entry) => (
           <li key={entry.shareId} className="flex items-center gap-3 py-1.5">
             <div className="min-w-0 flex-1">
-              <Link
+              {/* イベントのページは Worker がイベントを入れて返すので、普通のリンクで開き直す */}
+              <a
                 href={path(`/e/${entry.shareId}`)}
                 className="block truncate font-serif text-stone-800 underline-offset-2 transition-colors hover:text-rose-700 hover:underline"
               >
                 {entry.name || `/e/${entry.shareId}`}
-              </Link>
+              </a>
               <p className="text-[11px] text-stone-600">{t("最後に開いた日時：")}{formatDateTime(entry.at)}</p>
             </div>
             <button

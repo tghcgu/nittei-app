@@ -9,6 +9,11 @@ export const siteDescription =
 
 export const siteUrl = 'https://nittei-app.qoj.workers.dev'
 
+// 英語版の名前・タイトル・説明。このファイルは何も読み込まないので、custom-worker.mjs からも使える
+export const englishSiteName = 'Nitteigumi'
+export const englishTitle = 'Nitteigumi - Free Scheduling Polls'
+export const englishDescription = 'Find a date together. Create an event, share a link, and collect availability without accounts. Free scheduling polls with calendar imports.'
+
 // お問い合わせは Google フォーム（ログインなしで送れる）。運営者のメールアドレスは公開しない
 // 画像を添付できるフォームは Google のファイル添付を使うため、送る人に Google へのログインが必要
 export const contactImageFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSdRslbrQ_9mCwRVBOclGGyvHsnNUvPd22CRFkMSTXY_iTi9ng/viewform'

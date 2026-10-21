@@ -157,7 +157,8 @@ export default function RootLayout({
           {children}
           <ThemeToggle />
         </LocaleProvider>
-        {process.env.NODE_ENV === "production" && (
+        {/* テスト用のビルド（tests/server.mjs）には入れない。手元では Cloudflare に送れずエラーになるため */}
+        {process.env.NODE_ENV === "production" && !process.env.NITTEI_TEST_DIST_DIR && (
           // Cloudflare Web Analytics(Cookie不使用のアクセス解析)
           <script
             type="module"

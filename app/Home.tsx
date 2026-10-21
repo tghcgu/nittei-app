@@ -2,7 +2,6 @@
 
 import { useEffect, useEffectEvent, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useI18n } from './LocaleProvider'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ServiceShareLink } from './ServiceShareLink'
@@ -271,7 +270,6 @@ function SortableCandidate({
 // ---- メインコンポーネント ----
 export default function Home() {
   const { locale, t, path, weekdays: WEEKDAYS } = useI18n()
-  const router = useRouter()
   const [eventName, setEventName] = useState('')
   const [draftKey, setDraftKey] = useState<string | null>(null)
   const [description, setDescription] = useState('')
@@ -1011,7 +1009,8 @@ export default function Home() {
           if (deleteError) throw deleteError
         }
 
-        router.push(path(`/e/${editShareId}`))
+        // イベントのページは Worker がイベントを入れて返すので、画面の切り替えではなくページを開き直す
+        window.location.assign(path(`/e/${editShareId}`))
         return
       }
 
@@ -1052,7 +1051,7 @@ export default function Home() {
 
       if (candidatesError) throw candidatesError
 
-      router.push(path(`/e/${shareId}`))
+      window.location.assign(path(`/e/${shareId}`))
     } catch (err) {
       console.error(err)
       setError(t("保存中にエラーが発生しました。もう一度試してください。"))

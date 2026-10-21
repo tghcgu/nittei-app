@@ -2,6 +2,9 @@ import type { MetadataRoute } from 'next'
 import { siteUrl } from '@/lib/site'
 import { updates } from '@/lib/updates'
 
+// ビルドのときにファイルとして書き出す（output: 'export'）
+export const dynamic = 'force-static'
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const pages: MetadataRoute.Sitemap = [
     {

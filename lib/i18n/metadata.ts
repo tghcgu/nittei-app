@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
-import { siteUrl } from '@/lib/site'
+import { englishDescription, englishTitle, siteUrl } from '@/lib/site'
 import { getI18n, localizedPath, type Locale, type MessageKey } from './index'
 
-export const englishTitle = 'Nitteigumi - Free Scheduling Polls'
-export const englishDescription = 'Find a date together. Create an event, share a link, and collect availability without accounts. Free scheduling polls with calendar imports.'
+export { englishDescription, englishTitle }
 
 // Static files in public/, so icons never run the Worker.
 // favicon.ico is added by its file convention; these cover larger sizes and the iPhone home screen.
