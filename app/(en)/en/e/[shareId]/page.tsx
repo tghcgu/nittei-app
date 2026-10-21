@@ -1,9 +1,8 @@
-import EventPage, { generateEventMetadata } from '@/app/e/[shareId]/EventPage'
+import EventPage, { eventShellMetadata, eventStaticParams } from '@/app/e/[shareId]/EventPage'
 
-type Props = { params: Promise<{ shareId: string }> }
-export function generateMetadata(props: Props) {
-  return generateEventMetadata({ ...props, locale: 'en' })
-}
-export default function Page(props: Props) {
-  return <EventPage {...props} />
-}
+// 共通ファイル en/e/_ だけを作る。ほかの共有IDは custom-worker.mjs がこのファイルで返す
+export const dynamicParams = false
+export const generateStaticParams = eventStaticParams
+export const metadata = eventShellMetadata
+
+export default EventPage

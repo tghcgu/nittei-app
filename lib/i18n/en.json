@@ -499,5 +499,7 @@
   "日程の編集画面で、読み込みが終わるまで入力できないようにしました。読み込み中に打った文字が消えていたためです。": "The event edit page can no longer be typed into until it has loaded. Text typed while loading used to disappear.",
   "スマホで押しにくかった小さいボタンやリンクを、押しやすくしました。": "Small buttons and links are easier to tap on phones.",
   "今の設定で入れ直しました。内容を確認してから送信してください。": "Filled again with the current settings. Please review your answers before submitting.",
-  "読み込んだカレンダーは、あとから「設定」を変えると、ファイルを選び直さなくてもその場で入れ直すようにしました。": "After a calendar is loaded, changing the settings fills the answers again right away, without choosing the file again."
+  "読み込んだカレンダーは、あとから「設定」を変えると、ファイルを選び直さなくてもその場で入れ直すようにしました。": "After a calendar is loaded, changing the settings fills the answers again right away, without choosing the file again.",
+  "イベントを読み込めませんでした。再読み込みしてください。": "Could not load this event. Please reload the page.",
+  "サイトの作りを変えて、ページを前より速く開けるようにしました。": "Pages open faster: the site is now served as ready-made files."
 }

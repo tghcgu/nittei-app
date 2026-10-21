@@ -46,9 +46,9 @@ npx playwright install chromium
 npm test
 ```
 
-Tests start a separate Next.js server on port `3100` and a PostgREST-shaped endpoint backed by real in-memory PostgreSQL (PGlite) on `54329`. They override the database URL and key, never write to production, and discard test data when they exit. Build output goes to `.next-i18n-tests`; screenshots and failure traces go to `test-results`. Both are ignored by Git. Close other programs using these test ports before running. A custom Chromium binary can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
+Tests run the site the way production does: `tests/server.mjs` exports it as files against a PostgREST-shaped endpoint backed by real in-memory PostgreSQL (PGlite) on `54329`, then serves the files and the production Worker (`custom-worker.mjs`) with `wrangler dev` on port `3100`. They never write to production and discard test data when they exit. The export goes to `.next-i18n-tests`; screenshots and failure traces go to `test-results`. Both are ignored by Git. Close other programs using these test ports before running. A custom Chromium binary can be selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE`.
 
-本番データには書き込みません。イベント作成・回答・編集・言語切替・履歴・カレンダー読み込み・ドラッグ選択・戻す/進む・PC/スマホ表示を検証します。通常の開発確認は `npm run dev` の後、`http://localhost:3000/en` を開いてください。本番へ反映するには、従来どおり別途Cloudflareへのデプロイが必要です。
+本番データには書き込みません。イベント作成・回答・編集・言語切替・履歴・カレンダー読み込み・ドラッグ選択・戻す/進む・PC/スマホ表示を検証します。通常の開発確認は `npm run dev` の後、`http://localhost:3000/en` を開いてください（イベントのページ `/e/…` は開発サーバーでは開けません。下の「開発サーバーを起動」を参照）。本番へ反映するには、従来どおり別途Cloudflareへのデプロイが必要です。
 
 ---
 
@@ -176,16 +176,19 @@ Vercelの不要な自動ビルドと失敗通知を防ぐため、`vercel.json` 
 
 ```mermaid
 flowchart LR
-  U[利用者のブラウザ] -->|HTTPS| C[Cloudflare Workers]
-  C --> N[Next.js / OpenNext]
-  N -->|公開可能キー| S[(Supabase PostgreSQL)]
-  T[Cloudflare Cron Trigger] -->|毎日 04:00 JST| C
-  C -->|Service Role Key| S
-  V[旧 Vercel URL] -->|301 Redirect| C
+  U[利用者のブラウザ] -->|HTTPS| A[Cloudflare の静的ファイル（書き出したページ）]
+  U -->|/e/共有ID| W[Cloudflare Worker（custom-worker.mjs）]
+  W -->|公開可能キー| S[(Supabase PostgreSQL)]
+  U -->|公開可能キー| S
+  T[Cloudflare Cron Trigger] -->|毎日 04:00 JST| W
+  W -->|Service Role Key| S
+  V[旧 Vercel URL] -->|301 Redirect| A
   U -. ブラウザ内だけで解析 .-> F[.ics / .zip]
 ```
 
-通常のイベント作成・回答は、ブラウザとSupabaseの間でPublishable Keyを使って行います。古いイベントの削除だけは、Cloudflare Worker上のAPIがService Role Keyを使用します。
+ページはすべてビルドのときに書き出したファイルで、Cloudflare が Worker を動かさずに返します。Worker が動くのは、イベントのページ（Supabase からイベントを読み、共通のページ `e/_` にタイトル・共有リンク用のタグと中身を入れて返す）と、毎日の自動削除だけです。Cloudflare Workers の無料プランは1回の処理の CPU が 10ms までなので、サーバーで Next.js を動かす作り（OpenNext）は 2026-10-19 にやめました。
+
+通常のイベント作成・回答は、ブラウザとSupabaseの間でPublishable Keyを使って行います。古いイベントの削除だけは、WorkerがService Role Keyを使用します。
 
 ### 技術スタック
 
@@ -195,12 +198,11 @@ flowchart LR
 | --- | --- |
 | 言語 | TypeScript 5 |
 | UI | React 19.2.4 |
-| フレームワーク | Next.js 16.2.10（App Router） |
+| フレームワーク | Next.js 16.3.4（App Router。`output: 'export'` でファイルに書き出す） |
 | CSS | Tailwind CSS 4 |
 | データベース | Supabase（PostgreSQL） |
-| 配信 | Cloudflare Workers |
-| Next.jsアダプター | OpenNext for Cloudflare 1.20.1 |
-| Worker CLI | Wrangler 4.110.0 |
+| 配信 | Cloudflare Workers（無料プラン）: 静的ファイル＋小さな Worker |
+| Worker CLI | Wrangler 4 |
 | カレンダー解析 | ical.js 2.2.1 |
 | zip展開 | fflate 0.8.3 |
 | 並べ替え | dnd-kit |
@@ -273,7 +275,7 @@ events
 | `NEXT_PUBLIC_SUPABASE_URL` | 公開可 | SupabaseプロジェクトURL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 公開可 | ブラウザ用Publishable Key |
 | `SUPABASE_SERVICE_ROLE_KEY` | 絶対に非公開 | 自動削除APIだけが使用 |
-| `CRON_SECRET` | 絶対に非公開 | 自動削除APIのBearer認証 |
+| `CRON_SECRET` | 絶対に非公開 | 使わなくなった（2026-10-19 から自動削除は Worker の中で直接行う） |
 
 - Service Role Keyを `NEXT_PUBLIC_` で始まる名前にしないでください。
 - Service Role Keyをコード、README、Issue、スクリーンショットへ貼らないでください。
@@ -371,6 +373,8 @@ npm run dev
 
 ブラウザで http://localhost:3000 を開きます。
 
+開発サーバーでは、イベントのページ（`/e/…`）は「見つかりません」になります。本番ではイベントのページを Cloudflare の Worker が作って返すためです。イベントのページは `npm test`（本番と同じ作りで動かす）か、確認用URL（`npm run preview -- 名前`）で確かめます。
+
 #### 4. 変更前後の確認
 
 Windows PowerShell:
@@ -458,13 +462,13 @@ where table_schema = 'public'
 
 ### Cloudflareへのデプロイ
 
-#### ローカルのCloudflare環境で確認
+#### 確認用URLに上げる
 
 ```powershell
-npm.cmd run preview
+npm.cmd run preview -- 名前
 ```
 
-OpenNext用にwebpackでビルドし、workerd上で http://localhost:8787 を起動します。`.open-next/` は生成物なのでGitへ入れません。
+ファイルに書き出し（`out/`）、本番を変えずに `https://名前-nittei-app.qoj.workers.dev` に上げます。確認用URLも本番DBにつながっているので、手で保存すると本物のデータになります。
 
 #### 初回または新しいPCでCloudflareへログイン
 
@@ -482,8 +486,9 @@ npx.cmd wrangler whoami
 ```powershell
 npx.cmd wrangler secret list
 npx.cmd wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-npx.cmd wrangler secret put CRON_SECRET
 ```
+
+`CRON_SECRET` は、自動削除を Worker の中で直接行うようになって使わなくなりました（2026-10-19）。
 
 入力したSecretは画面へ表示したり、コマンド履歴へ値ごと書いたりしないでください。
 
@@ -500,10 +505,13 @@ npm.cmd run deploy
 `npm run deploy` は次を順番に行います。
 
 ```text
-Next.js webpack build
-  -> OpenNext変換
-  -> WranglerでCloudflare Workerへアップロード
+Next.js webpack build（output: 'export' で out/ にファイルを書き出す）
+  -> scripts/finish-export.mjs（404ページを置き、先読み用ファイルの写しを作る）
+  -> Wrangler で、ファイルと Worker（custom-worker.mjs）を Cloudflare へアップロード
+     （Supabase の URL と公開用のキーは .env.local から Worker の変数として渡す）
 ```
+
+本番に出したあとは、`npx.cmd wrangler tail nittei-app --format json` で、`exceededCpu` や長く止まった `canceled` が出ていないか見張ります（無料プランの CPU 上限）。
 
 **このプロジェクトはGitHubへpushしただけでは本番更新されません。** `npm run deploy` を実行したPCからCloudflareへ直接デプロイします。意図せず本番を更新しないよう、実行前に現在のブランチと差分を確認してください。
 
@@ -581,12 +589,11 @@ node scripts/production-checks/sweep.mjs      # 全ページ × 4つの幅 × �
 #### 自動削除
 
 - 設定: `wrangler.jsonc` の `triggers.crons`
-- Worker入口: `custom-worker.mjs` の `scheduled`
-- API: `app/api/cleanup-old-events/route.ts`
+- 処理: `custom-worker.mjs` の `scheduled`（`deleteOldEvents`）
 - DBトリガー: `supabase/auto-delete-old-events.sql`
-- 認証: `Authorization: Bearer <CRON_SECRET>`
+- 鍵: Worker の Secret `SUPABASE_SERVICE_ROLE_KEY`
 
-保持日数を変更するときは、API内の `RETENTION_DAYS`、利用規約、プライバシーポリシー、READMEの4か所を同時に更新してください。
+保持日数を変更するときは、`custom-worker.mjs` の `RETENTION_DAYS`、利用規約、プライバシーポリシー、READMEの4か所を同時に更新してください。
 
 #### Search Console・SEO
 
@@ -610,7 +617,7 @@ node scripts/production-checks/sweep.mjs      # 全ページ × 4つの幅 × �
 | commitしていない変更 | 消える可能性が高い | 古いSSDの救出または別バックアップ |
 | `.env.local` | Gitには残らない | パスワードマネージャー等から復元 |
 | `node_modules` | 消えてよい | `npm ci` で再作成 |
-| `.next`, `.open-next` | 消えてよい | build/preview/deployで再作成 |
+| `.next`, `out`, `.next-i18n-tests` | 消えてよい | build/test/deployで再作成 |
 | Supabaseの本番データ | Supabase側に残る | 同じアカウント・プロジェクトへログイン |
 | Cloudflareの本番Worker | Cloudflare側に残る | 同じアカウントへログイン |
 | Cloudflare Secret | Cloudflare側に残る | 名前は確認可能、値は読み戻せない |
@@ -628,7 +635,7 @@ node scripts/production-checks/sweep.mjs      # 全ページ × 4つの幅 × �
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - Service Role Keyの再発行手順
-- Cloudflareの `CRON_SECRET` は値を保管するか、失ったら再生成する方針
+- Cloudflareの `SUPABASE_SERVICE_ROLE_KEY` は値を保管するか、失ったら Supabase で作り直す方針（`CRON_SECRET` は使わなくなった）
 - Google Search Consoleを管理しているGoogleアカウント
 - 各サービスの2段階認証用バックアップコード
 - お問い合わせフォーム（Google フォーム2つ）と、通知の Apps Script を持つ Google アカウント
@@ -735,7 +742,7 @@ PC故障とSupabase障害は別問題です。PCを替えるだけならDBは残
 - `CRON_SECRET`
 - `node_modules/`
 - `.next/`
-- `.open-next/`
+- `out/`、`.next-i18n-tests/`
 - `.wrangler/`
 - `.vercel/`
 - 利用者データを含むDB dump（暗号化されていない状態）
@@ -761,13 +768,13 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 - Supabaseの `events.share_id` に該当行があるか確認します。
 - CloudflareログでDB接続エラーが出ていないか確認します。
 - 存在しないイベントは意図的に404になります。
+- 開発サーバー（`npm run dev`）では、イベントのページはいつも404です。
 
-#### `npm run preview` が起動しない
+#### `npm run preview` が失敗する
 
 - `npm ci` が完了しているか確認します。
-- Node.jsが `20.9.0` 以上か確認します。
-- 8787番ポートを別プロセスが使用していないか確認します。
-- `.open-next` は手で作らず、previewスクリプトに生成させます。
+- `.env.local` に `NEXT_PUBLIC_SUPABASE_URL` と `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` があるか確認します。
+- 名前を付けたか確認します（`npm run preview -- 名前`）。
 
 #### Cloudflareへデプロイできない
 
@@ -780,7 +787,7 @@ npx.cmd wrangler whoami
 #### 自動削除が動かない
 
 - `wrangler.jsonc` にCron Triggerがあるか確認します。
-- `CRON_SECRET` と `SUPABASE_SERVICE_ROLE_KEY` のSecret名を確認します。
+- Secret `SUPABASE_SERVICE_ROLE_KEY` と、deploy のときに渡す Worker の変数 `SUPABASE_URL` を確認します。
 - `events.updated_at` とDBトリガーを確認します。
 - `wrangler tail nittei-app` で `cleanup-old-events` のログを確認します。
 
@@ -815,9 +822,9 @@ app/
   terms/TermsPage.tsx              利用規約
   history/HistoryPage.tsx          ページ表示履歴（noindex）
   history/HistoryList.tsx          履歴一覧の中身（クライアント側）
-  e/[shareId]/EventPage.tsx        イベント取得、動的メタデータ、404判定
+  e/[shareId]/EventPage.tsx        イベントの共通ページ（e/_）の定義
+  e/[shareId]/EventLoader.tsx      Worker がページに入れたイベントを読んで画面を作る
   e/[shareId]/ResponsePage.tsx     回答UI、集計、編集、.ics解析、一括操作
-  api/cleanup-old-events/route.ts  古いイベントの削除API
 lib/
   i18n/                            英語辞書、日時表記、言語別URL、英語メタデータ
   answer-choices.ts                回答の選択肢セットの定義
@@ -830,10 +837,12 @@ supabase/
   secure-scheduling.sql            RLS、編集キー、トランザクションRPC
   auto-delete-old-events.sql       updated_at列、更新トリガー
   answer-choices.sql               回答の選択肢セット用の列と制約
-custom-worker.mjs                  Cloudflare Worker入口、所有権確認、メンテ、Cron
-wrangler.jsonc                     Worker、Assets、Service Binding、Cron設定
-open-next.config.ts                OpenNext for Cloudflare設定
-next.config.ts                     Next.js standalone出力設定
+custom-worker.mjs                  Worker（イベントのページ、所有権確認、メンテ、自動削除のCron）
+wrangler.jsonc                     Worker、静的ファイル、Cron の設定（wrangler.test.jsonc はテスト用）
+scripts/cloudflare.mjs             ビルドして本番・確認用URLへ上げる（npm run deploy / preview）
+scripts/finish-export.mjs          書き出したファイルの仕上げ（404ページ、先読み用ファイル）
+public/_headers                    安全のためのヘッダーとキャッシュの設定
+next.config.ts                     Next.js の設定（output: 'export' でファイルに書き出す）
 vercel.json                        旧Vercel URLからの301転送
 package.json                       依存関係と開発・ビルド・デプロイスクリプト
 package-lock.json                  npm依存関係の固定
@@ -948,20 +957,20 @@ Do not remove the legacy Vercel project while old links and the Google Search Co
 
 ```text
 Browser
-  -> Cloudflare Workers
-       -> Next.js through OpenNext
-       -> Supabase PostgreSQL
+  -> Cloudflare static assets (every page, exported at build time)
+  -> Cloudflare Worker (custom-worker.mjs), only for /e/<id> and /en/e/<id>
+       -> Supabase PostgreSQL (reads the event and fills the shared page e/_)
+  -> Supabase PostgreSQL (answers and edits, with the Publishable Key)
 
 Cloudflare Cron Trigger
   -> Worker scheduled handler
-       -> authenticated cleanup API
-            -> Supabase with the Service Role Key
+       -> Supabase with the Service Role Key
 
 Legacy Vercel URL
   -> 301 redirect to Cloudflare
 ```
 
-Normal user operations use the Supabase Publishable Key. Only the cleanup API uses the Service Role Key.
+Normal user operations use the Supabase Publishable Key. Only the scheduled cleanup uses the Service Role Key. The Workers Free plan allows 10ms of CPU per request, so Next.js no longer runs on the server (OpenNext was removed on 2026-10-19).
 
 ### Technology stack
 
@@ -971,12 +980,11 @@ Treat `package.json` and `package-lock.json` as the authoritative version source
 | --- | --- |
 | Language | TypeScript 5 |
 | UI | React 19.2.4 |
-| Framework | Next.js 16.2.10, App Router |
+| Framework | Next.js 16.3.4, App Router, static export (`output: 'export'`) |
 | CSS | Tailwind CSS 4 |
 | Database | Supabase PostgreSQL |
-| Hosting | Cloudflare Workers |
-| Next.js adapter | OpenNext for Cloudflare 1.20.1 |
-| Worker CLI | Wrangler 4.110.0 |
+| Hosting | Cloudflare Workers (Free plan): static assets plus a small Worker |
+| Worker CLI | Wrangler 4 |
 | Calendar parser | ical.js 2.2.1 |
 | Zip extraction | fflate 0.8.3 |
 | Sorting | dnd-kit |
@@ -1032,7 +1040,7 @@ Language-switch drafts use `sessionStorage` keys `nittei-draft-*` and are remove
 | `NEXT_PUBLIC_SUPABASE_URL` | Public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public | Browser Publishable Key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret | Cleanup API only |
-| `CRON_SECRET` | Secret | Bearer authentication for cleanup |
+| `CRON_SECRET` | Secret | No longer used (the cleanup runs inside the Worker since 2026-10-19) |
 
 Never put the Service Role Key under a `NEXT_PUBLIC_` name. Never commit `.env.local`, Service Role Keys, or Cron secrets. If a secret leaks, rotate it at the provider; removing it from the latest commit is not enough.
 
@@ -1104,7 +1112,7 @@ npx tsc --noEmit --pretty false
 npm run build
 ```
 
-The Next.js development server is available at http://localhost:3000.
+The Next.js development server is available at http://localhost:3000. Event pages (`/e/…`) show "page not found" there, because in production the Worker builds them; check them with `npm test`, which serves the exported site with the production Worker, or on a preview URL (`npm run preview -- NAME`).
 
 If PowerShell blocks `npm.ps1`, use `npm.cmd` and `npx.cmd` instead of changing the machine execution policy.
 
@@ -1133,13 +1141,13 @@ For a new Supabase project:
 
 ### Cloudflare deployment
 
-#### Local Worker preview
+#### Preview URL
 
 ```powershell
-npm.cmd run preview
+npm.cmd run preview -- NAME
 ```
 
-This builds Next.js with webpack, creates the OpenNext bundle, and starts workerd at http://localhost:8787.
+This exports the site and uploads it to https://NAME-nittei-app.qoj.workers.dev without changing production. Preview URLs use the production database.
 
 #### Authenticate a new computer
 
@@ -1155,8 +1163,9 @@ Existing Worker secrets remain in Cloudflare after a computer replacement, but t
 ```powershell
 npx.cmd wrangler secret list
 npx.cmd wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-npx.cmd wrangler secret put CRON_SECRET
 ```
+
+`CRON_SECRET` is no longer used since the cleanup runs inside the Worker (2026-10-19).
 
 #### Production deploy
 
@@ -1168,7 +1177,7 @@ npm.cmd run lint
 npm.cmd run deploy
 ```
 
-`npm run deploy` performs a webpack build, OpenNext conversion, and a direct Wrangler upload. **Pushing to GitHub does not deploy production.** Confirm the current branch and working tree before deploying.
+`npm run deploy` exports the site with a webpack build, finishes it with `scripts/finish-export.mjs`, and uploads the files and the Worker with Wrangler, passing the Supabase URL and public key from `.env.local` as Worker variables. After a release, watch `npx.cmd wrangler tail nittei-app --format json` for `exceededCpu` or long `canceled` requests (the Free plan CPU limit). **Pushing to GitHub does not deploy production.** Confirm the current branch and working tree before deploying.
 
 The branch convention is:
 
@@ -1203,7 +1212,7 @@ Maintenance mode is controlled by `MAINTENANCE` in `custom-worker.mjs`. Set it t
 
 When changing the retention period, update all of the following together:
 
-1. `RETENTION_DAYS` in `app/api/cleanup-old-events/route.ts`
+1. `RETENTION_DAYS` in `custom-worker.mjs`
 2. `app/privacy/page.tsx`
 3. `app/terms/page.tsx`
 4. This README
@@ -1217,7 +1226,7 @@ When changing the retention period, update all of the following together:
 | Code pushed to GitHub | Yes | Clone the repository |
 | Uncommitted local work | Usually no | Recover the disk or another backup |
 | `.env.local` | Not in Git | Restore from a password manager |
-| `node_modules`, `.next`, `.open-next` | Not needed | Recreate with install/build |
+| `node_modules`, `.next`, `out` | Not needed | Recreate with install/build |
 | Supabase production data | Yes | Log in to the same Supabase project |
 | Deployed Cloudflare Worker | Yes | Log in to the same Cloudflare account |
 | Cloudflare secret values | Stored but unreadable | Keep them or rotate them |
@@ -1298,17 +1307,17 @@ Never commit:
 
 - `.env.local` or `.dev.vars*`
 - Service Role Keys or `CRON_SECRET`
-- `node_modules/`, `.next/`, `.open-next/`, `.wrangler/`, or `.vercel/`
+- `node_modules/`, `.next/`, `out/`, `.next-i18n-tests/`, `.wrangler/`, or `.vercel/`
 - Unencrypted database dumps containing user data
 
 ### Troubleshooting
 
 - **`npm.ps1 cannot be loaded`:** use `npm.cmd` and `npx.cmd` on Windows.
 - **Missing Supabase environment variables:** fix `.env.local` and restart the dev server.
-- **Event page returns 404:** check the `shareId`, the `events` row, and Worker logs.
-- **Preview fails:** confirm Node `>=20.9.0`, run `npm ci`, and free port 8787.
+- **Event page returns 404:** check the `shareId`, the `events` row, and Worker logs. The dev server always shows 404 for event pages.
+- **Preview fails:** run `npm ci`, check both Supabase variables in `.env.local`, and pass a name: `npm run preview -- NAME`.
 - **Deployment fails:** run `npx.cmd wrangler whoami`; log in again if required.
-- **Cleanup does not run:** verify the Cron Trigger, both Worker secret names, `events.updated_at`, and DB triggers.
+- **Cleanup does not run:** verify the Cron Trigger, the `SUPABASE_SERVICE_ROLE_KEY` secret, `events.updated_at`, and DB triggers; `wrangler tail` shows the `cleanup-old-events` log lines.
 - **Calendar import fails:** confirm that the file contains valid `.ics`; password-protected or damaged zips are unsupported.
 - **Search Console has stale data:** verify live endpoints first, then allow time for recrawling.
 
@@ -1318,9 +1327,9 @@ Never commit:
 app/(ja)/                            Japanese route entries
 app/(en)/en/                         English route entries
 app/Home.tsx                         Shared event create/edit UI
-app/e/[shareId]/EventPage.tsx        Event loading, metadata, and 404 handling
+app/e/[shareId]/EventPage.tsx        The shared event page (e/_)
+app/e/[shareId]/EventLoader.tsx      Reads the event the Worker embedded and renders it
 app/e/[shareId]/ResponsePage.tsx     Response UI, results, calendar import, bulk actions
-app/api/cleanup-old-events/route.ts  Authenticated retention cleanup
 app/SiteLayout.tsx                   Global metadata, structured data, theme initialization
 app/LocaleProvider.tsx               Locale context
 app/LanguageSwitch.tsx               Language switch
@@ -1338,9 +1347,11 @@ lib/supabase.ts                      Supabase client
 supabase/secure-scheduling.sql       Scoped RLS, edit keys, transactional RPCs
 supabase/auto-delete-old-events.sql  Activity timestamps and triggers
 supabase/answer-choices.sql          Answer symbol set column and constraints
-custom-worker.mjs                    Worker entry, maintenance mode, verification, cron
-wrangler.jsonc                       Worker and scheduled-trigger configuration
-open-next.config.ts                  OpenNext Cloudflare adapter configuration
+custom-worker.mjs                    Worker: event pages, verification file, maintenance mode, cron cleanup
+wrangler.jsonc                       Worker, static assets and cron (wrangler.test.jsonc for tests)
+scripts/cloudflare.mjs               Build and upload (npm run deploy / preview)
+scripts/finish-export.mjs            Finishes the export (404 pages, prefetch files)
+public/_headers                      Security headers and caching for static files
 vercel.json                          Legacy URL redirects
 ```
 

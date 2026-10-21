@@ -103,16 +103,35 @@ const api = createServer(async (req, res) => {
   }
 })
 await new Promise((resolve, reject) => api.listen(54329, '127.0.0.1', resolve).once('error', reject))
-const next = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', '3100'], {
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    NITTEI_TEST_DIST_DIR: '.next-i18n-tests',
-    NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54329',
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'isolated-test-key',
-  },
+
+// The site is tested the way it runs in production: built as files (output: 'export') against the test
+// database, then served by the same Worker (custom-worker.mjs) on wrangler's local runtime.
+const testDatabase = 'http://127.0.0.1:54329'
+const testKey = 'isolated-test-key'
+const exportDir = '.next-i18n-tests'
+const run = (args, env) => new Promise((resolve, reject) => {
+  spawn(process.execPath, args, { stdio: 'inherit', env }).on('exit', code => code === 0 ? resolve() : reject(new Error(`${args[0]} exited with ${code}`)))
 })
-const shutdown = () => { next.kill(); api.close(); void db.close() }
+let worker = null
+const shutdown = () => { worker?.kill(); api.close(); void db.close() }
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)
-next.on('exit', code => { api.close(); void db.close(); process.exitCode = code ?? 0 })
+try {
+  await run(['node_modules/next/dist/bin/next', 'build', '--webpack'], {
+    ...process.env,
+    NITTEI_TEST_DIST_DIR: exportDir,
+    NEXT_PUBLIC_SUPABASE_URL: testDatabase,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: testKey,
+  })
+  await run(['scripts/finish-export.mjs', exportDir], process.env)
+} catch (error) {
+  console.error(error)
+  shutdown()
+  process.exit(1)
+}
+worker = spawn(process.execPath, [
+  'node_modules/wrangler/bin/wrangler.js', 'dev', '--config', 'wrangler.test.jsonc',
+  '--ip', '127.0.0.1', '--port', '3100', '--show-interactive-dev-session=false',
+  '--var', `SUPABASE_URL:${testDatabase}`, '--var', `SUPABASE_KEY:${testKey}`,
+], { stdio: 'inherit', env: process.env })
+worker.on('exit', code => { api.close(); void db.close(); process.exitCode = code ?? 0 })

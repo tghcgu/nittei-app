@@ -2,7 +2,6 @@
 
 import { useEffect, useEffectEvent, useState, useRef, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useI18n } from './LocaleProvider'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ServiceShareLink } from './ServiceShareLink'
@@ -272,7 +271,6 @@ function SortableCandidate({
 // ---- メインコンポーネント ----
 export default function Home() {
   const { locale, t, path, weekdays: WEEKDAYS } = useI18n()
-  const router = useRouter()
   const [draftKey, setDraftKey] = useState<string | null>(null)
   const [editAllowed, setEditAllowed] = useState(true)
   const [existingAnswers, setExistingAnswers] = useState<Pick<Answer, 'candidate_id' | 'value'>[]>([])
@@ -1017,7 +1015,8 @@ export default function Home() {
           p_candidates: rows,
         })
         if (!saveError) {
-          router.push(path(`/e/${shareId}`))
+          // イベントのページは Worker がイベントを入れて返すので、画面の切り替えではなくページを開き直す
+          window.location.assign(path(`/e/${shareId}`))
           return
         }
         if (!editEventId && saveError.code === '23505' && saveError.message.includes('share_id')) {

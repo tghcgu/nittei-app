@@ -1,0 +1,14 @@
+{
+  // テスト用（tests/server.mjs が wrangler dev で動かす）。本番の wrangler.jsonc と同じ作りで、
+  // 手元のテスト用データベース（127.0.0.1）に通信できるよう global_fetch_strictly_public だけを外している
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nittei-app-test",
+  "main": "./custom-worker.mjs",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "./.next-i18n-tests",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/e/*", "/en/e/*", "/googlecc8378481687d5f8.html"]
+  }
+}

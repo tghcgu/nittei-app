@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { siteDescription, siteName, siteUrl } from "@/lib/site";
 
+// ビルドのときにファイルとして書き出す（output: 'export'）
+export const dynamic = 'force-static'
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: siteName,

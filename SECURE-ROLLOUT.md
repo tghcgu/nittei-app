@@ -117,8 +117,8 @@ The compatibility branch's calendar/draft fixes and stable IDs for retrying a ne
 ### 切り替え
 
 1. SupabaseでDBバックアップを確保します。既存の4テーブル、回答選択肢列、更新日時トリガーがあることを確認します。新規環境ではREADMEのベーステーブル・追加SQLを先に実行します。
-2. `npm ci`、`npm run lint`、`npx tsc --noEmit`、`npm test`、`npm run build -- --webpack` を通します。
-3. `npx opennextjs-cloudflare build --skipNextBuild` と `npx wrangler versions upload --preview-alias reliability --keep-vars` で新しいWorkerバージョンを準備します。この時点では本番へ100%配信しません。バージョンIDを控えます。
+2. `npm ci`、`npm run lint`、`npx tsc --noEmit`、`npm test`、`npm run build` を通します。
+3. `npm run preview -- reliability`（`node scripts/cloudflare.mjs preview reliability`。ファイルに書き出し、Worker の変数を付けて `wrangler versions upload` する）で新しいWorkerバージョンを準備します。この時点では本番へ100%配信しません。バージョンIDを控えます。2026-10-19 から、ページはファイルで、Worker はイベントのページと自動削除だけです（無料プランの CPU 上限のため。HANDOFF.md 参照）。main の Worker（`custom-worker.mjs`）はイベントを読むときに `x-nittei-share-id` を付け、`edit_protected` も読みます。本番の確認スクリプトは Supabase への GET 以外を止めるので、main の編集画面が読み取り専用の RPC（POST）を送ることに合わせて直してから使います。
 4. 短い切り替え時間を確保し、Supabase SQL Editorで **`supabase/secure-scheduling.sql` 全体** を実行します。1トランザクションで適用され、既存イベント・回答の移行時削除は行いません。
 5. `npm run check:database` で読み取りの互換性を確認し、続けて `npx wrangler versions deploy <新しいバージョンID>@100 --yes` で対応アプリを配信します。SQL適用から新アプリ配信まで旧クライアントは保存・読み取りに失敗します。開きっぱなしの旧タブには再読み込みが必要です。
 6. 日本語と英語で、既存共有URLの表示、新規イベント作成、回答・編集、編集用URLによる別端末からの復旧を確認します。通常の共有URLにはキーを含めないでください。
@@ -142,8 +142,8 @@ The compatibility branch's calendar/draft fixes and stable IDs for retrying a ne
 This release requires **both the matching application and the Supabase migration**. A Git push changes neither the live database nor the production Worker. Local tests run the real SQL against isolated PGlite; they do not migrate production. At preparation time, the production RPC probe returned `PGRST202` (not installed).
 
 1. Back up the existing database. Ensure the four scheduling tables, answer-choice column, and update triggers exist. For a new database, follow the base schema setup in README first.
-2. Run install, lint, TypeScript, browser/database tests, and the webpack production build.
-3. Build OpenNext and upload a Worker version with `--preview-alias reliability --keep-vars`. Record its ID; do not promote it before migrating the DB.
+2. Run install, lint, TypeScript, browser/database tests, and `npm run build` (webpack, static export).
+3. Upload a Worker version with `npm run preview -- reliability` (it exports the site and runs `wrangler versions upload` with the Worker variables). Record its ID; do not promote it before migrating the DB. Since 2026-10-19 every page is a static file and the Worker only serves event pages and the cleanup (the Workers Free plan CPU limit; see HANDOFF.md). The production check scripts abort any non-GET Supabase request; adjust that guard for main's read-only permission RPC (a POST) before using them.
 4. During a short coordinated cutover, run **all of `supabase/secure-scheduling.sql`** in Supabase SQL Editor, verify read compatibility with `npm run check:database`, then immediately deploy the matching Worker version at 100%. The migration runs transactionally and does not delete existing data.
 5. Check old event URLs in both languages, new event/response creation and editing, private edit-link recovery, scoped reads, and rejection of direct writes. Previously opened tabs must reload.
 
