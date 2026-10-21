@@ -32,7 +32,8 @@ for (const scheme of ['light', 'dark']) {
     page.on('pageerror', e => errors.push(`pageerror: ${e.message}`))
     // Cloudflare's analytics beacon may be blocked by an ad filter on the checking PC; that is not a site problem
     page.on('console', m => { if (m.type() === 'error' && !m.location().url.includes('cloudflareinsights')) errors.push(`console: ${m.text().slice(0, 200)}`) })
-    page.on('requestfailed', r => r.url().includes('cloudflareinsights') || errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`))
+    // Next.js cancels its own route fetch when it prefetches a link from the static files (net::ERR_ABORTED); not a failure
+    page.on('requestfailed', r => r.url().includes('cloudflareinsights') || (r.resourceType() === 'fetch' && r.failure()?.errorText === 'net::ERR_ABORTED') || errors.push(`requestfailed: ${r.url()} ${r.failure()?.errorText}`))
     page.on('crash', () => errors.push('RENDERER CRASH'))
     let status = 'ok'
     try {
