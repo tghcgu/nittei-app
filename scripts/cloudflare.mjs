@@ -46,7 +46,6 @@ export default { fetch: (request, env, ctx) => worker.fetch(request, { ...env, .
 writeFileSync('out/_routes.json', JSON.stringify({ version: 1, include: ['/e/*', '/en/e/*', '/googlecc8378481687d5f8.html'], exclude: [] }))
 
 const wrangler = 'node_modules/wrangler/bin/wrangler.js'
-run([wrangler, 'pages', 'deploy', 'out', '--project-name', 'nitei', '--branch', mode === 'deploy' ? 'production' : alias,
-  '--commit-dirty=true', '--compatibility-date', '2026-06-01', '--compatibility-flags', 'global_fetch_strictly_public'])
+run([wrangler, 'pages', 'deploy', 'out', '--project-name', 'nitei', '--branch', mode === 'deploy' ? 'production' : alias, '--commit-dirty=true'])
 // The previous address: redirects every page to the same place on the new address, and runs the daily cleanup
 if (mode === 'deploy') run([wrangler, 'deploy', '--var', `SUPABASE_URL:${url}`])
