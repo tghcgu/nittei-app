@@ -1,21 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  // 前の住所 https://nittei-app.qoj.workers.dev の Worker。どのページも新しい住所 https://nitei.pages.dev の
+  // 同じ場所へ送り（custom-worker.mjs の redirectResponse）、毎日の自動削除を動かす（Pages では Cron が動かない）。
+  // サイト本体は Cloudflare Pages のプロジェクト nitei で、scripts/cloudflare.mjs が out/ と _worker.js を上げる
   "name": "nittei-app",
-  // イベントのページ（/e/… と /en/e/…）と、毎日の自動削除だけを受け持つ小さな Worker。ほかはファイル
   "main": "./custom-worker.mjs",
   "compatibility_date": "2026-06-01",
   // Worker が外へ通信できるのは公開されたアドレス（Supabase）だけにする
   "compatibility_flags": ["global_fetch_strictly_public"],
-  "assets": {
-    // next build（output: 'export'）と scripts/finish-export.mjs が作るファイル
-    "directory": "./out",
-    "binding": "ASSETS",
-    // どのファイルにも当たらない URL には、いちばん近い 404.html（日本語、/en/ の下は英語）を 404 で返す
-    "not_found_handling": "404-page",
-    // イベントのページだけ、ファイルを探す前に Worker に回す
-    "run_worker_first": ["/e/*", "/en/e/*", "/googlecc8378481687d5f8.html"]
+  "vars": {
+    "REDIRECT_TO": "https://nitei.pages.dev"
   },
-  // Supabase の URL と公開用のキー（SUPABASE_URL, SUPABASE_KEY）は .env.local から scripts/cloudflare.mjs が渡す。
+  // Supabase の URL（SUPABASE_URL）は .env.local から scripts/cloudflare.mjs が渡す。
   // 自動削除に使う SUPABASE_SERVICE_ROLE_KEY は npx wrangler secret put で設定済み
   // 毎日 19:00 UTC (日本時間 朝4:00) に自動削除を実行
   "triggers": {

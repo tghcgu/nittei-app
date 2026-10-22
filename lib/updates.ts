@@ -6,6 +6,7 @@ export const updates = [
     date: '2026-10-19',
     title: '安全性と使いやすさの改善',
     changes: [
+      'サイトの住所を nitei.pages.dev に変えました。前の住所のリンクも、そのまま新しい住所の同じページで開きます。',
       'サイトの作りを変えて、ページを前より速く開けるようにしました。',
       '説明文に書いたURLを、押すと開けるリンクにしました。',
       '「.ics / zip から自動入力」の「設定」を、イベントごとにこの端末に覚えておくようにしました。',
@@ -253,7 +254,7 @@ export const updates = [
     date: '2026-07-15',
     title: 'Cloudflareへ移行',
     changes: [
-      '公開先をCloudflare Workersへ移し、現在の nittei-app.qoj.workers.dev に変更しました。',
+      '公開先をCloudflare Workersへ移し、nittei-app.qoj.workers.dev に変更しました。',
       '旧Vercel URLからの転送と、再読み込み後のダークモード設定の保持に対応しました。',
     ],
   },

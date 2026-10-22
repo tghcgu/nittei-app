@@ -54,7 +54,7 @@ test('the daily cleanup fails loudly without the secret key or when Supabase ref
 })
 
 test('the Google site verification file is answered by the Worker', async () => {
-  const response = await worker.fetch(new Request('https://nittei-app.qoj.workers.dev/googlecc8378481687d5f8.html'), env)
+  const response = await worker.fetch(new Request('https://nitei.pages.dev/googlecc8378481687d5f8.html'), env)
   expect(response.status).toBe(200)
   expect(await response.text()).toBe('google-site-verification: googlecc8378481687d5f8.html')
   expect(response.headers.get('x-frame-options')).toBe('DENY')

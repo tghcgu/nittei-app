@@ -3,10 +3,10 @@
 // Set PLAYWRIGHT_CHROMIUM_EXECUTABLE when Playwright's own browser is not installed.
 import { chromium } from 'playwright'
 
-const base = process.argv[2] ?? 'https://nittei-app.qoj.workers.dev'
+const base = process.argv[2] ?? 'https://nitei.pages.dev'
 
 // page HTML is fetched outside the browser, so a local ad filter such as AdGuard cannot alter it
-const bypassLocalFilter = async (target) => target.route(url => !url.pathname.startsWith('/_next/') && url.hostname.endsWith('workers.dev'), async route => {
+const bypassLocalFilter = async (target) => target.route(url => !url.pathname.startsWith('/_next/') && (url.hostname.endsWith('pages.dev') || url.hostname.endsWith('workers.dev')), async route => {
   if (route.request().resourceType() !== 'document') return route.continue()
   return route.fulfill({ response: await route.fetch() })
 })

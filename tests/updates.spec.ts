@@ -30,7 +30,7 @@ for (const locale of ['ja', 'en'] as const) {
     await expect(page.getByRole('heading', { level: 1, name: t('更新履歴'), exact: true })).toBeVisible()
     await expect(page).toHaveTitle(new RegExp(t('更新履歴')))
     await expect(page.locator('html')).toHaveAttribute('lang', locale)
-    await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', 'https://nittei-app.qoj.workers.dev' + path('/updates'))
+    await expect(page.locator('link[rel=canonical]')).toHaveAttribute('href', 'https://nitei.pages.dev' + path('/updates'))
     await expect(page.locator('link[rel=alternate][hreflang=en]')).toHaveAttribute('href', /\/en\/updates$/)
     await expect(page.locator('article')).toHaveCount(updates.length)
     await expect(page.getByText(t('2026年9月6日以前はGitの変更記録から再構成しています。日付は日本時間の変更日で、実際の公開日とは異なる場合があります。'), { exact: true })).toBeVisible()
@@ -66,7 +66,7 @@ for (const locale of ['ja', 'en'] as const) {
     await expect(page.locator('[data-calendar-date]').first()).toBeVisible()
     const sitemap = await request.get('/sitemap.xml')
     expect(sitemap.ok()).toBe(true)
-    expect(await sitemap.text()).toContain('https://nittei-app.qoj.workers.dev' + path('/updates'))
+    expect(await sitemap.text()).toContain('https://nitei.pages.dev' + path('/updates'))
     expect(errors).toEqual([])
   })
 

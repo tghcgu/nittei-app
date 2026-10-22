@@ -5,12 +5,12 @@
   "redirects": [
     {
       "source": "/",
-      "destination": "https://nittei-app.qoj.workers.dev/",
+      "destination": "https://nitei.pages.dev/",
       "statusCode": 301
     },
     {
       "source": "/:path((?!robots\\.txt$|favicon\\.ico$|icon\\.png$).*)",
-      "destination": "https://nittei-app.qoj.workers.dev/:path*",
+      "destination": "https://nitei.pages.dev/:path*",
       "statusCode": 301
     }
   ]

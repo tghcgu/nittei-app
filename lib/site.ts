@@ -7,7 +7,9 @@ export const siteTitle = `日程組（略して ${siteShortName}）- 簡単日�
 export const siteDescription =
   `日程組、略して「${siteShortName}」は、ログイン不要で使える日程調整・出欠管理ツールです。URL共有、〇△✕−とコメント、候補日の一括入力、.ics読み込みに対応。`
 
-export const siteUrl = 'https://nittei-app.qoj.workers.dev'
+// 2026-10 に Cloudflare Pages の nitei.pages.dev へ移った。前の住所は、どのページも同じ場所へ転送する（custom-worker.mjs）
+export const siteUrl = 'https://nitei.pages.dev'
+export const previousSiteUrl = 'https://nittei-app.qoj.workers.dev'
 
 // 英語版の名前・タイトル・説明。このファイルは何も読み込まないので、custom-worker.mjs からも使える
 export const englishSiteName = 'Nitteigumi'

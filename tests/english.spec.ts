@@ -24,7 +24,7 @@ test('English create, answer, edit, history, language switch, and mobile layout'
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/en/manifest.webmanifest')
   const manifest = await page.request.get('/en/manifest.webmanifest')
   expect(manifest.ok()).toBe(true)
-  expect(await manifest.json()).toMatchObject({ name: 'Nitteigumi', lang: 'en', start_url: 'https://nittei-app.qoj.workers.dev/en' })
+  expect(await manifest.json()).toMatchObject({ name: 'Nitteigumi', lang: 'en', start_url: 'https://nitei.pages.dev/en' })
   await page.getByPlaceholder('e.g. Dinner with friends').fill('English test 日本語')
   await page.getByPlaceholder('Location, details, and what each answer symbol means').fill('○: Available; △: Maybe; ✕: Busy')
   await page.getByRole('button', { name: '◎ / ○ / △ / ✕', exact: true }).click()
