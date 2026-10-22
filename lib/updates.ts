@@ -3,7 +3,7 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
-    date: '2026-10-19',
+    date: '2026-10-22',
     title: '安全性と使いやすさの改善',
     changes: [
       'サイトの住所を nitei.pages.dev に変えました。前の住所のリンクも、そのまま新しい住所の同じページで開きます。',
