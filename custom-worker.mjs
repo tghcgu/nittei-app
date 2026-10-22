@@ -1,22 +1,26 @@
-// Cloudflare Workers のエントリーポイント。
+// 日程組の Worker。同じコードが2か所で動く（scripts/cloudflare.mjs が配置する）。
 //
-// どのページも、ビルドのときに書き出したファイル（out/）で、Cloudflare は Worker を動かさずに返す
-// （安全のためのヘッダーは public/_headers）。この Worker が動くのは次の2つだけ:
-// - Google の所有確認ファイル（下の GOOGLE_SITE_VERIFICATION_PATH）
-// - /e/<共有ID> と /en/e/<共有ID>（wrangler.jsonc の run_worker_first）: Supabase からイベントと候補日を読み、
-//   共通のページ e/_（en/e/_）に、イベントのタイトル・共有リンクのプレビュー用のタグと、イベントの中身（JSON）を
-//   入れて返す。中身は app/e/[shareId]/EventLoader.tsx が読む。見つからないイベントには 404 ページを返す。
-// - 毎日の Cron Trigger: 最後の更新から365日たったイベントを消す。
+// 1. サイト本体 https://nitei.pages.dev（Cloudflare Pages の _worker.js）。
+//    どのページも、ビルドのときに書き出したファイル（out/）で、Cloudflare は Worker を動かさずに返す
+//    （安全のためのヘッダーは public/_headers）。Worker が動くのは out/_routes.json に書いた次の2つだけ:
+//    - Google の所有確認ファイル（下の GOOGLE_SITE_VERIFICATION_PATH）
+//    - /e/<共有ID> と /en/e/<共有ID>: Supabase からイベントと候補日を読み、共通のページ e/_（en/e/_）に、
+//      イベントのタイトル・共有リンクのプレビュー用のタグと、イベントの中身（JSON）を入れて返す。
+//      中身は app/e/[shareId]/EventLoader.tsx が読む。見つからないイベントには 404 ページを返す。
+// 2. 前の住所 https://nittei-app.qoj.workers.dev（Worker nittei-app。wrangler.jsonc に REDIRECT_TO がある）。
+//    どのページも新しい住所の同じ場所へ送る（redirectResponse）。毎日の Cron Trigger で、
+//    最後の更新から365日たったイベントを消す（Pages では Cron が動かないため、ここに残している）。
 // Supabase の返事を待つ時間は CPU 時間に数えないので、1回の CPU は数ms で、
 // Workers Free の上限（1回10ms）に収まる。前の作り（サーバーで Next.js を動かす）は 20〜600ms かかり、打ち切られていた。
 
-// 環境ごとの値（wrangler の vars。scripts/cloudflare.mjs が .env.local から渡す）
+// 環境ごとの値（scripts/cloudflare.mjs が .env.local から渡す）
 // SUPABASE_URL, SUPABASE_KEY（公開用のキー。ブラウザーにも入っている）
 // SUPABASE_SERVICE_ROLE_KEY（秘密。npx wrangler secret put で設定済み。自動削除だけに使う）
+// REDIRECT_TO（前の住所の Worker だけ。転送先）
 
 import { englishDescription, englishSiteName, englishTitle, siteDescription, siteName, siteTitle, siteUrl } from './lib/site.ts'
 
-// メンテナンス中は true にして deploy する。全ページで出すには、wrangler.jsonc の run_worker_first を true にする
+// メンテナンス中は true にして deploy する。全ページで出すには、out/_routes.json の include を ["/*"] にする
 const MAINTENANCE = false
 
 // Google Search Console の所有確認ファイル。ファイルにすると Cloudflare が .html を外した URL へ転送してしまうため、ここで返す
@@ -37,6 +41,10 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), browsing-topics=()',
   'Strict-Transport-Security': 'max-age=31536000',
 }
+
+// 前の住所から持っていく保存データ（URL の # の後ろに入れる）の上限。長すぎる URL を開けない端末があるため、
+// 表示履歴は新しいものから、ここに収まる分だけ持っていく
+const MOVE_LIMIT = 30000
 
 const RETENTION_DAYS = 365
 const DELETE_BATCH_SIZE = 200
@@ -181,6 +189,62 @@ async function eventResponse(request, env) {
   return withHeaders(fillEventPage(shell, data, english), 200, { 'Cache-Control': 'no-store' })
 }
 
+// 前の住所で動くとき: どのページも新しい住所の同じ場所へ送る。検索エンジンやリンクのプレビューには 301。
+// ブラウザーで開いたときは、前の住所に保存されていたもの（ページ表示履歴・設定など nittei- で始まるもの）を
+// 新しい住所へ持っていく小さなページを返す。受け取る側は app/SiteLayout.tsx の moveFromPreviousSiteScript
+function redirectResponse(request, target) {
+  const url = new URL(request.url)
+  const to = target.replace(/\/$/, '') + url.pathname + url.search
+  const browser = request.method === 'GET' && request.headers.get('Sec-Fetch-Mode') === 'navigate'
+  if (!browser) return new Response(null, { status: 301, headers: { ...SECURITY_HEADERS, Location: to } })
+  return new Response(movePage(to), {
+    headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+  })
+}
+
+function movePage(to) {
+  return `<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>日程組</title>
+<script>
+(() => {
+  let hash = location.hash.replace(/(^#|&)nittei-move=[^&]*/, '').replace(/^&/, '#')
+  try {
+    if (!localStorage.getItem('nittei-moved')) {
+      const data = {}
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('nittei-') && key !== 'nittei-history') data[key] = localStorage.getItem(key)
+      }
+      let history = []
+      try { history = JSON.parse(localStorage.getItem('nittei-history') || '[]') } catch {}
+      if (Array.isArray(history)) {
+        const kept = []
+        for (const entry of history) {
+          const next = { ...data, 'nittei-history': JSON.stringify([...kept, entry]) }
+          if (encodeURIComponent(JSON.stringify(next)).length > ${MOVE_LIMIT}) break
+          kept.push(entry)
+        }
+        if (kept.length) data['nittei-history'] = JSON.stringify(kept)
+      }
+      const moved = encodeURIComponent(JSON.stringify(data))
+      if (Object.keys(data).length && moved.length <= ${MOVE_LIMIT}) {
+        hash = (hash && hash !== '#' ? hash + '&' : '#') + 'nittei-move=' + moved
+        localStorage.setItem('nittei-moved', new Date().toISOString())
+      }
+    }
+  } catch {}
+  location.replace(${scriptSafeJson(to)} + (hash === '#' ? '' : hash))
+})()
+</script>
+</head>
+<body><p><a href="${escapeHtml(to)}">日程組は ${escapeHtml(new URL(to).host)} に移りました / Nitteigumi has moved</a></p></body>
+</html>`
+}
+
 function cutoffIso(days) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 }
@@ -218,11 +282,13 @@ const worker = {
         headers: { ...SECURITY_HEADERS, 'content-type': 'text/html; charset=utf-8', 'retry-after': '3600', 'cache-control': 'no-store' },
       })
     }
+    // 前の住所の所有確認も Search Console に残しておくため、転送より先に返す
     if (new URL(request.url).pathname === GOOGLE_SITE_VERIFICATION_PATH) {
       return new Response(GOOGLE_SITE_VERIFICATION_CONTENT, {
         headers: { ...SECURITY_HEADERS, 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' },
       })
     }
+    if (env.REDIRECT_TO) return redirectResponse(request, env.REDIRECT_TO)
     return eventResponse(request, env)
   },
 

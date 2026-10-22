@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import {
+  previousSiteUrl,
   siteDescription,
   siteKeywords,
   siteName,
@@ -63,7 +64,7 @@ export const metadata: Metadata = {
   icons: appIcons,
 };
 
-// Google検索の「サイト名」表示にはWebSite型が使われる（ないと workers.dev の持ち主名が出る）
+// Google検索の「サイト名」表示にはWebSite型が使われる（ないと住所のドメイン名が出る）
 // alternateName（別名）は略称のみにする。タイトル全文は別名ではないため
 const webSiteJsonLd = {
   "@context": "https://schema.org",
@@ -88,6 +89,44 @@ const jsonLd = {
     priceCurrency: "JPY",
   },
 };
+
+// 前の住所（nittei-app.qoj.workers.dev）から移ってきたとき、前の住所に保存されていたもの（ページ表示履歴・設定など。
+// custom-worker.mjs が URL の # の後ろに nittei-move= として入れて渡す）を、この住所に取り込む。
+// ほかのサイトからのリンクで勝手に書き込まれないよう、前の住所から来たときだけ取り込む。
+// 表示履歴は両方を合わせ、それ以外はこの住所にまだ無いものだけ入れる。テーマを読む前に動かす
+const moveFromPreviousSiteScript = `
+(() => {
+  const match = location.hash.match(/(^#|&)nittei-move=([^&]*)/);
+  if (!match) return;
+  const rest = location.hash.replace(match[0], '').replace(/^&/, '#');
+  history.replaceState(history.state, '', location.pathname + location.search + (rest === '#' ? '' : rest));
+  if (!document.referrer.startsWith(${JSON.stringify(previousSiteUrl + '/')})) return;
+  try {
+    const data = JSON.parse(decodeURIComponent(match[2]));
+    const allowed = /^nittei-(theme|table-prefs|history|(ics|updated)-[A-Za-z0-9_-]+|(event|response)-key-[A-Za-z0-9_-]+)$/;
+    for (const key of Object.keys(data)) {
+      const value = data[key];
+      if (typeof value !== 'string' || !allowed.test(key)) continue;
+      if (key === 'nittei-history') {
+        const merged = new Map();
+        for (const list of [JSON.parse(localStorage.getItem(key) || '[]'), JSON.parse(value)]) {
+          if (!Array.isArray(list)) continue;
+          for (const entry of list) {
+            if (!entry || typeof entry.shareId !== 'string' || typeof entry.at !== 'string') continue;
+            const known = merged.get(entry.shareId);
+            if (!known || known.at < entry.at) merged.set(entry.shareId, entry);
+          }
+        }
+        localStorage.setItem(key, JSON.stringify([...merged.values()].sort((a, b) => (a.at < b.at ? 1 : -1))));
+      } else if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, value);
+      }
+    }
+  } catch {
+    // 取り込めなくても、ページはそのまま使える
+  }
+})();
+`;
 
 const themeInitScript = `
 (() => {
@@ -138,6 +177,7 @@ export default function RootLayout({
   return (
     <html lang={locale} data-theme="light" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: moveFromPreviousSiteScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script dangerouslySetInnerHTML={{ __html: staleChunkReloadScript }} />
       </head>

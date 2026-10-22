@@ -2,7 +2,7 @@
 
 ログイン不要かつ無料で使える、日程調整・出欠管理Webアプリです。主催者が候補日を作ってURLを共有し、参加者は各候補日に `○ / △ / ✕ / -` とコメントで回答できます。
 
-> Production: https://nittei-app.qoj.workers.dev/
+> Production: https://nitei.pages.dev/
 >
 > Source: https://github.com/tghcgu/nittei-app
 
@@ -16,7 +16,7 @@ Updates and the optional X share link sit together at the very bottom of home an
 
 ### 更新履歴 / Release History
 
-公開ページは [更新履歴](https://nittei-app.qoj.workers.dev/updates) と [Updates](https://nittei-app.qoj.workers.dev/en/updates) です。トップ・イベントページの最下部から開けます。
+公開ページは [更新履歴](https://nitei.pages.dev/updates) と [Updates](https://nitei.pages.dev/en/updates) です。トップ・イベントページの最下部から開けます。
 
 内容は `lib/updates.ts` で新しい日付から並べ、英訳は `lib/i18n/en.json` に追加します。新しい履歴には本番へ反映した日本時間の日付を使います。2026年9月6日以前は公開ブランチのGit履歴から再構成し、コメントに根拠コミットを記載しています。この部分は変更日であり、公開日とは異なる場合があることをページにも明記しています。最古の記録は2026年4月20日の基本機能実装です。公開していない変更やDB移行待ちの機能は載せないでください。表示は `app/updates/UpdatesPage.tsx`、検証は `tests/updates.spec.ts` にあります。
 
@@ -158,15 +158,16 @@ Tests run the site the way production does: `tests/server.mjs` exports it as fil
 
 | 用途 | URL | 備考 |
 | --- | --- | --- |
-| 本番 | https://nittei-app.qoj.workers.dev/ | 現在の正式URL |
+| 本番 | https://nitei.pages.dev/ | 現在の正式URL |
+| 前の本番 | https://nittei-app.qoj.workers.dev/ | どのページも新しい住所の同じ場所へ301転送（ブラウザーでは保存データも持っていく）。毎日の自動削除もここで動く |
 | 旧本番 | https://nittei-app-five.vercel.app/ | Vercelから新URLへ301転送するために残す |
-| サイトマップ | https://nittei-app.qoj.workers.dev/sitemap.xml | Google Search Consoleへ登録 |
-| robots.txt | https://nittei-app.qoj.workers.dev/robots.txt | クロール設定 |
-| Google所有権確認 | https://nittei-app.qoj.workers.dev/googlecc8378481687d5f8.html | Search Console用 |
-| プライバシー | https://nittei-app.qoj.workers.dev/privacy | 利用者向け |
-| 利用規約 | https://nittei-app.qoj.workers.dev/terms | 利用者向け |
-| お問い合わせ | https://nittei-app.qoj.workers.dev/contact | Google フォームを案内 |
-| ページ表示履歴 | https://nittei-app.qoj.workers.dev/history | 端末内の履歴一覧。`noindex` |
+| サイトマップ | https://nitei.pages.dev/sitemap.xml | Google Search Consoleへ登録 |
+| robots.txt | https://nitei.pages.dev/robots.txt | クロール設定 |
+| Google所有権確認 | https://nitei.pages.dev/googlecc8378481687d5f8.html | Search Console用 |
+| プライバシー | https://nitei.pages.dev/privacy | 利用者向け |
+| 利用規約 | https://nitei.pages.dev/terms | 利用者向け |
+| お問い合わせ | https://nitei.pages.dev/contact | Google フォームを案内 |
+| ページ表示履歴 | https://nitei.pages.dev/history | 端末内の履歴一覧。`noindex` |
 
 旧Vercelプロジェクトは、Google Search Consoleのアドレス変更と既存リンクの維持に使っています。移行が完全に落ち着くまでは削除しないでください。
 
@@ -176,13 +177,14 @@ Vercelの不要な自動ビルドと失敗通知を防ぐため、`vercel.json` 
 
 ```mermaid
 flowchart LR
-  U[利用者のブラウザ] -->|HTTPS| A[Cloudflare の静的ファイル（書き出したページ）]
-  U -->|/e/共有ID| W[Cloudflare Worker（custom-worker.mjs）]
+  U[利用者のブラウザ] -->|HTTPS| A[Cloudflare Pages nitei.pages.dev の静的ファイル（書き出したページ）]
+  U -->|/e/共有ID| W[Pages の Worker（custom-worker.mjs を _worker.js として）]
   W -->|公開可能キー| S[(Supabase PostgreSQL)]
   U -->|公開可能キー| S
-  T[Cloudflare Cron Trigger] -->|毎日 04:00 JST| W
-  W -->|Service Role Key| S
-  V[旧 Vercel URL] -->|301 Redirect| A
+  O[前の住所 nittei-app.qoj.workers.dev の Worker] -->|301 Redirect| A
+  T[Cloudflare Cron Trigger] -->|毎日 04:00 JST| O
+  O -->|Service Role Key| S
+  V[旧 Vercel URL] -->|301 Redirect| O
   U -. ブラウザ内だけで解析 .-> F[.ics / .zip]
 ```
 
@@ -468,7 +470,7 @@ where table_schema = 'public'
 npm.cmd run preview -- 名前
 ```
 
-ファイルに書き出し（`out/`）、本番を変えずに `https://名前-nittei-app.qoj.workers.dev` に上げます。確認用URLも本番DBにつながっているので、手で保存すると本物のデータになります。
+ファイルに書き出し（`out/`）、本番を変えずに `https://名前.nitei.pages.dev` に上げます。確認用URLも本番DBにつながっているので、手で保存すると本物のデータになります。
 
 #### 初回または新しいPCでCloudflareへログイン
 
@@ -507,8 +509,9 @@ npm.cmd run deploy
 ```text
 Next.js webpack build（output: 'export' で out/ にファイルを書き出す）
   -> scripts/finish-export.mjs（404ページを置き、先読み用ファイルの写しを作る）
-  -> Wrangler で、ファイルと Worker（custom-worker.mjs）を Cloudflare へアップロード
-     （Supabase の URL と公開用のキーは .env.local から Worker の変数として渡す）
+  -> out/_worker.js（custom-worker.mjs に .env.local の Supabase の URL と公開用のキーを入れたもの）と out/_routes.json を作る
+  -> Wrangler で out/ を Cloudflare Pages のプロジェクト nitei（https://nitei.pages.dev）へアップロード
+  -> Wrangler で前の住所の Worker nittei-app（転送と毎日の自動削除）をアップロード
 ```
 
 本番に出したあとは、`npx.cmd wrangler tail nittei-app --format json` で、`exceededCpu` や長く止まった `canceled` が出ていないか見張ります（無料プランの CPU 上限）。
@@ -854,7 +857,7 @@ HANDOFF.md                         AI・開発引き継ぎメモ
 
 現在、このリポジトリには `LICENSE` ファイルがありません。明示的な許諾なしに再配布・商用利用できるとはみなさないでください。
 
-不具合・要望: https://nittei-app.qoj.workers.dev/contact のフォーム
+不具合・要望: https://nitei.pages.dev/contact のフォーム
 
 ---
 
@@ -868,7 +871,7 @@ Nittei-gumi is a login-free web application for scheduling and attendance coordi
 
 The organizer chooses one of `○✕`, `○△✕`, or `◎○△✕` (default `○△✕`) and defines what each symbol means for the event. A `-` option is always available and can carry a per-candidate note such as “available after 18:00” or “depends on work.”
 
-Production: https://nittei-app.qoj.workers.dev/
+Production: https://nitei.pages.dev/
 
 ### Features
 
@@ -939,15 +942,16 @@ Calendar files are parsed entirely in the browser. The original `.ics` or `.zip`
 
 | Purpose | URL | Notes |
 | --- | --- | --- |
-| Production | https://nittei-app.qoj.workers.dev/ | Canonical URL |
+| Production | https://nitei.pages.dev/ | Canonical URL |
+| Previous production | https://nittei-app.qoj.workers.dev/ | Redirects every page to the same place on the new address (browsers also carry their saved data); runs the daily cleanup |
 | Legacy production | https://nittei-app-five.vercel.app/ | Kept for 301 redirects |
-| Sitemap | https://nittei-app.qoj.workers.dev/sitemap.xml | Submit to Search Console |
-| Robots | https://nittei-app.qoj.workers.dev/robots.txt | Crawl policy |
-| Google verification | https://nittei-app.qoj.workers.dev/googlecc8378481687d5f8.html | Search Console ownership |
-| Privacy | https://nittei-app.qoj.workers.dev/privacy | User-facing policy |
-| Terms | https://nittei-app.qoj.workers.dev/terms | User-facing terms |
-| Contact | https://nittei-app.qoj.workers.dev/contact | Contact information |
-| Page view history | https://nittei-app.qoj.workers.dev/history | Per-device list, `noindex` |
+| Sitemap | https://nitei.pages.dev/sitemap.xml | Submit to Search Console |
+| Robots | https://nitei.pages.dev/robots.txt | Crawl policy |
+| Google verification | https://nitei.pages.dev/googlecc8378481687d5f8.html | Search Console ownership |
+| Privacy | https://nitei.pages.dev/privacy | User-facing policy |
+| Terms | https://nitei.pages.dev/terms | User-facing terms |
+| Contact | https://nitei.pages.dev/contact | Contact information |
+| Page view history | https://nitei.pages.dev/history | Per-device list, `noindex` |
 
 Do not remove the legacy Vercel project while old links and the Google Search Console address migration still depend on its redirect.
 
@@ -957,13 +961,15 @@ Do not remove the legacy Vercel project while old links and the Google Search Co
 
 ```text
 Browser
-  -> Cloudflare static assets (every page, exported at build time)
-  -> Cloudflare Worker (custom-worker.mjs), only for /e/<id> and /en/e/<id>
+  -> Cloudflare Pages nitei.pages.dev: static files (every page, exported at build time)
+  -> the Pages Worker (custom-worker.mjs as _worker.js), only for /e/<id> and /en/e/<id>
        -> Supabase PostgreSQL (reads the event and fills the shared page e/_)
   -> Supabase PostgreSQL (answers and edits, with the Publishable Key)
 
+Previous address nittei-app.qoj.workers.dev (Worker nittei-app)
+  -> 301 to the same page on nitei.pages.dev
 Cloudflare Cron Trigger
-  -> Worker scheduled handler
+  -> that Worker's scheduled handler
        -> Supabase with the Service Role Key
 
 Legacy Vercel URL
@@ -1147,7 +1153,7 @@ For a new Supabase project:
 npm.cmd run preview -- NAME
 ```
 
-This exports the site and uploads it to https://NAME-nittei-app.qoj.workers.dev without changing production. Preview URLs use the production database.
+This exports the site and uploads it to https://NAME.nitei.pages.dev without changing production. Preview URLs use the production database.
 
 #### Authenticate a new computer
 
@@ -1177,7 +1183,7 @@ npm.cmd run lint
 npm.cmd run deploy
 ```
 
-`npm run deploy` exports the site with a webpack build, finishes it with `scripts/finish-export.mjs`, and uploads the files and the Worker with Wrangler, passing the Supabase URL and public key from `.env.local` as Worker variables. After a release, watch `npx.cmd wrangler tail nittei-app --format json` for `exceededCpu` or long `canceled` requests (the Free plan CPU limit). **Pushing to GitHub does not deploy production.** Confirm the current branch and working tree before deploying.
+`npm run deploy` exports the site with a webpack build, finishes it with `scripts/finish-export.mjs`, writes `out/_worker.js` (custom-worker.mjs with the Supabase URL and public key from `.env.local`) and `out/_routes.json`, uploads `out/` to the Cloudflare Pages project `nitei` (https://nitei.pages.dev), and then deploys the Worker at the previous address (redirects and the daily cleanup). After a release, watch `npx.cmd wrangler tail nittei-app --format json` for `exceededCpu` or long `canceled` requests (the Free plan CPU limit). **Pushing to GitHub does not deploy production.** Confirm the current branch and working tree before deploying.
 
 The branch convention is:
 
@@ -1359,4 +1365,4 @@ vercel.json                          Legacy URL redirects
 
 No `LICENSE` file is currently included. Do not assume redistribution or commercial-use permission without explicit authorization.
 
-Contact: the form at https://nittei-app.qoj.workers.dev/contact
+Contact: the form at https://nitei.pages.dev/contact

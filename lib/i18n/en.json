@@ -52,7 +52,7 @@
   "作成画面にカレンダーを表示し、日付を選んでからまとめて追加する形にしました。": "Placed the calendar directly on the creation page, with selection followed by bulk addition.",
   "「日程組」の略称「日組」を表示に追加し、お問い合わせをメール方式に変更しました。": "Added the short name 日組 to the branding and switched contact inquiries to email.",
   "Cloudflareへ移行": "Migration to Cloudflare",
-  "公開先をCloudflare Workersへ移し、現在の nittei-app.qoj.workers.dev に変更しました。": "Moved hosting to Cloudflare Workers at nittei-app.qoj.workers.dev.",
+  "公開先をCloudflare Workersへ移し、nittei-app.qoj.workers.dev に変更しました。": "Moved hosting to Cloudflare Workers at nittei-app.qoj.workers.dev.",
   "旧Vercel URLからの転送と、再読み込み後のダークモード設定の保持に対応しました。": "Added redirects from the old Vercel URL and preserved the theme after reloading.",
   "利用規約とプライバシーポリシー": "Terms and privacy policy",
   "利用規約・プライバシーポリシーのページを追加し、ページ下部から開けるようにしました。": "Added terms of service and privacy policy pages with footer links.",
@@ -501,5 +501,6 @@
   "今の設定で入れ直しました。内容を確認してから送信してください。": "Filled again with the current settings. Please review your answers before submitting.",
   "読み込んだカレンダーは、あとから「設定」を変えると、ファイルを選び直さなくてもその場で入れ直すようにしました。": "After a calendar is loaded, changing the settings fills the answers again right away, without choosing the file again.",
   "イベントを読み込めませんでした。再読み込みしてください。": "Could not load this event. Please reload the page.",
-  "サイトの作りを変えて、ページを前より速く開けるようにしました。": "Pages open faster: the site is now served as ready-made files."
+  "サイトの作りを変えて、ページを前より速く開けるようにしました。": "Pages open faster: the site is now served as ready-made files.",
+  "サイトの住所を nitei.pages.dev に変えました。前の住所のリンクも、そのまま新しい住所の同じページで開きます。": "The site moved to nitei.pages.dev. Links to the old address open the same page at the new one."
 }

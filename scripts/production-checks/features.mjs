@@ -7,7 +7,7 @@ import { chromium } from 'playwright'
 import { expect } from '@playwright/test'
 import en from '../../lib/i18n/en.json' with { type: 'json' }
 
-const base = process.argv[2] ?? 'https://nittei-app.qoj.workers.dev'
+const base = process.argv[2] ?? 'https://nitei.pages.dev'
 const shots = process.argv[3]
 const results = []
 const ok = (name, pass, detail = '') => results.push(`${pass ? 'OK  ' : 'FAIL'} ${name}${detail ? ' — ' + detail : ''}`)
@@ -18,6 +18,13 @@ for (const url of ['/', '/en', '/e/ohbcvs2j', '/en/e/ohbcvs2j', '/history', '/up
   if (status !== 200) ok(`GET ${url}`, false, `HTTP ${status}`)
 }
 ok('public routes respond', !results.some(r => r.startsWith('FAIL')))
+// the previous address sends every page to the same place on the new address (production only; previews have no old address)
+if (base === 'https://nitei.pages.dev') {
+  const moved = await fetch('https://nittei-app.qoj.workers.dev/e/ohbcvs2j?from=check', { redirect: 'manual' })
+  ok('the previous address redirects to the same page', moved.status === 301 && moved.headers.get('location') === `${base}/e/ohbcvs2j?from=check`, `${moved.status} ${moved.headers.get('location')}`)
+  const verification = await (await fetch('https://nittei-app.qoj.workers.dev/googlecc8378481687d5f8.html')).text()
+  ok('the previous address keeps the Search Console file', verification === 'google-site-verification: googlecc8378481687d5f8.html')
+}
 for (const path of ['/', '/en', '/e/ohbcvs2j', '/en/e/ohbcvs2j', '/contact', '/no-such-page']) {
   const headers = (await fetch(base + path)).headers
   const required = [
@@ -88,7 +95,7 @@ ok('update history lists the calendar settings with a made-up example', updates.
 ok('update history lists the October 9 changes', updates.includes('時間で入れる機能を使いやすく') && updates.includes('「その時間が空いていたら」と「埋まっていたら」を選べるようにしました。') && updates.includes('「19:00〜23:00 にかぶる日程を ✕ にする」') && updates.includes('何件に入れたかを出すようにしました。'))
 
 // ---- browser checks (page HTML is fetched outside the browser, so a local ad filter such as AdGuard cannot alter it) ----
-const bypassLocalFilter = async (page) => page.route(url => !url.pathname.startsWith('/_next/') && url.hostname.endsWith('workers.dev'), async route => {
+const bypassLocalFilter = async (page) => page.route(url => !url.pathname.startsWith('/_next/') && (url.hostname.endsWith('pages.dev') || url.hostname.endsWith('workers.dev')), async route => {
   if (route.request().resourceType() !== 'document') return route.continue()
   return route.fulfill({ response: await route.fetch() })
 })
