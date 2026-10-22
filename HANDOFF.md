@@ -19,9 +19,33 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-10-22: The Site Moved To nitei.pages.dev; Every Page Is A File
+
+The owner chose to stay on Workers Free and rework the site (「払いたくないなら、この作り替え」), asked for an urgent check and fix of the October 2026 vulnerabilities (「色んなのの脆弱性が出てるから至急チェック修正」), and chose the shorter address `nitei.pages.dev` with the old one redirecting (「nitei.pages.dev に使用」「元のurlからも飛ぶようにして」).
+
+**Where things run.**
+- The site is the Cloudflare **Pages** project `nitei` (production branch `production`): https://nitei.pages.dev. `next.config.ts` has `output: 'export'`; `npm run build` (`next build --webpack`, then `scripts/finish-export.mjs`) writes every page to `out/`, served as files (security headers from `public/_headers`). `scripts/cloudflare.mjs` adds `out/_worker.js` (it imports `custom-worker.mjs` and fills in the public Supabase URL and key from `.env.local`; never in Git) and `out/_routes.json`, so the Worker runs only for `/e/*`, `/en/e/*` and the Google verification file. For an event it reads the event and its dates from Supabase (waiting is not CPU time), adds the title and link-preview tags to the shared page `e/_` (`en/e/_`) and embeds the event as JSON; `app/e/[shareId]/EventLoader.tsx` renders from that JSON, or reads the event in the browser when the JSON is missing. Unknown events and URLs get `out/404.html` / `out/en/404.html` with status 404. Links into event pages must load the page (`<a>` or `window.location`). `next dev` cannot show event pages; use `npm test` or a preview.
+- The previous address https://nittei-app.qoj.workers.dev is the Worker `nittei-app` (`wrangler.jsonc`, `REDIRECT_TO`). It redirects every page to the same place on the new address: 301 for search engines and link previews; browsers get a small page that carries the old address's saved data (`nittei-*`: page view history, settings, theme, edit keys) once in the URL fragment, which `app/SiteLayout.tsx` imports only when the visitor came from the old address (history merged, nothing else overwritten). The verification file is still served there. Pages runs no Cron, so this Worker also runs the daily cleanup (`scheduled`, with the `SUPABASE_SERVICE_ROLE_KEY` secret).
+
+**Why.** Next.js on the server (OpenNext) used 20-600ms of CPU per request against the Workers Free limit of 10ms, and production hung twice (2026-10-18/19; see the next entry). Every server-side Next.js and React advisory of October 2026 (next/og RCE, image-optimization SSRF/RCE, cache poisoning, the React Server Functions CPU DoS CVE-2026-23870, the `use cache` RCE, the Server Actions DoS) needs a Next.js server, which production no longer has. The site used none of next/og, `use cache`, Server Actions or middleware.
+
+**Versions.** Next.js 16.4.2 and React 19.2.9 (pinned exactly), wrangler 4.151, OpenNext removed, `npm audit fix` for the rest. `npm audit` still lists `eslint-config-next` → `@next/eslint-plugin-next` → `fast-glob` → `micromatch` → `braces`: lint tooling only.
+
+**Deploying.** `npm run deploy` (release worktree) = build, `wrangler pages deploy out --project-name nitei --branch production`, then `wrangler deploy` of the old-address Worker with `SUPABASE_URL` (for the cleanup). `npm run preview -- NAME` uploads only a Pages preview, https://NAME.nitei.pages.dev. Never run `wrangler pages project create` in a folder with `wrangler.jsonc`: wrangler 4.151 hands it to Workers and published that folder as a new Worker (`nitei.qoj.workers.dev`, deleted again on 2026-10-22); the Pages project had to be created with `--force` from an empty folder. `CRON_SECRET` is unused.
+
+**Tests.** `tests/server.mjs` builds the export against the fixture database and runs the same Worker with `wrangler dev` (`wrangler.test.jsonc`). New: `tests/worker-cleanup.spec.mjs`, `tests/move-address.spec.mjs` (redirects, carrying saved data, refusing crafted links). On this Windows PC, `wrangler dev` sometimes drops a connection and Node once crashed with 0xC0000409; such a test passes when rerun alone. Full suites: release 120 of 121 (`tests/results-toolbar.spec.ts` en failed once in the full run and passed 8 times alone), main 121 of 121.
+
+Source `fix/static-site` → main `931e7ce`; compatible `preview/static-site` → release `443a437` (legacy columns without `edit_protected`, plain Supabase client in EventLoader).
+
+**Production is live:** Pages deployment `28fe1c1f-a87e-4c10-95f7-8badf7abf3b1` on https://nitei.pages.dev and the old-address Worker `864090d3-0477-4348-aedf-96e6a618d928`, at 2026-10-22 06:01 UTC (15:01 JST). Checked right after the deploy: `scripts/production-checks/features.mjs` 66/66 OK, `sweep.mjs` found no problems, a real browser opening the old address landed on the same page with page view history and the theme carried once (and plainly the second time), and `wrangler tail` showed the Pages Worker at 0-6ms CPU (median 2ms over 28 event-page requests) and the old-address Worker at 0ms, every outcome ok and no exceptions. Search Console: the Change of Address check failed twice with 「ページを取得できませんでした」 for the old homepage, /privacy and /en; during the second check the log tail showed no request from Google to the old address at all. A URL Inspection live test of the old homepage (06:13 UTC) got the 301 and fetched the new homepage (crawl allowed, fetch successful), so the redirect itself works. Next: request indexing of the old homepage there and retry the Change of Address later. Before this, production was Worker `a09b625f-07ab-4e6d-a6d5-004cdadbd10e` (October 9, OpenNext) at the old address; rolling back to it brings the server-side Next.js back, so prefer fixing forward. To undo only the redirect, roll the Worker back with `npx wrangler rollback`.
+
+**Owner tasks.** Search Console: the property https://nitei.pages.dev was added and verified on 2026-10-22 (the meta tag and `/googlecc8378481687d5f8.html`). Still to do: submit `sitemap.xml`, and Change of Address from the old property (it failed on 2026-10-22; see above). `vercel.json` now points at nitei.pages.dev, but Vercel Git deploys are off, so the old Vercel URL still redirects through the old Workers address (two hops) until someone runs a Vercel deploy.
+
+No SQL or Cron schedule changes.
+
 ## 2026-10-18/19: Release Rolled Back Twice — The Workers Free Plan CPU Limit
 
-**Production still runs the October 9 Worker `a09b625f-07ab-4e6d-a6d5-004cdadbd10e`. GitHub `release/ui-20260910` (`8cb11fa`) and `main` (`625392a`) hold the new work below, which is NOT live. Do not run `npm run deploy` from the release worktree until the owner has moved the account to Workers Paid (or decided otherwise).**
+**Superseded on 2026-10-22: instead of Workers Paid, the site was reworked so that every page is a file (entry above) and moved to nitei.pages.dev. This entry explains why.**
 
 What happened. The new work was deployed twice: Worker `e07f53fd-1066-4933-baa5-533ee9a50041` (Next.js 16.3.8) on 2026-10-18 13:22Z, rolled back about 15 minutes later, and Worker `b501a30e-693e-47d6-95cc-8de62c01ce1d` (the same work on Next.js 16.3.4) on 2026-10-19 07:49Z, rolled back at 09:32Z. Both times, after the production check scripts had opened many pages in a row, about one request in three hung: 2-5ms of CPU, no answer, cancelled when the client gave up, and "waitUntil() tasks did not complete". `wrangler tail` on the second attempt showed the cause: first `exceededCpu` (503, "Worker exceeded CPU time limit") at exactly 10ms of CPU, then the hangs. The account is on Workers Free, whose limit is 10ms of CPU per request; an isolate may run over it now and then, but when it keeps doing so, requests are cut at 10ms (https://developers.cloudflare.com/workers/platform/limits). This Next.js site uses far more (October 9 Worker: median 23ms, p90 212ms; the new work: median 45ms, p90 365ms, measured at different colos), so it only works on that tolerance. A request cut off mid-way seems to leave the isolate stuck, and later requests there hang until it is recycled. Preview URLs and a 0% version reached with `Cloudflare-Workers-Version-Overrides` did not reproduce it with light traffic. The October 9 Worker is at the same risk under a burst of visitors.
 
@@ -335,13 +359,13 @@ Read `SECURE-ROLLOUT.md` before deployment. The new client requires the database
 あなたは「日程組」という日程調整Webアプリ（ログイン不要。伝助のようなもの）の開発を引き継ぎます。
 作業の前に CLAUDE.md、AGENTS.md、HANDOFF.md（先頭が最新。「オーナーとの約束」は必ず）、SECURE-ROLLOUT.md を読んでください。
 
-- 本番URL: https://nittei-app.qoj.workers.dev/（旧URL nittei-app-five.vercel.app からは自動で転送）
+- 本番URL: https://nitei.pages.dev/（Cloudflare Pages のプロジェクト nitei。前の https://nittei-app.qoj.workers.dev/ と、その前の nittei-app-five.vercel.app からは自動で転送）
 - GitHub: https://github.com/tghcgu/nittei-app（公開リポジトリ）
-- 技術: Next.js 16 / React 19 / TypeScript / Tailwind 4 / Supabase / Cloudflare Workers（OpenNext。ビルドは webpack）
+- 技術: Next.js 16 / React 19 / TypeScript / Tailwind 4 / Supabase / Cloudflare 無料プラン（Pages: ページはビルド時に書き出したファイル、イベントのページだけ Worker。前の住所の Worker が転送と自動削除。ビルドは webpack）
 - 作業フォルダ: main の作業ツリー（例 Desktop\nittei-app）と、本番用 release/ui-20260910 の作業ツリー（例 Desktop\nittei-app-ui-release）
 - 本番で動いているのは release/ui-20260910。main は DB 移行（supabase/secure-scheduling.sql）前提の保存処理を含むので、移行が済むまで本番に出さない。
 - 作業は main から fix/… を作り、同じ変更を release から作った preview/… にも入れる。「マージ」と言われたら、両方を fast-forward して push し、release の作業ツリーで npm run deploy、公開サイトで確認して HANDOFF.md に記録する。
-- 確認: npm run lint / .\node_modules\.bin\tsc.cmd --noEmit / npm test（Playwright）/ npx next build --webpack
+- 確認: npm run lint / .\node_modules\.bin\tsc.cmd --noEmit / npm test（Playwright。本番と同じ作りを wrangler dev で動かす）/ npm run build
 - 本番の確認: node scripts/production-checks/features.mjs と node scripts/production-checks/sweep.mjs
 - オーナーは短い日本語で頼む。返事は結論から短く。
 
@@ -407,14 +431,15 @@ npx.cmd playwright install chromium   # テストと本番確認に使うブラ�
 
 ## 本番に出す・戻す
 
-- 出す: release の作業ツリーで `npm.cmd run deploy`。終わったら `npx.cmd wrangler deployments status` で新しい Version ID が 100% になっているか確かめ、`node scripts/production-checks/features.mjs` と `node scripts/production-checks/sweep.mjs` を流す。画面や文言を変えたリリースでは、同じ変更の中で確認スクリプトも直す。
-- 確認用URL: release 側の preview ブランチで `npx next build --webpack` → `npx opennextjs-cloudflare build --skipNextBuild` → `npx opennextjs-cloudflare upload -- --preview-alias 名前`。URL は `https://名前-nittei-app.qoj.workers.dev`。
-- 戻す: `npx.cmd wrangler versions list` か、このファイルの各リリースに書いた「previous compatible Worker」で前の Version ID を確かめ、`npx.cmd wrangler rollback <Version ID>`。戻したら公開サイトを確認し、このファイルに書く。
+- 出す: release の作業ツリーで `npm.cmd run deploy`（Pages の本番と、前の住所の Worker を上げる。`.env.local` の Supabase の値を使うので、wrangler を直接使わない）。終わったら `npx.cmd wrangler pages deployment list --project-name nitei` と `npx.cmd wrangler deployments status` で新しい版を確かめ、`node scripts/production-checks/features.mjs` と `node scripts/production-checks/sweep.mjs` を流す。画面や文言を変えたリリースでは、同じ変更の中で確認スクリプトも直す。
+- 確認用URL: release 側の preview ブランチで `npm.cmd run preview -- 名前`（Pages の確認用に上げる。本番は変わらない）。URL は `https://名前.nitei.pages.dev`。
+- 戻す: サイト（Pages）は Cloudflare の管理画面の Workers & Pages → nitei → Deployments で前の版の「Rollback」、または前の commit から `npm.cmd run deploy`。前の住所の Worker は `npx.cmd wrangler versions list` で前の Version ID を確かめて `npx.cmd wrangler rollback <Version ID>`。戻したら公開サイトを確認し、このファイルに書く。
 - main は DB 移行が済むまで deploy しない（`check:database` で止まる）。
 
 ## 宿題（まだ終わっていないこと）
 
-- オーナーの判断待ち（2026-10-19）: Cloudflare を Workers Paid（月5ドル）にするか。無料プランの CPU 上限（1回10ms）で、新しい版は2回とも本番で止まった（上の 2026-10-18/19 の記録）。今の 10/9 の版も同じ危険がある。有料にしたら、release を出し直して見張る。
+- Cloudflare は無料プランのまま（2026-10-22、オーナーが作り替えを選んだ）。CPU 上限は1回10ms なので、Worker に重い処理を足さない。サーバーで Next.js を動かす作りに戻さない。
+- オーナーの作業（2026-10-22）: Search Console の新しい住所 https://nitei.pages.dev は確認済み。残りは sitemap.xml を送ることと、前の住所からの「アドレス変更」（2026-10-22 は「ページを取得できませんでした」で失敗。URL 検査の公開テストでは 301 が見えているので、時間をおいてやり直す）。
 - オーナーの判断待ち（2026-10-18 に聞いた）: (1) カレンダーの URL（Google の「iCal 形式の非公開アドレス」）を一度貼れば、ボタン1つで読み込めるようにするか。Google はブラウザーから直接読ませない（CORS なし、確認済み）ので日程組のサーバー経由になり、「送信も保存もしません」の約束とプライバシーポリシーが変わる。 (2) 作成画面のカレンダーで今日より前の日付も選べるのを、選べなくするか・薄くするか・そのままか。 (3) `app/e/[shareId]/ResponsePage.tsx`（2,600行超）を分けるか（急ぎではない）。
 - DB 移行（`supabase/secure-scheduling.sql`）は未適用。オーナーが SQL を実行する。手順は `SECURE-ROLLOUT.md`。移行と同時に、最新の main から Worker を作り直して出す（9/30 に用意した `ceb357aa` は古いので使わない）。移行が済めば release ブランチの役目は終わる。
 - 画像を添付できるお問い合わせフォーム（日程組のフォームのコピー）について、オーナーに次をお願いした。済んだかは未確認: タイトルの「のコピー」を消す、質問名を「画像 / Images」にする、画像だけ・10MB までにする、「新しい回答についてのメール通知を受け取る」をオンにする（コピーには元のフォームの Apps Script の通知が付いていない）。
@@ -425,7 +450,7 @@ npx.cmd playwright install chromium   # テストと本番確認に使うブラ�
 ## 注意
 
 - `.env.local` の実際の値は、このファイルにもチャットにも貼らない。
-- `node_modules`、`.next`、`.open-next`、`.wrangler`、`.vercel` はコピー不要。
+- `node_modules`、`.next`、`out`、`.next-i18n-tests`、`.wrangler`、`.vercel` はコピー不要。
 - Supabase のデータと Cloudflare の本番サイトはクラウド側にあるので、PCを変えても残る。
 - 新しいPCでデプロイするには `npx wrangler login` で Cloudflare に再ログインする。
 - 外付けドライブにも控えるなら `git bundle create nittei-app-backup.bundle --all`（README の「GitHubにもアクセスできない場合」）。
