@@ -1072,10 +1072,10 @@ export default function Home() {
         {/* ヘッダー */}
         <header className="home-brand-header mb-1 text-center sm:pt-1">
           <div className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2">
-            <h1 className="home-brand-name col-start-2 inline-flex items-baseline justify-center gap-2 whitespace-nowrap font-sans text-[26px] font-bold leading-8">
+            <h1 className="home-brand-name col-start-2 inline-flex items-baseline justify-center gap-2 whitespace-nowrap font-serif text-[26px] leading-8">
               <span>{t("日程組")}</span>
               {locale === 'ja' && (
-                <span className="text-xs font-normal text-stone-600">略して <span className="font-medium">{siteShortName}</span></span>
+                <span className="font-sans text-xs font-normal text-stone-600">略して <span className="font-medium">{siteShortName}</span></span>
               )}
             </h1>
             <button

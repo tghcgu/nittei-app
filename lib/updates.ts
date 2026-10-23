@@ -3,6 +3,14 @@ import type { MessageKey } from './i18n'
 // Record shipped features only. Pre-September archives use Git change dates, noted on the page.
 export const updates = [
   {
+    date: '2026-10-23',
+    title: '表示の調整',
+    changes: [
+      'トップページの「日程組」とイベント名の文字を、前の明朝体に戻しました。',
+      '住所が変わったことのお知らせを、ページの上に出すようにしました。×で消せます。',
+    ],
+  },
+  {
     date: '2026-10-22',
     title: '安全性と使いやすさの改善',
     changes: [

@@ -143,7 +143,6 @@ body {
   padding-inline: 8px;
   background-color: #fafafa;
   color: #111;
-  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -209,6 +208,60 @@ html[data-theme="dark"] .response-results-table tr > :is(th, td).response-best-c
 
 html[data-theme="dark"] .response-best-count {
   color: #fca5a5;
+}
+
+/* 住所が変わったお知らせ（app/SiteLayout.tsx）。×で閉じた端末では、描く前に隠す */
+.move-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid #d6d3d1;
+  background: #fafaf9;
+  padding: 0.25rem 0.5rem 0.25rem 1rem;
+  color: #292524;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.move-notice p {
+  min-width: 0;
+}
+
+.move-notice-close {
+  flex: none;
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  color: #57534e;
+  font-size: 1.125rem;
+}
+
+.move-notice-close:hover {
+  background: #e7e5e4;
+  color: #1c1917;
+}
+
+html[data-move-notice="closed"] .move-notice {
+  display: none;
+}
+
+html[data-theme="dark"] .move-notice {
+  border-bottom-color: #333;
+  background: #111;
+  color: #e7e5e4;
+}
+
+html[data-theme="dark"] .move-notice-close {
+  color: #d6d3d1;
+}
+
+html[data-theme="dark"] .move-notice-close:hover {
+  background: #292524;
+  color: #fff;
 }
 
 .theme-toggle {

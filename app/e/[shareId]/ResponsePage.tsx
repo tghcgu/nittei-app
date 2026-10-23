@@ -1619,7 +1619,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
         {/* イベントヘッダー */}
         <div className="mb-1 min-w-0">
-          <h1 className="event-title py-0.5 text-lg leading-6">{event.name}</h1>
+          <h1 className="event-title py-0.5 font-serif text-lg leading-6">{event.name}</h1>
           {event.description && (
             <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-stone-700"><LinkifiedText text={event.description} /></p>
           )}
@@ -2428,7 +2428,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
 
           {/* On PC the card fits the table. The details may widen it up to a readable line length, so a narrow table (or no answers yet) does not squeeze them into a thin column. The table keeps its own width. */}
           <div className="response-event-details mb-1.5 min-w-0 max-w-2xl [overflow-wrap:anywhere]">
-            <h3 className="event-title text-base leading-5">{event.name}</h3>
+            <h3 className="event-title font-serif text-base leading-5">{event.name}</h3>
             {event.description?.trim() && (
               <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-stone-700"><LinkifiedText text={event.description} /></p>
             )}

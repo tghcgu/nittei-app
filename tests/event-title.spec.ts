@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { getI18n } from '../lib/i18n'
 
 for (const locale of ['ja', 'en'] as const) {
-  test(`${locale}: event titles are compact bold monochrome bands in both themes`, async ({ page, request }) => {
+  test(`${locale}: event titles are compact serif monochrome bands in both themes`, async ({ page, request }) => {
     const { path } = getI18n(locale)
     const api = 'http://127.0.0.1:54329/rest/v1'
     const name = locale === 'ja' ? 'みんなで集まる日' : 'Get together'
@@ -29,7 +29,8 @@ for (const locale of ['ja', 'en'] as const) {
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
         for (const title of [heading, repeated]) {
           await expect(title).toHaveCSS('color', theme === 'dark' ? 'rgb(255, 255, 255)' : 'rgb(17, 17, 17)')
-          await expect(title).toHaveCSS('font-weight', '700')
+          await expect(title).toHaveCSS('font-weight', '400')
+          await expect(title).toHaveCSS('font-family', /Mincho/)
           await expect(title).toHaveCSS('border-top-width', '1px')
           await expect(title).toHaveCSS('border-bottom-width', '1px')
           await expect(title).toHaveCSS('border-left-width', '3px')

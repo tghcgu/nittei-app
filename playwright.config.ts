@@ -9,6 +9,8 @@ export default defineConfig({
   expect: { timeout: 15000 },
   use: {
     baseURL: 'http://127.0.0.1:3100',
+    // Tests run as a visitor who has closed the notice about the new address; tests/move-notice.spec.ts starts without it
+    storageState: { cookies: [], origins: [{ origin: 'http://127.0.0.1:3100', localStorage: [{ name: 'nittei-move-notice', value: 'closed' }] }] },
     trace: 'retain-on-failure',
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
