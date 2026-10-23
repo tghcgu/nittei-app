@@ -19,6 +19,10 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-10-24: The Vercel Address Redirects Straight To nitei.pages.dev
+
+The owner asked for it (「やれ」). https://nittei-app-five.vercel.app now answers 301 to the same path on https://nitei.pages.dev (one hop instead of two through the Workers address); `robots.txt` (allow all, sitemap on nitei.pages.dev), `favicon.ico` and `icon.png` are still served there. Deployed to the Vercel project `tghcgus-projects/nittei-app` as production deployment `nittei-kzyhwoafo-tghcgus-projects.vercel.app` (Ready) with Vercel CLI 63.1.2, logged in on this PC as tghcgu through the device login. It was not built from the repo: a folder holding only the repo's `vercel.json` plus `"framework": null, "installCommand": "", "buildCommand": "", "outputDirectory": "public"` and a `public/` with those three files (the project preset is Next.js, so these overrides skip the build). Remove the `.env.local` that `vercel link` downloads before deploying. To undo, use Instant Rollback in the Vercel dashboard. Change of Address from the Vercel property still fails the same way as from the Workers address and is not needed.
+
 ## 2026-10-23 (2): The Move Notice Says The URL Has Changed
 
 The owner shortened the notice (「ドメインが変更になりました で良くないか」「urlのほうがいいか」): it now reads 「URLが変更になりました。ブックマークを登録し直すことをお勧めします。」 ("The URL has changed. We recommend updating your bookmarks."). Source `ui/domain-wording` → main `112c830`; `preview/domain-wording` → release `f71a89e`; the notice and English specs passed.
