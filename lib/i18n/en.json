@@ -486,7 +486,7 @@
   "表示の調整": "Display adjustments",
   "トップページの「日程組」とイベント名の文字を、前の明朝体に戻しました。": "The site name on the home page and event names use the earlier serif typeface again.",
   "住所が変わったことのお知らせを、ページの上に出すようにしました。×で消せます。": "A notice at the top of each page tells you about the new address. Close it with ×.",
-  "日程組の住所が nitei.pages.dev に変わりました。ブックマークを登録し直してください。": "Nitteigumi has moved to nitei.pages.dev. Please update your bookmarks.",
+  "日程組の住所が nitei.pages.dev に変わりました。ブックマークを登録し直すことをお勧めします。": "Nitteigumi has moved to nitei.pages.dev. We recommend updating your bookmarks.",
   "お知らせを閉じる": "Close this notice",
   "他のサイトが、日程組のページを自分のページに埋め込めないようにしました。見えないように重ねて、だまして押させる手口を防ぎます。": "Other sites can no longer embed Nitteigumi pages in their own. This blocks tricks that hide a page under another so you click it without knowing.",
   "カレンダーを外して、カレンダーで入れた回答を消しました。": "Removed the calendars and cleared the answers they filled.",
