@@ -19,6 +19,12 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-10-23 (2): The Move Notice Says The URL Has Changed
+
+The owner shortened the notice (「ドメインが変更になりました で良くないか」「urlのほうがいいか」): it now reads 「URLが変更になりました。ブックマークを登録し直すことをお勧めします。」 ("The URL has changed. We recommend updating your bookmarks."). Source `ui/domain-wording` → main `112c830`; `preview/domain-wording` → release `f71a89e`; the notice and English specs passed.
+
+**Production is live:** Pages deployment `134c3cb0-a4ff-4074-b8f6-e37a37f4977a` and the old-address Worker `cbda9fbe-587e-4320-91b1-78ed2759322e` (same code), at 2026-10-23 12:27 UTC. `features.mjs` 66/66, `sweep.mjs` found no problems. Before this: Pages `c29a8726-4d7a-4b19-b1c5-ef04a7b4d47c`, Worker `12632a05-a62e-4868-8115-ff936731b07c`.
+
 ## 2026-10-23: Serif Titles Again; Notice About The New Address
 
 The owner asked for a closable notice at the top recommending to bookmark the new address again (「urlが変更になったからブックマークをし直すことをお勧めする知らせを上に」「×で消せるようにもして」「お勧めします的な文言がいい」), and for the home title and event names to use the earlier typeface with today's colors (「これらの字体以前の物に戻して色はそのまま」).
