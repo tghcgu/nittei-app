@@ -21,7 +21,8 @@ for (const locale of ['ja', 'en'] as const) {
       for (const theme of ['light', 'dark']) {
         if (await page.locator('html').getAttribute('data-theme') !== theme) await themeToggle.click()
         await expect(name).toHaveCSS('color', theme === 'dark' ? 'rgb(245, 245, 244)' : 'rgb(28, 25, 23)')
-        await expect(name).toHaveCSS('font-weight', '700')
+        await expect(name).toHaveCSS('font-weight', '400')
+        await expect(name).toHaveCSS('font-family', /Mincho/)
         await expect(name).toHaveCSS('font-size', '26px')
         await expect(page.locator('form')).toHaveCSS('display', 'block')
         const headerBox = (await header.boundingBox())!
