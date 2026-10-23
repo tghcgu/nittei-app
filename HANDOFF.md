@@ -19,6 +19,19 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-10-23: Serif Titles Again; Notice About The New Address
+
+The owner asked for a closable notice at the top recommending to bookmark the new address again (「urlが変更になったからブックマークをし直すことをお勧めする知らせを上に」「×で消せるようにもして」「お勧めします的な文言がいい」), and for the home title and event names to use the earlier typeface with today's colors (「これらの字体以前の物に戻して色はそのまま」).
+
+- `app/SiteLayout.tsx` shows `.move-notice` at the top of every page. `app/MoveNoticeClose.tsx` closes it and stores `nittei-move-notice` in localStorage; `themeInitScript` sets `html[data-move-notice="closed"]` before the page is drawn, so a closed notice never flashes. Page content and the theme button sit in a `relative` wrapper below the notice. Tests run as a visitor who closed it (`storageState` in `playwright.config.ts`); `tests/move-notice.spec.ts` starts without it.
+- The home title (`.home-brand-name`) and event titles (`.event-title`: the h1 and the results h3) are `font-serif` at normal weight again, as before 2026-09-18/20; the monochrome colors and bands stay.
+
+Source `ui/move-notice` → main `7c80132`; `preview/move-notice` → release `371507a`. Full suites 123 of 123 on both; after the last wording change the notice and English specs passed.
+
+**Production is live:** Pages deployment `c29a8726-4d7a-4b19-b1c5-ef04a7b4d47c` and the old-address Worker `12632a05-a62e-4868-8115-ff936731b07c` (same code, redeployed by `npm run deploy`), at 2026-10-23 07:23 UTC. `features.mjs` 66/66 (the first run once waited 30s for the event page after a reload; four reloads by hand and the rerun were fine), `sweep.mjs` found no problems. Before this: Pages `28fe1c1f-a87e-4c10-95f7-8badf7abf3b1`, Worker `864090d3-0477-4348-aedf-96e6a618d928`.
+
+No SQL or Cron changes.
+
 ## 2026-10-22: The Site Moved To nitei.pages.dev; Every Page Is A File
 
 The owner chose to stay on Workers Free and rework the site (「払いたくないなら、この作り替え」), asked for an urgent check and fix of the October 2026 vulnerabilities (「色んなのの脆弱性が出てるから至急チェック修正」), and chose the shorter address `nitei.pages.dev` with the old one redirecting (「nitei.pages.dev に使用」「元のurlからも飛ぶようにして」).
