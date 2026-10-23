@@ -10,7 +10,7 @@ for (const locale of ['ja', 'en'] as const) {
     const notice = page.locator('.move-notice')
     await page.setViewportSize({ width: 320, height: 700 })
     await page.goto(path('/'))
-    await expect(notice).toHaveText(t('日程組の住所が nitei.pages.dev に変わりました。ブックマークを登録し直すことをお勧めします。') + '×')
+    await expect(notice).toHaveText(t('URLが変更になりました。ブックマークを登録し直すことをお勧めします。') + '×')
     // first on the page, with the theme button below it and nothing wider than the phone
     const box = (await notice.boundingBox())!
     expect(box.y).toBe(0)

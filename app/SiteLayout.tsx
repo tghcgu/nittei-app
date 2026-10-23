@@ -199,7 +199,7 @@ export default function RootLayout({
         />
         <LocaleProvider locale={locale}>
           <div className="move-notice">
-            <p>{t("日程組の住所が nitei.pages.dev に変わりました。ブックマークを登録し直すことをお勧めします。")}</p>
+            <p>{t("URLが変更になりました。ブックマークを登録し直すことをお勧めします。")}</p>
             <MoveNoticeClose label={t("お知らせを閉じる")} />
           </div>
           {/* テーマの切り替えボタンは、お知らせの下から測った位置に置く */}
