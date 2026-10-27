@@ -24,6 +24,8 @@ if (base === 'https://nitei.pages.dev') {
   ok('the previous address redirects to the same page', moved.status === 301 && moved.headers.get('location') === `${base}/e/ohbcvs2j?from=check`, `${moved.status} ${moved.headers.get('location')}`)
   const verification = await (await fetch('https://nittei-app.qoj.workers.dev/googlecc8378481687d5f8.html')).text()
   ok('the previous address keeps the Search Console file', verification === 'google-site-verification: googlecc8378481687d5f8.html')
+  const robots = await fetch('https://nittei-app.qoj.workers.dev/robots.txt', { redirect: 'manual' })
+  ok('the previous address answers robots.txt itself', robots.status === 200 && (await robots.text()).includes(`Sitemap: ${base}/sitemap.xml`), `HTTP ${robots.status}`)
 }
 for (const path of ['/', '/en', '/e/ohbcvs2j', '/en/e/ohbcvs2j', '/contact', '/no-such-page']) {
   const headers = (await fetch(base + path)).headers

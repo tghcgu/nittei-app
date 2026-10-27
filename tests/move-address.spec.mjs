@@ -32,6 +32,10 @@ test('the previous address sends every page to the same place on the new address
   // the verification file stays, so Search Console can keep the previous address
   const verification = await worker.fetch(new Request(`${previous}/googlecc8378481687d5f8.html`), env)
   expect(await verification.text()).toBe('google-site-verification: googlecc8378481687d5f8.html')
+  // robots.txt is answered there too, so crawlers read it without leaving the previous address
+  const robots = await worker.fetch(new Request(`${previous}/robots.txt`), env)
+  expect(robots.status).toBe(200)
+  expect(await robots.text()).toBe(`User-agent: *\nAllow: /\n\nSitemap: ${next}/sitemap.xml\n`)
 })
 
 test('opening the previous address brings the history and settings along once, without overwriting', async ({ page }) => {
