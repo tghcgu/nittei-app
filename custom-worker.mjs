@@ -189,6 +189,15 @@ async function eventResponse(request, env) {
   return withHeaders(fillEventPage(shell, data, english), 200, { 'Cache-Control': 'no-store' })
 }
 
+// 前の住所の robots.txt は転送せずにここで返す（どのページも読んでよい。サイトマップは新しい住所のもの）。
+// robots.txt を新しい住所へ転送していた間、Search Console の住所変更のチェックは前の住所のページを取りに来ず、
+// robots.txt をその場で返す Vercel の住所からは通った（2026-10-27）
+function previousRobotsResponse(target) {
+  return new Response(`User-agent: *\nAllow: /\n\nSitemap: ${target.replace(/\/$/, '')}/sitemap.xml\n`, {
+    headers: { ...SECURITY_HEADERS, 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600' },
+  })
+}
+
 // 前の住所で動くとき: どのページも新しい住所の同じ場所へ送る。検索エンジンやリンクのプレビューには 301。
 // ブラウザーで開いたときは、前の住所に保存されていたもの（ページ表示履歴・設定など nittei- で始まるもの）を
 // 新しい住所へ持っていく小さなページを返す。受け取る側は app/SiteLayout.tsx の moveFromPreviousSiteScript
@@ -288,6 +297,7 @@ const worker = {
         headers: { ...SECURITY_HEADERS, 'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=3600' },
       })
     }
+    if (env.REDIRECT_TO && new URL(request.url).pathname === '/robots.txt') return previousRobotsResponse(env.REDIRECT_TO)
     if (env.REDIRECT_TO) return redirectResponse(request, env.REDIRECT_TO)
     return eventResponse(request, env)
   },
