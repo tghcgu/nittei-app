@@ -3,6 +3,9 @@ import { getI18n } from '../lib/i18n'
 
 type Point = { x: number; y: number }
 
+// After a drag the calendar ignores clicks for 160ms (a mouse sends one right after it; a touch drag sends none)
+const calendarClickPause = 200
+
 async function dragPointer(page: Page, input: 'mouse' | 'touch') {
   const touch = input === 'touch' ? await page.context().newCDPSession(page) : null
   return {
@@ -55,6 +58,7 @@ for (const locale of ['ja', 'en'] as const) {
         await redo.click()
         await expect(selected).toHaveCount(1)
         await undo.click()
+        await page.waitForTimeout(calendarClickPause)
         for (const date of [10, 11, 12]) await day(date).click()
         await pointer.start(await point(10))
         await pointer.move(await point(11))
@@ -116,6 +120,7 @@ for (const locale of ['ja', 'en'] as const) {
           await expect(selected).toHaveCount(0)
           await redo.click()
           await expect(selected).toHaveCount(1)
+          await page.waitForTimeout(calendarClickPause)
           await day(startDate).click()
           await expect(selected).toHaveCount(0)
 
