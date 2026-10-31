@@ -19,6 +19,15 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-11-01: 「URLが変更になりました」のお知らせは現状維持 / Move notice kept as is
+
+オーナーから「url変更のやつ一回消したら出なくしろ」。本番で確かめたところ **すでにそう動いていた**。トップで × を押すと `nittei-move-notice` が保存され、再読み込み・`/terms`・`/e/ohbcvs2j`・`/en`、旧URL経由で入り直しても出ない。`app/SiteLayout.tsx` の `themeInitScript` が描く前に `html[data-move-notice="closed"]` を付け、`app/globals.css` が隠す。コードの不具合ではない。
+
+また出るのはブラウザ側の事情。iOS Safari は約1週間訪問がないと端末内の保存を消すこと、パソコンとスマホは別々に覚えることを説明した。Cookie に二重化する案は、プライバシーポリシーの「Cookieも使用していません」と矛盾するうえ Safari では Cookie も同じ約1週間で消えるので勧めなかった。
+
+**オーナーの判断は「今のままでいい」。** お知らせの削除も期限の設定もしない。同じ話が出たら、まず仕組みが動いていることを実機で確かめること（調べ直す前に、ここを読む）。
+
+English: dismissing the move notice already persists; verified on production across pages, locales and the old-address path. Reappearance comes from the browser clearing site data (notably iOS Safari after about a week) and from storage being per-device. The owner chose to leave it as it is: do not remove the notice or give it an end date.
 ## 2026-10-31: 引き継ぎのずれを直した / Handoff gaps fixed
 
 オーナーの「引継ぎできてる？」「よくわからんけど直せ」で、引き継ぎ資料と作業環境のずれを直した。**本番は変えていない**（Pages `6041bb74-959a-4652-9b7b-ac04be4fa363`、Worker `f40c775b-9043-47f7-ba43-5f49bfc148f2` のまま）。
