@@ -4,7 +4,20 @@
 
 このリリースはアプリの更新とSupabaseのSQL変更がセットです。GitHubへのpushだけでは、DBにもCloudflare本番にも反映されません。
 
-### 準備済みバージョン / Prepared Version
+### 今の本番 / Current Production
+
+**本番の状態はここです。下の「過去の記録」は 2026-10-22 の移転より前のもので、今の本番ではありません。**
+
+- サイトは Cloudflare **Pages** のプロジェクト `nitei`（https://nitei.pages.dev ）。本番デプロイは `6041bb74-959a-4652-9b7b-ac04be4fa363`、ソースは `release/ui-20260910` の `70a49f3`。
+- 前の住所 https://nittei-app.qoj.workers.dev は Worker `nittei-app` のバージョン `f40c775b-9043-47f7-ba43-5f49bfc148f2`。転送と毎日の自動削除、`robots.txt` の応答だけを行う。
+- **SQL移行（`supabase/secure-scheduling.sql`）は未適用のままです。** `main` は移行後のDBを前提にした保存処理を含むため本番へ出せません（`npm run deploy` は最初の `check:database` で止まります）。本番で動いているのは `release/ui-20260910` です。
+- 個々のUI反映の記録は `HANDOFF.md`（先頭が最新）にあります。このファイルはDB移行手順の正本で、UI反映は記録しません。
+- 移転後の構成と手順は、このファイルの「現在の前提」「切り替え」以降が最新です。
+
+### 過去の記録 / History (before the 2026-10-22 move)
+
+**以下は履歴です。「Current production Worker」とあるのは当時の話で、今の本番ではありません。** 当時はサイト全体が OpenNext の Worker `nittei-app` で動き、確認用URLは `…-nittei-app.qoj.workers.dev` でした。今はどちらも使っていません。
+
 
 **2026-09-19: Monochrome event titles and best-date highlights deployed**
 
