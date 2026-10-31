@@ -19,13 +19,36 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-11-01: 「URLが変更になりました」のお知らせは現状維持 / Move notice kept as is
+
+オーナーから「url変更のやつ一回消したら出なくしろ」。本番で確かめたところ **すでにそう動いていた**。トップで × を押すと `nittei-move-notice` が保存され、再読み込み・`/terms`・`/e/ohbcvs2j`・`/en`、旧URL経由で入り直しても出ない。`app/SiteLayout.tsx` の `themeInitScript` が描く前に `html[data-move-notice="closed"]` を付け、`app/globals.css` が隠す。コードの不具合ではない。
+
+また出るのはブラウザ側の事情。iOS Safari は約1週間訪問がないと端末内の保存を消すこと、パソコンとスマホは別々に覚えることを説明した。Cookie に二重化する案は、プライバシーポリシーの「Cookieも使用していません」と矛盾するうえ Safari では Cookie も同じ約1週間で消えるので勧めなかった。
+
+**オーナーの判断は「今のままでいい」。** お知らせの削除も期限の設定もしない。同じ話が出たら、まず仕組みが動いていることを実機で確かめること（調べ直す前に、ここを読む）。
+
+English: dismissing the move notice already persists; verified on production across pages, locales and the old-address path. Reappearance comes from the browser clearing site data (notably iOS Safari after about a week) and from storage being per-device. The owner chose to leave it as it is: do not remove the notice or give it an end date.
+## 2026-10-31: 引き継ぎのずれを直した / Handoff gaps fixed
+
+オーナーの「引継ぎできてる？」「よくわからんけど直せ」で、引き継ぎ資料と作業環境のずれを直した。**本番は変えていない**（Pages `6041bb74-959a-4652-9b7b-ac04be4fa363`、Worker `f40c775b-9043-47f7-ba43-5f49bfc148f2` のまま）。
+
+- **release の作業ツリーが消えていた。** `C:Users	kt01Desktop
+ittei-app-ui-release` が無くなっていて（git は prunable 表示）、CLAUDE.md が `npm run deploy` の場所として指定しているフォルダが存在しない状態だった。`git worktree prune` のうえ同じ場所へ作り直し、`.env.local` を複製して `npm ci` を通した。また消えたときは prune →`git worktree add <パス> release/ui-20260910` →`.env.local` をコピー →`npm ci` で戻せる。
+- **`SECURE-ROLLOUT.md` が移転前のままだった。** 先頭が「Current production Worker: `6c578af4…`」で、読むと本番を Worker と誤解する。先頭に「今の本番」を足し、以前の一覧は「過去の記録」と明記した。下半分（現在の前提・切り替え）は移転時に更新済みなのでそのまま。
+- **作りかけのテスト修正が push されていなかった。** `fix/drag-test-timing` / `preview/drag-test-timing`（カレンダーはドラッグ後 160ms クリックを無視する（`app/Home.tsx`）ので、テスト側で 200ms 待つ）。12件通ることを確かめて main と release に取り込んだ。
+- **`nittei-app-main/` という複製フォルダ**（1.5MB、`.git` 無し、古い HANDOFF.md 入り）がリポジトリの中にあった。128ファイルすべてが本体にもあり固有のものが無いことを確かめて削除した。
+- 2026-10-28 の記録の時刻を直した。Worker の作成は 2026-10-27 15:11 UTC（日本時間 10-28 00:11）で、日付が日本時間・時刻がUTCのまま混ざっていた。
+
+SQL移行は未適用のまま。配信はしていないので、反映するときは「マージ」と言ってもらう。
+
+English: documentation and workspace repair only, with no production deploy. The release worktree that CLAUDE.md names for `npm run deploy` had been deleted; it is restored with its env file and dependencies.
 ## 2026-10-28: The Previous Address Answers robots.txt Itself
 
 The owner asked for any setting that could make Change of Address pass from the Workers address (「変えられる設定ないか 探せ」「やれ」). Comparing it with the Vercel address, whose request passed on 2026-10-27: Vercel answers `robots.txt` with 200, while the Workers address redirected it to nitei.pages.dev, and on 2026-10-22 the only request Google sent to the Workers address during a check was that `robots.txt`, then nothing. Cloudflare has no bot or firewall settings for workers.dev addresses (those exist only for your own domains), so this was the one difference we control. `custom-worker.mjs` now answers `/robots.txt` at the previous address itself (`previousRobotsResponse`: allow all, sitemap on nitei.pages.dev); every other path still redirects. `tests/move-address.spec.mjs` and `features.mjs` check it. Not proven to be the cause: Google's community guide says a redirected robots.txt is acceptable when it ends in 200.
 
 Source `fix/old-robots` → main `ba14f76`; `preview/old-robots` → release `70a49f3`; the move-address and worker-cleanup specs passed (7/7) on both.
 
-**Production is live:** Pages deployment `6041bb74-959a-4652-9b7b-ac04be4fa363` (same pages) and the old-address Worker `f40c775b-9043-47f7-ba43-5f49bfc148f2`, at 2026-10-28 15:10 UTC. `features.mjs` 67/67. Next for the owner: in the Workers property, request a recrawl in the robots.txt report (Settings → robots.txt), then run the Change of Address validation again. Before this: Worker `cbda9fbe-587e-4320-91b1-78ed2759322e`.
+**Production is live:** Pages deployment `6041bb74-959a-4652-9b7b-ac04be4fa363` (same pages) and the old-address Worker `f40c775b-9043-47f7-ba43-5f49bfc148f2`, at 2026-10-27 15:11 UTC (2026-10-28 00:11 Japan time). `features.mjs` 67/67. Next for the owner: in the Workers property, request a recrawl in the robots.txt report (Settings → robots.txt), then run the Change of Address validation again. Before this: Worker `cbda9fbe-587e-4320-91b1-78ed2759322e`.
 
 ## 2026-10-24: The Vercel Address Redirects Straight To nitei.pages.dev
 
