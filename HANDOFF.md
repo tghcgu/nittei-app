@@ -19,6 +19,17 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-11-03: お知らせは端末ごとに1回だけ / Move notice shows once per device
+
+オーナーから「url変更のやつ一回消したら出なくしろ」「何回も出るぞ」「押して消したが開きなおしたらまた出た」。これまでは × を押したときだけ覚えていたので、**押さずにページを移ると毎回出ていた**。`app/SiteLayout.tsx` の `themeInitScript` が、表示した時点で `nittei-move-notice` に `shown` を入れるようにした。次のページからは描く前に隠れる。× は今見ているページですぐ消したいとき用に残した。プライバシーポリシーの「端末内に保存する情報」にこの記録も載せた（日英）。
+
+調べた範囲では、判定は HTML の `</head>` より前にあるのでちらつきではなく、`Clear-Site-Data` のようなヘッダーも保存を消すコードも無い。× は 320px 幅でも 32×32px で画面内・最前面。本番でプロフィールを保ったままブラウザを3回起動し直しても、閉じた状態は残った。
+
+**未解明：** オーナーの端末では × のあと開き直すと出たとのことだが再現できていない。確認用URL（`*.nitei.pages.dev` は1つ1つ別の保存場所になる）を見ていた場合や、終了時にサイトデータを消す設定なら起こりうる。同じ話が出たら、**どのURLで起きたか**を先に聞くこと。
+
+**本番反映済み：** Pages `1fa2e4a0-43e0-4e94-8654-d76a3b65af37`、前の住所の Worker `0fcb754c-63a2-4ea3-949f-71415be4b2b4`（2026-11-02 23:17 UTC ＝ 日本時間 11-03 08:17）。その前は Pages `6041bb74-959a-4652-9b7b-ac04be4fa363`、Worker `f40c775b-9043-47f7-ba43-5f49bfc148f2`。テスト123件・lint・TypeScript 成功。確認用は https://notice-once.nitei.pages.dev 。SQL と Cron は変更なし。
+
+Source `ui/move-notice-once` → main `b221ac3`; `preview/move-notice-once` → release `401b457`.
 ## 2026-11-01: 「URLが変更になりました」のお知らせは現状維持 / Move notice kept as is
 
 オーナーから「url変更のやつ一回消したら出なくしろ」。本番で確かめたところ **すでにそう動いていた**。トップで × を押すと `nittei-move-notice` が保存され、再読み込み・`/terms`・`/e/ohbcvs2j`・`/en`、旧URL経由で入り直しても出ない。`app/SiteLayout.tsx` の `themeInitScript` が描く前に `html[data-move-notice="closed"]` を付け、`app/globals.css` が隠す。コードの不具合ではない。
