@@ -27,5 +27,14 @@ for (const locale of ['ja', 'en'] as const) {
     await page.goto(path('/updates'), { waitUntil: 'domcontentloaded' })
     await expect(page.locator('html')).toHaveAttribute('data-move-notice', 'closed')
     await expect(notice).toBeHidden()
+
+    // a device that has seen it once never gets it again, even without pressing the close button
+    await page.evaluate(() => localStorage.clear())
+    await page.goto(path('/'))
+    await expect(notice).toBeVisible()
+    expect(await page.evaluate(() => localStorage.getItem('nittei-move-notice'))).toBe('shown')
+    await page.goto(path('/'), { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('html')).toHaveAttribute('data-move-notice', 'closed')
+    await expect(notice).toBeHidden()
   })
 }

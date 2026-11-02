@@ -40,7 +40,7 @@ export default function PrivacyPage({ locale = 'ja' }: { locale?: Locale }) {
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("空き日程の読み込みに使うカレンダーファイル（.ics / zip）は、お使いのブラウザの中だけで処理され、 サーバーに送信・保存されることはありません。保存されるのは、その結果として入力された出欠（○や✕）のみです。")}</p>
 
           <h2 className="mt-3 font-serif text-base text-rose-800">{t("3. 端末内に保存する情報")}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("開いたイベントの一覧（ページ表示履歴）、表示テーマ、回答一覧の表示設定、 その端末で最後に回答した日時を、お使いのブラウザの中だけに保存します。 サーバーには送信されません。 履歴は「")}<Link href={path("/history")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("ページ表示履歴")}</Link>{t("」からいつでも削除できます。ブラウザのデータを消せば、これらはまとめて消えます。")}</p>
+          <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("開いたイベントの一覧（ページ表示履歴）、表示テーマ、回答一覧の表示設定、 その端末で最後に回答した日時、画面の上のお知らせを見たかどうかを、お使いのブラウザの中だけに保存します。 サーバーには送信されません。 履歴は「")}<Link href={path("/history")} className="underline underline-offset-2 transition-colors hover:text-rose-700">{t("ページ表示履歴")}</Link>{t("」からいつでも削除できます。ブラウザのデータを消せば、これらはまとめて消えます。")}</p>
 
           <p className="mt-1 text-sm leading-relaxed text-stone-600">{t("編集キーも端末内に保存し、権限確認のため送信します。データベースにはキーのハッシュのみ保存します。端末変更に備えて編集用URLを非公開で保管してください。言語切り替え時の下書きはタブ内に一時保存し、復元後に削除します。")}</p>
 

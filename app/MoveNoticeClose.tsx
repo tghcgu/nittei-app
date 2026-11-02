@@ -1,7 +1,8 @@
 "use client";
 
-// 住所が変わったお知らせ（app/SiteLayout.tsx）を閉じるボタン。閉じたことはこの端末に覚え、
-// 次からは app/SiteLayout.tsx の themeInitScript が、描く前にお知らせを隠す
+// 住所が変わったお知らせ（app/SiteLayout.tsx）を閉じるボタン。閉じたことはこの端末に覚える。
+// 一度見せた時点で themeInitScript も覚えるので、押さなくても次のページからは出ない。
+// このボタンは、今見ているページですぐ消したいとき用
 export function MoveNoticeClose({ label }: { label: string }) {
   return (
     <button

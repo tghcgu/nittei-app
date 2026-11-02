@@ -316,7 +316,7 @@
   "2. カレンダーファイル（.ics）の扱い": "2. Calendar files (.ics)",
   "空き日程の読み込みに使うカレンダーファイル（.ics / zip）は、お使いのブラウザの中だけで処理され、 サーバーに送信・保存されることはありません。保存されるのは、その結果として入力された出欠（○や✕）のみです。": "Calendar files (.ics / zip) are processed only in your browser and are never sent to or stored on the server. Only the resulting answers, such as ○ or ✕, are saved.",
   "3. 端末内に保存する情報": "3. Information stored on your device",
-  "開いたイベントの一覧（ページ表示履歴）、表示テーマ、回答一覧の表示設定、 その端末で最後に回答した日時を、お使いのブラウザの中だけに保存します。 サーバーには送信されません。 履歴は「": "Recent events, theme preferences, response table settings, and the last response time from this device are stored only in your browser, not sent to the server. You can clear your history from ",
+  "開いたイベントの一覧（ページ表示履歴）、表示テーマ、回答一覧の表示設定、 その端末で最後に回答した日時、画面の上のお知らせを見たかどうかを、お使いのブラウザの中だけに保存します。 サーバーには送信されません。 履歴は「": "Recent events, theme preferences, response table settings, the last response time from this device, and whether the notice at the top has been seen are stored only in your browser, not sent to the server. You can clear your history from ",
   "」からいつでも削除できます。ブラウザのデータを消せば、これらはまとめて消えます。": ". Clearing browser data removes all of these local records.",
   "4. 利用目的": "4. How we use information",
   "日程調整機能の提供（回答の保存・集計・表示）": "Providing scheduling features, including saving, counting, and displaying responses",
