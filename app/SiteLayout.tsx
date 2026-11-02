@@ -134,8 +134,10 @@ const themeInitScript = `
   try {
     const theme = localStorage.getItem('nittei-theme');
     document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
-    // 住所が変わったお知らせを閉じた端末では、描く前に隠す（app/MoveNoticeClose.tsx）
+    // 住所が変わったお知らせは、この端末で一度見せたら次から出さない。閉じたときは
+    // app/MoveNoticeClose.tsx が 'closed' を入れる。どちらでも描く前に隠す
     if (localStorage.getItem('nittei-move-notice')) document.documentElement.dataset.moveNotice = 'closed';
+    else localStorage.setItem('nittei-move-notice', 'shown');
   } catch {
     document.documentElement.dataset.theme = 'light';
   }
