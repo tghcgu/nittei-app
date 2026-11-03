@@ -2,7 +2,7 @@
 
 # デプロイとブランチ運用ルール
 
-作業前に `HANDOFF.md`（先頭が最新）と `SECURE-ROLLOUT.md` を読み、本番の状態を確認すること。
+作業前に `HANDOFF.md`（先頭が最新）と `SECURE-ROLLOUT.md` を読み、本番の状態を確認すること。`HANDOFF.md` は main と release の両方にあり、同じ最新の記録が入っている。**`SECURE-ROLLOUT.md` は main にしかない。** release の作業ツリーで作業しているときは `C:\Users\tkt01\Desktop\nittei-app\SECURE-ROLLOUT.md` を読むこと（DB移行の正本はそちら）。
 
 ## 構成
 
