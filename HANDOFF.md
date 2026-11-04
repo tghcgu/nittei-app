@@ -19,6 +19,21 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-11-05: 住所変更のお知らせを外した / Move notice removed
+
+オーナーの「消していい」「マージ」で、ページ上部の「URLが変更になりました」のお知らせを外した。スマホの Chrome でリロードすると復活するという報告が続いた。本番のスクリプトは正しく入っていた（`</head>` より前、文法も正常）ので、その端末がサイトの保存を残せていないと判断した。保存に頼らずに確実に止める方法は、出さないことだけだった。
+
+- 2026-10-23 にお知らせを入れる前の形に戻した。`app/MoveNoticeClose.tsx` と `tests/move-notice.spec.ts` を削除。`app/SiteLayout.tsx` はテーマボタンを `LocaleProvider` の直下に戻し、`themeInitScript` はテーマを読むだけに戻した。`app/globals.css` の `.move-notice*`、`lib/i18n/en.json` の文言2つ、`playwright.config.ts` の `storageState` も削除。プライバシーポリシーからお知らせの記録の記載を外した（日英）。
+- 更新履歴（`lib/updates.ts`）の 2026-10-23 の項目は当時の記録として残した。
+- 前から使っている端末には `nittei-move-notice` が残っているが、もう読まない。
+- **2026-11-01 の「現状維持」は取り消し。** オーナーが消すと決めた。
+- テスト121件（お知らせの2件を削除したので123件から減った）、lint、TypeScript は main・release とも成功。
+
+**本番反映済み：** Pages `0bbb417c-ab33-4be7-b9db-d386863de11e`、前の住所の Worker `9297702c-0f61-4a89-98e8-67491c0d3aa0`（2026-11-04 22:47 UTC ＝ 日本時間 11-05 07:47）。その前は Pages `1fa2e4a0-43e0-4e94-8654-d76a3b65af37`、Worker `0fcb754c-63a2-4ea3-949f-71415be4b2b4`。SQL と Cron は変更なし。
+
+Source `ui/remove-move-notice` → main `4f269d8`; `preview/remove-move-notice` → release `c183f65`.
+
+English: the notice about the new address is gone. The owner chose removal after it kept coming back on a phone whose browser did not keep site storage; the live script itself was correct. The layout is back to its form before 2026-10-23.
 ## 2026-11-03: お知らせは端末ごとに1回だけ / Move notice shows once per device
 
 オーナーから「url変更のやつ一回消したら出なくしろ」「何回も出るぞ」「押して消したが開きなおしたらまた出た」。これまでは × を押したときだけ覚えていたので、**押さずにページを移ると毎回出ていた**。`app/SiteLayout.tsx` の `themeInitScript` が、表示した時点で `nittei-move-notice` に `shown` を入れるようにした。次のページからは描く前に隠れる。× は今見ているページですぐ消したいとき用に残した。プライバシーポリシーの「端末内に保存する情報」にこの記録も載せた（日英）。
