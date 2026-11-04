@@ -9,9 +9,8 @@ import {
   siteUrl,
 } from "@/lib/site";
 import { ThemeToggle } from "./ThemeToggle";
-import { MoveNoticeClose } from "./MoveNoticeClose";
 import { LocaleProvider } from './LocaleProvider';
-import { getI18n, type Locale } from '@/lib/i18n';
+import type { Locale } from '@/lib/i18n';
 import { appIcons, englishDescription } from '@/lib/i18n/metadata';
 import { LANGUAGE_SWITCH_EVENT, RELOAD_DETAIL } from '@/lib/draft-events';
 import "./globals.css";
@@ -134,10 +133,6 @@ const themeInitScript = `
   try {
     const theme = localStorage.getItem('nittei-theme');
     document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : 'light';
-    // 住所が変わったお知らせは、この端末で一度見せたら次から出さない。閉じたときは
-    // app/MoveNoticeClose.tsx が 'closed' を入れる。どちらでも描く前に隠す
-    if (localStorage.getItem('nittei-move-notice')) document.documentElement.dataset.moveNotice = 'closed';
-    else localStorage.setItem('nittei-move-notice', 'shown');
   } catch {
     document.documentElement.dataset.theme = 'light';
   }
@@ -179,7 +174,6 @@ export default function RootLayout({
   children: React.ReactNode;
   locale?: Locale;
 }>) {
-  const { t } = getI18n(locale);
   return (
     <html lang={locale} data-theme="light" suppressHydrationWarning>
       <head>
@@ -200,15 +194,8 @@ export default function RootLayout({
           } : jsonLd) }}
         />
         <LocaleProvider locale={locale}>
-          <div className="move-notice">
-            <p>{t("URLが変更になりました。ブックマークを登録し直すことをお勧めします。")}</p>
-            <MoveNoticeClose label={t("お知らせを閉じる")} />
-          </div>
-          {/* テーマの切り替えボタンは、お知らせの下から測った位置に置く */}
-          <div className="relative">
-            {children}
-            <ThemeToggle />
-          </div>
+          {children}
+          <ThemeToggle />
         </LocaleProvider>
         {/* テスト用のビルド（tests/server.mjs）には入れない。手元では Cloudflare に送れずエラーになるため */}
         {process.env.NODE_ENV === "production" && !process.env.NITTEI_TEST_DIST_DIR && (
