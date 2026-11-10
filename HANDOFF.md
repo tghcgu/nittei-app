@@ -19,6 +19,19 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-11-10: 集計から「−」を外した / The tally leaves out −
+
+オーナーの「集計の‐いらないと思う」「やれ」「マージ」。「−」は記号を選ばずに送った日に自動で入る値なので、数えても日程を決める材料にならず、スマホでは1列ぶん幅を取っていた。縦表示・横表示とも、集計に出す記号から「−」を除いた（main は既存の `countOptions`、release は `answerOptions` から新しく作った `countOptions`）。各人の列の「-」と、そこに付けたメモは残る。集計の見出しで「-」を「−」に置き換える分岐は要らなくなったので外した。
+
+- `tests/count-columns.spec.ts` を追加した。変更を外した状態では「−の人数」の列が見つかって失敗することを確かめてある。`tests/japanese.spec.ts` の「集計を外すと見出しが4列減る」は3列に直した。
+- テストは main・release とも123件、lint、TypeScript 成功。本番点検は features.mjs 67/67、sweep.mjs 64通りで問題なし。確認用は https://no-dash.nitei.pages.dev 。
+- 2026-11-08 にも本番点検を流した（features.mjs 67/67、sweep.mjs 問題なし）。11-03・11-05 の反映のあとは流していなかった。
+
+**本番反映済み：** Pages `931b2f19-7efe-466b-a4dc-62b1362b95bd`、前の住所の Worker `e31444e8-595f-45c8-a75e-ca0c94494e6a`（2026-11-10 06:41 UTC ＝ 日本時間 15:41）。その前は Pages `0bbb417c-ab33-4be7-b9db-d386863de11e`、Worker `9297702c-0f61-4a89-98e8-67491c0d3aa0`。SQL と Cron は変更なし。
+
+Source `ui/no-dash-count` → main `3c8d9be`; `preview/no-dash-count` → release `5d8734d`.
+
+English: the answer tally no longer has a − column (dates down the side) or row (dates across). A − is what gets saved when no symbol is picked, so its count never helped choose a date; each person's column still shows it.
 ## 2026-11-05: 住所変更のお知らせを外した / Move notice removed
 
 オーナーの「消していい」「マージ」で、ページ上部の「URLが変更になりました」のお知らせを外した。スマホの Chrome でリロードすると復活するという報告が続いた。本番のスクリプトは正しく入っていた（`</head>` より前、文法も正常）ので、その端末がサイトの保存を残せていないと判断した。保存に頼らずに確実に止める方法は、出さないことだけだった。
