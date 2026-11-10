@@ -708,6 +708,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
     const allowed = answerValuesFor(event.answer_choices)
     return ANSWER_OPTIONS.filter((opt) => allowed.includes(opt.value))
   }, [event.answer_choices])
+  // 「−」は記号を選ばなかった日なので集計には出さない（各人の列には残る）
+  const countOptions = useMemo(() => answerOptions.filter((opt) => opt.value !== '-'), [answerOptions])
   // 「空いていたら」は ◎○△、「埋まっていたら」は ✕△ の順に、上から時間を決められる
   function icsRulesFor(settings: IcsSettings) {
     const options = settings.ruleWhen === 'free'
@@ -2453,7 +2455,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {showAnswerCounts && answerOptions.map((option, index) => (
+                  {showAnswerCounts && countOptions.map((option, index) => (
                     <tr
                       key={`count-${option.value}`}
                       className={`border-t border-stone-300 ${
@@ -2461,9 +2463,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       }`}
                     >
                       <th className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left font-normal`}>
-                        <span className={answerColor(option.value)}>
-                          {option.value === '-' ? '−' : option.value}
-                        </span>
+                        <span className={answerColor(option.value)}>{option.value}</span>
                       </th>
                       {candidates.map((candidate) => {
                         const count = answerCountsByCandidate.get(candidate.id)?.[option.value] ?? 0
@@ -2471,7 +2471,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={candidate.id}
-                            title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
+                            title={t("{0}：{1}人", option.value, count)}
                             className={`border-l border-stone-500/50 px-1.5 py-0 ${isBest ? 'response-best-candidate response-best-count' : 'font-medium text-stone-700'}`}
                           >
                             {count || ''}
@@ -2531,13 +2531,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                 <thead>
                   <tr>
                     <th className={`${stickyHeadClass('z-20')}pb-1 pr-0.5 text-left text-xs font-normal text-stone-600`}>{t("候補日")}</th>
-                    {showAnswerCounts && answerOptions.map((option) => (
+                    {showAnswerCounts && countOptions.map((option) => (
                       <th
                         key={`count-heading-${option.value}`}
-                        title={t("{0}の人数", option.value === '-' ? '−' : option.value)}
+                        title={t("{0}の人数", option.value)}
                         className={`min-w-7 border-l border-stone-500/50 px-1 pb-1 font-normal ${answerColor(option.value)}`}
                       >
-                        {option.value === '-' ? '−' : option.value}
+                        {option.value}
                       </th>
                     ))}
                     {responseRows.map((r) => (
@@ -2566,13 +2566,13 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                           <span className="ml-1 text-xs text-stone-600 whitespace-nowrap">{c.time_label}</span>
                         )}
                       </td>
-                      {showAnswerCounts && answerOptions.map((option) => {
+                      {showAnswerCounts && countOptions.map((option) => {
                         const count = answerCountsByCandidate.get(c.id)?.[option.value] ?? 0
                         const isBest = bestCandidateIds.has(c.id) && count > 0 && (option.value === '◎' || option.value === '○')
                         return (
                           <td
                             key={`count-${option.value}`}
-                            title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
+                            title={t("{0}：{1}人", option.value, count)}
                             className={`min-w-7 border-l border-stone-500/50 px-1 py-0 ${isBest ? 'response-best-candidate response-best-count' : 'font-medium text-stone-700'}`}
                           >
                             {count || ''}
