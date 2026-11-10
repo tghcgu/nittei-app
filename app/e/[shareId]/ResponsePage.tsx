@@ -771,7 +771,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
   const countOptions = useMemo(() => {
     const values = new Set(answerValuesFor(event.answer_choices))
     for (const response of responseRows) for (const answer of response.answers) values.add(answer.value)
-    return ANSWER_OPTIONS.filter(option => values.has(option.value))
+    // 「−」は記号を選ばなかった日なので集計には出さない（各人の列には残る）
+    return ANSWER_OPTIONS.filter(option => option.value !== '-' && values.has(option.value))
   }, [event.answer_choices, responseRows])
   const viewedAt = useMemo(() => (infoMounted ? new Date() : null), [infoMounted])
   const localUpdatedAt =
@@ -2475,9 +2476,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                       }`}
                     >
                       <th className={`${stickyHeadClass('z-10')}w-40 min-w-40 max-w-40 py-0 pr-3 text-left font-normal`}>
-                        <span className={answerColor(option.value)}>
-                          {option.value === '-' ? '−' : option.value}
-                        </span>
+                        <span className={answerColor(option.value)}>{option.value}</span>
                       </th>
                       {candidates.map((candidate) => {
                         const count = answerCountsByCandidate.get(candidate.id)?.[option.value] ?? 0
@@ -2485,7 +2484,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={candidate.id}
-                            title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
+                            title={t("{0}：{1}人", option.value, count)}
                             className={`border-l border-stone-500/50 px-1.5 py-0 ${isBest ? 'response-best-candidate response-best-count' : 'font-medium text-stone-700'}`}
                           >
                             {count || ''}
@@ -2549,10 +2548,10 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                     {showAnswerCounts && countOptions.map((option) => (
                       <th
                         key={`count-heading-${option.value}`}
-                        title={t("{0}の人数", option.value === '-' ? '−' : option.value)}
+                        title={t("{0}の人数", option.value)}
                         className={`min-w-7 border-l border-stone-500/50 px-1 pb-1 font-normal ${answerColor(option.value)}`}
                       >
-                        {option.value === '-' ? '−' : option.value}
+                        {option.value}
                       </th>
                     ))}
                     {responseRows.map((r) => (
@@ -2588,7 +2587,7 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
                         return (
                           <td
                             key={`count-${option.value}`}
-                            title={t("{0}：{1}人", option.value === '-' ? '−' : option.value, count)}
+                            title={t("{0}：{1}人", option.value, count)}
                             className={`min-w-7 border-l border-stone-500/50 px-1 py-0 ${isBest ? 'response-best-candidate response-best-count' : 'font-medium text-stone-700'}`}
                           >
                             {count || ''}

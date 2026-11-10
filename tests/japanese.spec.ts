@@ -92,7 +92,8 @@ test('Japanese create, optional times, calendar import, answer drag, edit, and r
 
   const before = await page.locator('thead th').count()
   await page.getByRole('checkbox', { name: '集計', exact: true }).uncheck()
-  expect(await page.locator('thead th').count()).toBe(before - 4)
+  // the ○△✕ tally columns go away; − has no tally column
+  expect(await page.locator('thead th').count()).toBe(before - 3)
   await page.getByRole('checkbox', { name: '集計', exact: true }).check()
   await page.getByRole('button', { name: '╠═╣ 横', exact: true }).click()
   await expect(page.locator('table')).toContainText('名前')
