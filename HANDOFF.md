@@ -19,6 +19,24 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-11-20: 重複ファイル削除ツールで壊れた作業フォルダを戻した / Working folders restored after a duplicate-file cleaner
+
+2026-11-16 の 17:37〜19:00 ごろ（日本時間）、重複ファイルを消すツール（オーナーいわく「使ったかも」）が両方の作業フォルダを操作した。「中身が同じファイルの組ごとに1つだけ残して、残りを消す」動きで、次のものが消えていた。**GitHub・本番・DB は無事だった。** GitHub は 11-10 から更新がなく、本番は 11-10 の版（Pages `931b2f19-7efe-466b-a4dc-62b1362b95bd`、Worker `e31444e8-595f-45c8-a75e-ca0c94494e6a`）のまま、`secure-scheduling.sql` も未適用のままだった。
+
+- main の作業ツリー：管理下127件のうち105件と `.env.local`。release と中身が違う22件だけが残っていた（release と同じ中身のファイルが「重複」として消された）。
+- release の作業ツリー：`public/_headers`（安全用ヘッダー）とアイコン4件。同じ中身の写しは `.next-i18n-tests/` や `out/` に残っていた。このまま deploy していたら、安全用ヘッダーやアイコンの無いサイトが出るか、ビルドが失敗していた。
+- 両方の `node_modules` も中身が欠けていた（release でも `playwright/index.mjs`、`typescript`、`fflate` が欠けていた）。
+- 同じ時間帯に、デスクトップの `madori/madori-main/.codex` の4フォルダ、ダウンロードの「新しいフォルダー」、Tor Browser のライセンス文書のフォルダも変わっていた（オーナーに伝えた）。
+
+戻し方：両方で `git restore -- .`（書き換えられたファイルは0件だったので、失うものは無かった）、main の `.env.local` を release から複製、両方で `npm ci`。npm 11.19 は esbuild・unrs-resolver・workerd の postinstall を承認待ちにするが、本体は optional dependency として入っている。lint と TypeScript は両方成功。
+
+**見分け方：** ファイルが「中身の同じものだけ」消えていたら、まず重複ファイル削除ツールを疑う。開発用のフォルダ（nittei-app、nittei-app-ui-release、madori）は、そのツールの対象から外すようオーナーに頼んだ。
+
+**Next.js がAIのビルドを止める（未解決）：** 今の Next.js 16.4.2 には中程度の脆弱性が7件あり（11-08 以降に公表、16.4.6 で修正）、AI が `next build` を動かすと `SecurityFatalError` で止まる（`experimental.agentUpgrade` の既定の `security`。説明は `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/agentUpgrade.md`）。5分以内に同じ命令をやり直せば続く作りだが、やり直しの記録は `<distDir>/cache/next-agentic-upgrade-retries/` に置かれ、`tests/server.mjs` が毎回ビルド用フォルダを丸ごと消すため、**AI が動かすテストは止まり続ける**。7件はどれもサーバーで Next.js を動かす場合の問題（キャッシュ、画像の変換、Edge のルートなど）で、ファイルとして書き出して配っているこのサイトへの実害はまず無い。直すには Next.js を 16.4.6 に上げる（オーナーに提案中）。
+
+今回は本番に配り直していない。戻した中身は本番で動いている版と同じで、テストを通せない状態で配り直しても得るものが無いため。本番点検は features.mjs 67/67、sweep.mjs 64通りで問題なし（1回目は CSS 1件が通信の暗号化で失敗したが、同じ CSS は10回とも取れ、やり直しで問題なし）。SQL と Cron は変更なし。
+
+English: a duplicate-file cleaner run on 2026-11-16 deleted every tracked file in the main worktree whose content matched the release worktree (105 of 127, plus .env.local), the release worktree's _headers and icons, and parts of both node_modules. GitHub, production and the database were untouched; both worktrees were restored from their commits and reinstalled. Separately, Next.js 16.4.2 now stops agent-run builds over known advisories (fixed in 16.4.6), and because tests/server.mjs deletes its dist dir, the retry never sticks, so agent-run tests stay blocked until Next.js is upgraded.
 ## 2026-11-10: 集計から「−」を外した / The tally leaves out −
 
 オーナーの「集計の‐いらないと思う」「やれ」「マージ」。「−」は記号を選ばずに送った日に自動で入る値なので、数えても日程を決める材料にならず、スマホでは1列ぶん幅を取っていた。縦表示・横表示とも、集計に出す記号から「−」を除いた（main は既存の `countOptions`、release は `answerOptions` から新しく作った `countOptions`）。各人の列の「-」と、そこに付けたメモは残る。集計の見出しで「-」を「−」に置き換える分岐は要らなくなったので外した。
