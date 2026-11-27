@@ -19,6 +19,20 @@ PCが壊れると Claude の記憶（各PCの `~/.claude/projects/…/memory/`�
 - `.env.local` の値は公開しない・Git に入れない。秘密の値は `npx wrangler secret put` で入れる。Vercel のアカウント・プロジェクトは消さない（旧URLの転送に使っている）。
 - main は DB 移行が済むまで本番に出さない（main の `npm run deploy` は最初の `check:database` で止まる）。
 
+## 2026-11-27: PCで見出しまわりの左端をカードの中身に揃えた / The event header lines up with the card contents on wide screens
+
+オーナーの「左の余白他のに合わせて」「いやスマホは戻して パソコンの話」「マージ」。PC（lg 以上）では、回答フォームとみんなの回答のカードが画面の端から16px・中の余白24pxなので、中身は40pxから始まる。ところが見出しの帯・説明文・URLボタンは16pxから始まっていた。見出しの入れ物に `lg:px-6` を足して40pxに揃えた。スマホとタブレットは変えていない（最初にスマホ側を4pxへ寄せたが、オーナーの指示で戻した）。
+
+- Next.js の件で自動テストは流せていない。確認用URL（https://header-edge.nitei.pages.dev ）と本番で、各ブロックの左端を幅320〜1920pxで測って確かめた。lint と TypeScript は成功。
+- AI がビルドすると Next.js が1回止める件は、`npm run preview` と `npm run deploy` なら5分以内のやり直しで通る（`.next/cache` が消えないため）。`scripts/cloudflare.mjs` はビルドが止まるとアップロード前に終了するので、やり直しても安全。テストは引き続き止まる（`tests/server.mjs` がビルド用フォルダを丸ごと消すため）。
+- **release の作業フォルダがまた消えていた**（11-20 に戻したあと）。`git worktree prune` → `git worktree add` → `.env.local` を main から複製 → `npm ci` で作り直した。オーナーに消さないよう伝えた。
+- 本番点検は features.mjs 67/67、sweep.mjs 64通りで問題なし。
+
+**本番反映済み：** Pages `053f61d4-56b0-48ad-8c9d-fca760f41f18`、前の住所の Worker `6a545ae4-b9f2-41a5-b3b1-a64789d24320`（2026-11-27 05:56 UTC ＝ 日本時間 14:56）。その前は Pages `931b2f19-7efe-466b-a4dc-62b1362b95bd`、Worker `e31444e8-595f-45c8-a75e-ca0c94494e6a`。SQL と Cron は変更なし。
+
+Source `ui/header-edge` → main `db45d95`; `preview/header-edge` → release `2b8b535`.
+
+English: on wide screens the event title band, description and link buttons now start at 40px, the same as the contents of the answer form and results cards; phones and tablets are unchanged. Agent-run preview and deploy builds pass on a prompt retry after the Next.js advisory stop; agent-run tests still stay blocked until Next.js is upgraded.
 ## 2026-11-20: 重複ファイル削除ツールで壊れた作業フォルダを戻した / Working folders restored after a duplicate-file cleaner
 
 2026-11-16 の 17:37〜19:00 ごろ（日本時間）、重複ファイルを消すツール（オーナーいわく「使ったかも」）が両方の作業フォルダを操作した。「中身が同じファイルの組ごとに1つだけ残して、残りを消す」動きで、次のものが消えていた。**GitHub・本番・DB は無事だった。** GitHub は 11-10 から更新がなく、本番は 11-10 の版（Pages `931b2f19-7efe-466b-a4dc-62b1362b95bd`、Worker `e31444e8-595f-45c8-a75e-ca0c94494e6a`）のまま、`secure-scheduling.sql` も未適用のままだった。
