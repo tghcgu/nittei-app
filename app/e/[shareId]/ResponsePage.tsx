@@ -1618,8 +1618,8 @@ export function ResponsePage({ shareId, event, candidates, responses }: Props) {
           </Link>
         </div>
 
-        {/* イベントヘッダー */}
-        <div className="mb-1 min-w-0">
+        {/* イベントヘッダー（スマホでは下の回答フォームの中身と同じ左端に揃える） */}
+        <div className="-mx-3 mb-1 min-w-0 lg:mx-0">
           <h1 className="event-title py-0.5 font-serif text-lg leading-6">{event.name}</h1>
           {event.description && (
             <p className="mt-1 max-w-2xl whitespace-pre-wrap break-words text-stone-700"><LinkifiedText text={event.description} /></p>
